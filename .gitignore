@@ -1,0 +1,17 @@
+# Environment variables
+.env
+.env.local
+
+# Backend
+backend/.env
+backend/.env.local
+backend/__pycache__/
+backend/*.pyc
+backend/venv/
+backend/instance/
+backend/*.db
+backend/*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,36 @@
+/* Additional styles for access page */
+
+.role-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.demo-note {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f0f6ff;
+  border: 1px solid #dce6f1;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.demo-note b {
+  display: block;
+  margin-bottom: 8px;
+  color: #0759d6;
+}
+
+.demo-note span {
+  display: block;
+  padding: 4px 0;
+  color: #526a85;
+  font-family: 'DM Sans', monospace;
+}
+
+@media (max-width: 650px) {
+  .role-picker {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
