@@ -1,5 +1,5 @@
 (() => {
-  const API_BASE = 'http://localhost:5000/api'; // Change this to your Render URL when deployed
+  const API_BASE = 'https://studentstay-backend.onrender.com/api'; // Production backend URL
   let token = localStorage.getItem('studentstay_token');
   let currentUser = JSON.parse(localStorage.getItem('studentstay_user') || 'null');
 
