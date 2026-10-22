@@ -146,7 +146,7 @@
           currentUser = response.user;
           localStorage.setItem('studentstay_token', token);
           localStorage.setItem('studentstay_user', JSON.stringify(currentUser));
-          role === 'student' ? showStudentArea() : go(role);
+          go(role);
         }
       } catch (error) {
         alert(error.message);
@@ -156,11 +156,6 @@
 
   async function showStudentArea() {
     if (!currentUser || currentUser.role !== 'student') return;
-    
-    document.querySelector('.auth-card')?.classList.add('hidden');
-    const area = document.querySelector('#studentArea'); if (!area) return;
-    area.classList.remove('hidden');
-    document.querySelector('#studentGreeting').textContent = `Hello, ${currentUser.name.split(' ')[0]}`;
 
     try {
       const [listings, requests] = await Promise.all([
@@ -168,13 +163,30 @@
         apiCall('/requests/student')
       ]);
 
-      document.querySelector('#studentStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${listings.length}</strong><small>Available homes</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${requests.length}</strong><small>Your requests</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Free</strong><small>StudentStay support</small></div></div>`;
+      if (document.querySelector('#listingCount')) {
+        document.querySelector('#listingCount').textContent = listings.length;
+        document.querySelector('#requestCount').textContent = requests.length;
+      }
+
       renderListings('#studentListings', listings, { request: true, studentId: currentUser.id });
-      
+
       const requestRows = requests.map(r => `<div class="request-row"><div><b>${esc(r.listing?.title || 'Listing removed')}</b><p>Requested ${new Date(r.created).toLocaleDateString()}</p></div><span class="status-pill">${esc(r.status)}</span></div>`).join('');
       document.querySelector('#studentRequests').innerHTML = requestRows || '<div class="empty-state">You have not requested a room yet.</div>';
     } catch (error) {
       console.error('Error loading student area:', error);
+    }
+  }
+
+  // Initialize student dashboard
+  const studentPage = document.querySelector('#studentWelcome');
+  if (studentPage) {
+    const session = guard('student');
+    if (session) {
+      document.querySelector('#studentHeaderName').textContent = session.name;
+      document.querySelector('#studentAvatar').textContent = session.name.slice(0, 1).toUpperCase();
+      document.querySelector('#studentWelcome').textContent = session.name.split(' ')[0];
+
+      showStudentArea();
     }
   }
 

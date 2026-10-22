@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Dashboard · StudentStay</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body class="portal-body">
+  <header class="portal-header">
+    <a class="brand" href="index.html">
+      <span class="brand-icon">⌂</span>
+      <span><strong>Student<span>Stay</span></strong><small>Student Dashboard</small></span>
+    </a>
+    <div class="header-user">
+      <span class="user-avatar" id="studentAvatar">S</span>
+      <span id="studentHeaderName">Student</span>
+      <button class="outline-button" data-logout>Sign out</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <aside class="side-nav">
+      <span class="side-label">STUDENT SPACE</span>
+      <a class="selected" href="#overview">▦ &nbsp; Overview</a>
+      <a href="#browse">⌂ &nbsp; Browse Homes</a>
+      <a href="#requests">▣ &nbsp; My Requests</a>
+      <a href="index.html">↗ &nbsp; View Website</a>
+      <div class="sidebar-help">
+        <b>Need help?</b>
+        <p>Our team is here for you.</p>
+        <a href="mailto:help@studentstay.example">Contact support →</a>
+      </div>
+    </aside>
+
+    <section class="dashboard-main" id="overview">
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">STUDENT DASHBOARD</span>
+          <h1>Welcome, <span id="studentWelcome">student</span></h1>
+          <p>Browse homes and keep track of your rental requests.</p>
+        </div>
+      </div>
+
+      <div class="stat-row" id="studentStats">
+        <div class="stat-card">
+          <span class="stat-icon">⌂</span>
+          <div>
+            <strong id="listingCount">0</strong>
+            <small>Available Homes</small>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">▣</span>
+          <div>
+            <strong id="requestCount">0</strong>
+            <small>Your Requests</small>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">✓</span>
+          <div>
+            <strong>Free</strong>
+            <small>StudentStay Support</small>
+          </div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Homes You Might Like</h2>
+            <p>Browse available properties in your area.</p>
+          </div>
+          <span class="panel-icon">⌂</span>
+        </div>
+        <div class="listing-grid" id="studentListings"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Your Housing Requests</h2>
+            <p>Track the status of your rental requests.</p>
+          </div>
+          <span class="panel-icon">▣</span>
+        </div>
+        <div id="studentRequests" class="request-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="portal-api.js"></script>
+</body>
+</html>
