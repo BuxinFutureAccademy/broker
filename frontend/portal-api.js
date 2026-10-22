@@ -1,4 +1,5 @@
 (() => {
+  console.log('portal-api.js loaded');
   const API_BASE = 'https://broker-961c.onrender.com/api'; // Production backend URL
   let token = localStorage.getItem('studentstay_token');
   let currentUser = JSON.parse(localStorage.getItem('studentstay_user') || 'null');
@@ -11,6 +12,7 @@
 
   // Call on page load
   loadUserFromStorage();
+  console.log('User loaded:', currentUser);
 
   const esc = (value = '') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const money = n => `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -74,6 +76,7 @@
   }));
 
   const authForm = document.querySelector('#authForm');
+  console.log('Auth form found:', !!authForm);
   if (authForm) {
     let mode = 'signin';
     let role = 'student';
@@ -104,10 +107,13 @@
     updateAuth();
 
     authForm.addEventListener('submit', async event => {
+      console.log('Form submitted');
       event.preventDefault();
+      console.log('Event prevented');
       const form = new FormData(authForm);
       const email = String(form.get('email')).trim().toLowerCase();
       const password = String(form.get('password'));
+      console.log('Email:', email, 'Role:', role);
 
       if (role === 'admin') {
         try {
