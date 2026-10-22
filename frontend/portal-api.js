@@ -163,15 +163,18 @@
         apiCall('/requests/student')
       ]);
 
-      if (document.querySelector('#listingCount')) {
-        document.querySelector('#listingCount').textContent = listings.length;
-        document.querySelector('#requestCount').textContent = requests.length;
-      }
+      const listingCountEl = document.querySelector('#listingCount');
+      const requestCountEl = document.querySelector('#requestCount');
+      if (listingCountEl) listingCountEl.textContent = listings.length;
+      if (requestCountEl) requestCountEl.textContent = requests.length;
 
       renderListings('#studentListings', listings, { request: true, studentId: currentUser.id });
 
       const requestRows = requests.map(r => `<div class="request-row"><div><b>${esc(r.listing?.title || 'Listing removed')}</b><p>Requested ${new Date(r.created).toLocaleDateString()}</p></div><span class="status-pill">${esc(r.status)}</span></div>`).join('');
-      document.querySelector('#studentRequests').innerHTML = requestRows || '<div class="empty-state">You have not requested a room yet.</div>';
+      const requestsEl = document.querySelector('#studentRequests');
+      if (requestsEl) {
+        requestsEl.innerHTML = requestRows || '<div class="empty-state">You have not requested a room yet.</div>';
+      }
     } catch (error) {
       console.error('Error loading student area:', error);
     }
