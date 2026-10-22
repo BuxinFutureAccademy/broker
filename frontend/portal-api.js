@@ -3,6 +3,15 @@
   let token = localStorage.getItem('studentstay_token');
   let currentUser = JSON.parse(localStorage.getItem('studentstay_user') || 'null');
 
+  // Reload user from localStorage on page load
+  function loadUserFromStorage() {
+    token = localStorage.getItem('studentstay_token');
+    currentUser = JSON.parse(localStorage.getItem('studentstay_user') || 'null');
+  }
+
+  // Call on page load
+  loadUserFromStorage();
+
   const esc = (value = '') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const money = n => `₹${Number(n || 0).toLocaleString('en-IN')}`;
   const img = item => item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75';
@@ -202,7 +211,14 @@
     target.querySelectorAll('[data-request-listing]').forEach(button => button.addEventListener('click', async () => { try { await apiCall('/requests', { method: 'POST', body: JSON.stringify({ listingId: button.dataset.requestListing }) }); showStudentArea(); } catch (error) { alert(error.message); } }));
   }
 
-  function guard(role) { if (!currentUser || currentUser.role !== role) { location.href = `access.html#${role}`; return null; } return currentUser; }
+  function guard(role) {
+    loadUserFromStorage();
+    if (!currentUser || currentUser.role !== role) {
+      location.href = `access.html#${role}`;
+      return null;
+    }
+    return currentUser;
+  }
 
   const landlordPage = document.querySelector('#profileForm');
   if (landlordPage) {
