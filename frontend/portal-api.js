@@ -23,29 +23,44 @@
       'Content-Type': 'application/json',
       ...options.headers
     };
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers
-    });
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers
+      });
 
-    if (response.status === 401) {
-      localStorage.removeItem('studentstay_token');
-      localStorage.removeItem('studentstay_user');
-      window.location.href = 'access.html';
-      return null;
+      if (response.status === 401) {
+        localStorage.removeItem('studentstay_token');
+        localStorage.removeItem('studentstay_user');
+        window.location.href = 'access.html';
+        return null;
+      }
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('API Error Response:', text);
+        // Check if it's HTML (backend sleeping or error page)
+        if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html')) {
+          throw new Error('Backend is waking up. Please wait 30 seconds and try again.');
+        }
+        try {
+          const error = JSON.parse(text);
+          throw new Error(error.error || 'API request failed');
+        } catch {
+          throw new Error('API request failed. Please try again.');
+        }
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('API Call Error:', error);
+      throw error;
     }
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'API request failed');
-    }
-
-    return response.json();
   }
 
   async function uploadImage(file) {
