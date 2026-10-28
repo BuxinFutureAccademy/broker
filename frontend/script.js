@@ -35,6 +35,21 @@
   grid?.addEventListener('keydown', event => { const tile = event.target.closest('[data-property-id]'); if (tile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } });
   const menu = document.querySelector('.menu');
   menu?.addEventListener('click', () => { const nav = document.querySelector('.nav'); const open = nav.classList.toggle('nav-open'); nav.setAttribute('aria-hidden', String(!open)); });
+  const dial = value => String(value || '').replace(/[^\d+]/g, '');
+  fetch(`${API_BASE}/payment`).then(response => response.ok ? response.json() : null).then(payment => {
+    const link = document.querySelector('#siteContact');
+    if (!link || !payment) return;
+    const phone = payment.contactPhone || '';
+    const email = payment.contactEmail || '';
+    const name = payment.contactName || 'Admin';
+    if (phone) {
+      link.href = `tel:${dial(phone)}`;
+      link.textContent = `${name} · ${phone}`;
+    } else if (email) {
+      link.href = `mailto:${email}`;
+      link.textContent = email;
+    }
+  }).catch(() => {});
   document.querySelector('.login')?.addEventListener('click', () => { location.href = 'access.html'; });
   document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=signup'; });
 })();

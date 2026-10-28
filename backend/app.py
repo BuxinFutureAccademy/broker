@@ -391,7 +391,8 @@ def login():
     if user.role == 'broker' or data.get('role') == 'broker':
         return jsonify({'error': 'Broker accounts are closed. Sign in as a student or a landlord. The admin handles the broker fee.'}), 403
 
-    if user.role != data['role']:
+    # The admin can sign in from the student or landlord form. There is no admin button.
+    if user.role != data.get('role') and user.role != 'admin':
         return jsonify({'error': 'Account type mismatch'}), 401
     
     access_token = create_access_token(identity=user.id)
@@ -1021,10 +1022,14 @@ def payment_payload():
         setting = PaymentSetting(amount=2000, note='Pay the broker fee, then upload a clear photo of your receipt.')
         db.session.add(setting)
         db.session.commit()
+    contact = broker_contact()
     return {
         'amount': setting.amount or 0,
         'qrUrl': setting.qr_url or '',
         'note': setting.note or '',
+        'contactName': contact['name'],
+        'contactPhone': contact['phone'],
+        'contactEmail': contact['email'],
     }
 
 @app.route('/api/payment', methods=['GET'])

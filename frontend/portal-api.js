@@ -118,7 +118,7 @@
     tabs.forEach(button => button.addEventListener('click', () => { mode = button.dataset.mode; tabs.forEach(tab => tab.classList.toggle('active', tab === button)); updateAuth(); }));
     roleButtons.forEach(button => button.addEventListener('click', () => { role = button.dataset.role; roleButtons.forEach(item => item.classList.toggle('active', item === button)); if (role === 'admin') mode = 'signin'; tabs.forEach(tab => { tab.classList.toggle('active', tab.dataset.mode === mode); tab.disabled = role === 'admin' && tab.dataset.mode === 'signup'; }); updateAuth(); }));
     const requestedRole = location.hash.slice(1);
-    if (['student','landlord','admin'].includes(requestedRole)) roleButtons.find(button => button.dataset.role === requestedRole)?.click();
+    if (['student','landlord'].includes(requestedRole)) roleButtons.find(button => button.dataset.role === requestedRole)?.click();
     if (new URLSearchParams(location.search).get('mode') === 'signup') document.querySelector('[data-mode="signup"]').click();
     if (location.hash === '#student') showStudentArea();
     updateAuth();
@@ -181,7 +181,7 @@
           currentUser = response.user;
           localStorage.setItem('studentstay_token', token);
           localStorage.setItem('studentstay_user', JSON.stringify(currentUser));
-          go(role);
+          go(currentUser.role);
         }
       } catch (error) {
         alert(error.message);
@@ -502,6 +502,21 @@
 
   window.addEventListener('hashchange', showWorkspace);
   showWorkspace();
+
+  const dial = value => String(value || '').replace(/[^\d+]/g, '');
+  fetch(`${API_BASE}/payment`).then(response => response.ok ? response.json() : null).then(payment => {
+    const phone = payment?.contactPhone || '';
+    const email = payment?.contactEmail || '';
+    document.querySelectorAll('[data-admin-contact]').forEach(link => {
+      if (phone) {
+        link.href = `tel:${dial(phone)}`;
+        link.textContent = phone;
+      } else if (email) {
+        link.href = `mailto:${email}`;
+        link.textContent = email;
+      }
+    });
+  }).catch(() => {});
 
   document.querySelectorAll('.side-nav a[href^="#"]').forEach(link => {
     link.addEventListener('click', () => {

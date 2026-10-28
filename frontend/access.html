@@ -6,7 +6,7 @@
   <title>Sign in · StudentStay</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="portal.css">
-  <link rel="stylesheet" href="access.css">
+  <link rel="stylesheet" href="access.css?v=4">
 </head>
 <body class="portal-body">
   <header class="topbar">
@@ -40,7 +40,6 @@
       <div class="role-picker" role="group" aria-label="Account type">
         <button class="role-choice active" data-role="student">🎓 <span>Student</span></button>
         <button class="role-choice" data-role="landlord">⌂ <span>Landlord</span></button>
-        <button class="role-choice" data-role="admin">⚙ <span>Admin</span></button>
       </div>
       <form id="authForm">
         <div class="form-grid">
@@ -66,15 +65,9 @@
         <button class="primary-button full" id="authSubmit">Sign in as Student</button>
         <p class="auth-note" id="authNote">New here? Choose Create account to get started.</p>
       </form>
-      <div class="demo-note">
-        <b>Test Accounts</b>
-        <span>Student: student@test.com / student123</span>
-        <span>Landlord: landlord@test.com / landlord123</span>
-        <span>Admin: admin@test.com / admin123</span>
-      </div>
     </section>
   </main>
 
-  <script src="portal-api.js?v=3"></script>
+  <script src="portal-api.js?v=4"></script>
 </body>
 </html>
