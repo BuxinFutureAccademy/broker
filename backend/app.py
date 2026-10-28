@@ -56,6 +56,14 @@ class User(db.Model):
     city = db.Column(db.String(50))
     address = db.Column(db.Text)
     joined = db.Column(db.DateTime, default=db.func.current_timestamp())
+    google_sub = db.Column(db.String(64))
+
+class PhoneCode(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    phone = db.Column(db.String(20), nullable=False, index=True)
+    code_hash = db.Column(db.String(64), nullable=False)
+    expires = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, default=0)
 
 class BrokerProfile(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -295,6 +303,16 @@ def ensure_schema():
             if name not in columns:
                 db.session.execute(text(f'ALTER TABLE payment_setting ADD COLUMN {name} {kind}'))
                 db.session.commit()
+    if 'user' in tables:
+        columns = {column['name'] for column in inspector.get_columns('user')}
+        if 'google_sub' not in columns:
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN google_sub VARCHAR(64)'))
+            db.session.commit()
+        try:
+            db.session.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_google_sub ON "user" (google_sub)'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 # Initialize database
 with app.app_context():
@@ -318,7 +336,220 @@ def send_email(to, subject, template):
     except Exception:
         app.logger.exception('Email could not be sent to %s', to)
 
+PHONE_EMAIL_DOMAIN = '@phone.studentstay.local'
+
+def public_email(user):
+    email = user.email or ''
+    if email.endswith(PHONE_EMAIL_DOMAIN):
+        return ''
+    return email
+
+def auth_payload(user):
+    access_token = create_access_token(identity=user.id)
+    return {
+        'access_token': access_token,
+        'user': {
+            'id': user.id,
+            'name': user.name,
+            'email': public_email(user),
+            'role': user.role,
+            'phone': user.phone or '',
+            'city': user.city or '',
+            'address': user.address or '',
+        }
+    }
+
+def normalize_phone(value):
+    import re
+    raw = str(value or '').strip()
+    digits = re.sub(r'\D', '', raw)
+    if len(digits) == 10:
+        return '+91' + digits
+    if len(digits) == 11 and digits.startswith('0'):
+        return '+91' + digits[1:]
+    if len(digits) == 12 and digits.startswith('91'):
+        return '+' + digits
+    if raw.startswith('+') and 10 <= len(digits) <= 15:
+        return '+' + digits
+    return ''
+
+def find_user_by_phone(phone):
+    matches = [user for user in User.query.filter(User.phone.isnot(None)).all() if normalize_phone(user.phone) == phone]
+    accounts = [user for user in matches if user.role in ('student', 'landlord')]
+    return accounts
+
+def random_password():
+    import bcrypt
+    import secrets
+    return bcrypt.hashpw(secrets.token_urlsafe(32).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def send_sms(phone, body):
+    import base64
+    import urllib.parse
+    import urllib.request
+    sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip()
+    token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip()
+    sender = (os.getenv('TWILIO_FROM_NUMBER') or '').strip()
+    if not sid or not token or not sender:
+        return False, 'not-configured'
+    data = urllib.parse.urlencode({'To': phone, 'From': sender, 'Body': body}).encode()
+    request_sms = urllib.request.Request(
+        f'https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json',
+        data=data,
+        method='POST'
+    )
+    basic = base64.b64encode(f'{sid}:{token}'.encode()).decode()
+    request_sms.add_header('Authorization', f'Basic {basic}')
+    try:
+        with urllib.request.urlopen(request_sms, timeout=20) as response:
+            return 200 <= response.status < 300, 'sent'
+    except Exception:
+        app.logger.exception('SMS could not be sent')
+        return False, 'failed'
+
 # Auth Routes
+@app.route('/api/auth/providers', methods=['GET'])
+def auth_providers():
+    google_id = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
+    sms_ready = bool((os.getenv('TWILIO_ACCOUNT_SID') or '').strip() and (os.getenv('TWILIO_AUTH_TOKEN') or '').strip() and (os.getenv('TWILIO_FROM_NUMBER') or '').strip())
+    return jsonify({'googleClientId': google_id, 'google': bool(google_id), 'phone': sms_ready})
+
+@app.route('/api/auth/google', methods=['POST'])
+def google_login():
+    import json
+    import urllib.parse
+    import urllib.request
+    data = request.get_json() or {}
+    role = data.get('role')
+    if role not in ('student', 'landlord'):
+        return jsonify({'error': 'Choose Student or Landlord first.'}), 400
+    credential = (data.get('credential') or '').strip()
+    client_id = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
+    if not client_id:
+        return jsonify({'error': 'Google sign-in is not turned on yet. Add the Google client ID on the server.'}), 503
+    if not credential:
+        return jsonify({'error': 'Google did not return an account.'}), 400
+    try:
+        with urllib.request.urlopen('https://oauth2.googleapis.com/tokeninfo?id_token=' + urllib.parse.quote(credential), timeout=15) as response:
+            profile = json.loads(response.read().decode())
+    except Exception:
+        return jsonify({'error': 'Google could not confirm that account. Try again.'}), 401
+    if profile.get('aud') != client_id or str(profile.get('email_verified')).lower() != 'true':
+        return jsonify({'error': 'That Google account could not be used.'}), 401
+    email = (profile.get('email') or '').strip().lower()
+    sub = (profile.get('sub') or '').strip()
+    if not email or not sub:
+        return jsonify({'error': 'Google did not share an email for this account.'}), 400
+    user = User.query.filter_by(google_sub=sub).first() or User.query.filter_by(email=email).first()
+    if user and user.role == 'admin':
+        return jsonify({'error': 'Use your admin email and password on this form.'}), 403
+    if user and user.role == 'broker':
+        return jsonify({'error': 'Broker accounts are closed. Sign in as a student or a landlord.'}), 403
+    if not user:
+        import uuid
+        user = User(
+            id=str(uuid.uuid4()),
+            name=(profile.get('name') or email.split('@')[0] or 'Student')[:100],
+            email=email,
+            password=random_password(),
+            role=role,
+            phone='',
+            city='Greater Noida',
+            google_sub=sub
+        )
+        db.session.add(user)
+    elif not user.google_sub:
+        user.google_sub = sub
+    db.session.commit()
+    return jsonify(auth_payload(user))
+
+@app.route('/api/auth/phone/send', methods=['POST'])
+def send_phone_code():
+    import hashlib
+    import hmac
+    import secrets
+    from datetime import datetime, timedelta
+    data = request.get_json() or {}
+    if data.get('role') not in ('student', 'landlord'):
+        return jsonify({'error': 'Choose Student or Landlord first.'}), 400
+    phone = normalize_phone(data.get('phone'))
+    if not phone:
+        return jsonify({'error': 'Enter a phone number with the country code, like +91 98765 43210.'}), 400
+    if not ((os.getenv('TWILIO_ACCOUNT_SID') or '').strip() and (os.getenv('TWILIO_AUTH_TOKEN') or '').strip() and (os.getenv('TWILIO_FROM_NUMBER') or '').strip()):
+        return jsonify({'error': 'Phone sign-in is not turned on yet. Add the SMS account on the server.'}), 503
+    recent = PhoneCode.query.filter_by(phone=phone).order_by(PhoneCode.id.desc()).first()
+    if recent and recent.expires and recent.expires > datetime.utcnow() + timedelta(minutes=4):
+        return jsonify({'error': 'A code was just sent. Wait a minute, then try again.'}), 429
+    code = f'{secrets.randbelow(1000000):06d}'
+    PhoneCode.query.filter_by(phone=phone).delete()
+    secret = (os.getenv('JWT_SECRET_KEY') or 'studentstay').encode()
+    row = PhoneCode(
+        phone=phone,
+        code_hash=hmac.new(secret, code.encode(), hashlib.sha256).hexdigest(),
+        expires=datetime.utcnow() + timedelta(minutes=5),
+        attempts=0
+    )
+    db.session.add(row)
+    db.session.commit()
+    sent, reason = send_sms(phone, f'Your StudentStay code is {code}. It expires in 5 minutes.')
+    if not sent:
+        PhoneCode.query.filter_by(phone=phone).delete()
+        db.session.commit()
+        return jsonify({'error': 'The text message could not be sent. Check the SMS account, then try again.'}), 502
+    return jsonify({'message': 'Code sent.', 'phone': phone})
+
+@app.route('/api/auth/phone/verify', methods=['POST'])
+def verify_phone_code():
+    import hashlib
+    import hmac
+    from datetime import datetime
+    data = request.get_json() or {}
+    role = data.get('role')
+    if role not in ('student', 'landlord'):
+        return jsonify({'error': 'Choose Student or Landlord first.'}), 400
+    phone = normalize_phone(data.get('phone'))
+    code = ''.join(ch for ch in str(data.get('code') or '') if ch.isdigit())
+    if not phone or len(code) != 6:
+        return jsonify({'error': 'Enter the 6 digit code from the text message.'}), 400
+    row = PhoneCode.query.filter_by(phone=phone).order_by(PhoneCode.id.desc()).first()
+    if not row or not row.expires or row.expires < datetime.utcnow():
+        return jsonify({'error': 'That code has expired. Send a new one.'}), 400
+    if (row.attempts or 0) >= 5:
+        db.session.delete(row)
+        db.session.commit()
+        return jsonify({'error': 'Too many tries. Send a new code.'}), 400
+    secret = (os.getenv('JWT_SECRET_KEY') or 'studentstay').encode()
+    expected = hmac.new(secret, code.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, row.code_hash):
+        row.attempts = (row.attempts or 0) + 1
+        db.session.commit()
+        return jsonify({'error': 'That code is not correct.'}), 401
+    accounts = find_user_by_phone(phone)
+    if len(accounts) > 1:
+        return jsonify({'error': 'More than one account uses this number. Sign in with email.'}), 409
+    user = accounts[0] if accounts else None
+    if not user:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return jsonify({'error': 'Add your name. This number does not have an account yet.'}), 400
+        import uuid
+        digits = phone.replace('+', '')
+        user = User(
+            id=str(uuid.uuid4()),
+            name=name[:100],
+            email=f'p{digits}{PHONE_EMAIL_DOMAIN}',
+            password=random_password(),
+            role=role,
+            phone=phone,
+            city='Greater Noida'
+        )
+        db.session.add(user)
+    elif not user.phone:
+        user.phone = phone
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify(auth_payload(user))
+
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -710,7 +941,7 @@ def get_all_users():
         result.append({
             'id': u.id,
             'name': u.name,
-            'email': u.email,
+            'email': public_email(u),
             'role': u.role,
             'phone': u.phone,
             'city': u.city,

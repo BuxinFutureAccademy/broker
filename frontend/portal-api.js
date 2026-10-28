@@ -129,6 +129,58 @@
       signedInNote.innerHTML = `<span>You are signed in as <b>${esc(currentUser.name)}</b> (${esc(currentUser.role)}).</span><a href="${dashboards[currentUser.role] || 'student.html'}">Go to dashboard</a>`;
     }
 
+    const finish = response => {
+      if (!response) return;
+      token = response.access_token;
+      currentUser = response.user;
+      localStorage.setItem('studentstay_token', token);
+      localStorage.setItem('studentstay_user', JSON.stringify(currentUser));
+      go(currentUser.role);
+    };
+    const altNote = document.querySelector('#altNote');
+    const say = message => { if (altNote) altNote.textContent = message; else alert(message); };
+    const phoneForm = document.querySelector('#phoneForm');
+    document.querySelector('#phoneToggle')?.addEventListener('click', () => phoneForm?.classList.toggle('hidden'));
+    document.querySelector('#googleFallback')?.addEventListener('click', () => say('Google sign-in is not turned on yet. Add the Google client ID on the server.'));
+    fetch(`${API_BASE}/auth/providers`).then(response => response.ok ? response.json() : null).then(providers => {
+      if (!providers?.googleClientId) return;
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.onload = () => {
+        const slot = document.querySelector('#googleSlot');
+        if (!slot || !window.google?.accounts?.id) return;
+        google.accounts.id.initialize({
+          client_id: providers.googleClientId,
+          callback: async response => {
+            try {
+              finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role }) }));
+            } catch (error) { say(error.message); }
+          }
+        });
+        google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', width: Math.max(240, Math.min(360, slot.parentElement.clientWidth || 320)), text: 'continue_with', shape: 'pill' });
+        document.querySelector('#googleFallback')?.classList.add('hidden');
+      };
+      document.head.appendChild(script);
+    }).catch(() => {});
+    document.querySelector('#sendCode')?.addEventListener('click', async () => {
+      const phone = phoneForm?.elements.phone.value || '';
+      const name = phoneForm?.elements.name.value || '';
+      try {
+        const response = await apiCall('/auth/phone/send', { method: 'POST', body: JSON.stringify({ phone, role, name }) });
+        if (!response) return;
+        document.querySelector('#codeLabel')?.classList.remove('hidden');
+        document.querySelector('#verifyCode')?.classList.remove('hidden');
+        say(`Code sent to ${response.phone}. Enter it below.`);
+      } catch (error) { say(error.message); }
+    });
+    phoneForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      try {
+        finish(await apiCall('/auth/phone/verify', { method: 'POST', body: JSON.stringify({ phone: phoneForm.elements.phone.value, code: phoneForm.elements.code.value, name: phoneForm.elements.name.value, role }) }));
+      } catch (error) { say(error.message); }
+    });
+
     authForm.addEventListener('submit', async event => {
       event.preventDefault();
       const form = new FormData(authForm);

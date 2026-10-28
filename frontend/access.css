@@ -29,6 +29,18 @@
   font-family: 'DM Sans', monospace;
 }
 
+.auth-split { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: #8aa0b8; font-size: 12px; font-weight: 700; }
+.auth-split:before, .auth-split:after { content: ""; flex: 1; height: 1px; background: #e3ebf5; }
+.alt-signin { display: grid; gap: 10px; }
+.alt-button, #googleSlot { width: 100%; }
+.alt-button { height: 48px; border: 1px solid #d5e2f2; border-radius: 12px; background: #fff; color: #123154; font: 700 15px inherit; cursor: pointer; }
+.alt-button:hover { background: #f5f9ff; }
+.phone-form { display: grid; gap: 10px; margin-top: 12px; }
+.phone-form.hidden { display: none; }
+.phone-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: #38556f; }
+.phone-form input { height: 46px; border: 1px solid #d5e0ec; border-radius: 12px; padding: 0 12px; font: 16px inherit; }
+.phone-form .hidden, .alt-button.hidden, #googleSlot.hidden { display: none; }
+
 @media (max-width: 650px) {
   .role-picker {
     grid-template-columns: repeat(2, 1fr);
