@@ -12,4 +12,4 @@
 .help-band{padding:10px 4.5% 64px}
 .help-band .section-heading{margin-bottom:0}
 .help-band a{color:#0759d6;font-weight:700;text-decoration:none}
-@media(max-width:780px){.account.signed-in{gap:6px}.account-copy,.account.signed-in .login{display:none}.account.signed-in .signup{height:34px;padding:0 10px}}
+@media(max-width:780px){.account.signed-in{gap:6px}.account.signed-in .login{display:none}.account-copy small{display:none}.account-copy b{font-size:12px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.account.signed-in .signup{height:34px;padding:0 10px}}
