@@ -21,14 +21,20 @@
 
   const waitingCard = () => `<section class="fee-card waiting" id="contact"><span class="fee-orb"></span><div><small>BROKER FEE</small><h2>Waiting for admin approval</h2><p>Your receipt is in. The address, map, and phone numbers open after it is approved.</p><a href="student.html#requests">See your payment</a></div></section>`;
 
-  const payCard = amount => `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2><p class="pay-amount">${money(amount)}</p><p>Pay once for this house. After approval you get the exact address, the map, and both phone numbers.</p><button class="pay-now" type="button" id="openPay">Pay now</button></section>`;
+  const feeOf = item => {
+    const listed = Number(item.brokerFee);
+    if (Number.isFinite(listed) && item.brokerFee != null && item.brokerFee !== '') return listed;
+    return Math.floor(Number(item.rent || 0) / 2);
+  };
+  const payCard = item => `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2><p class="pay-amount">${money(feeOf(item))}</p><p>Half of the ${money(item.rent)} monthly rent. The same QR is used for every house. After approval you get the exact address, the map, and both phone numbers.</p><button class="pay-now" type="button" id="openPay">Pay now</button></section>`;
 
   const openPay = (item, payment) => {
     document.querySelector('#payModal')?.remove();
     const modal = document.createElement('div');
     modal.id = 'payModal';
     modal.className = 'pay-modal';
-    modal.innerHTML = `<div class="pay-sheet" role="dialog" aria-modal="true" aria-labelledby="payTitle"><button class="pay-close" type="button" aria-label="Close">×</button><small>STEP 1 · SCAN</small><h2 id="payTitle">Scan the QR code</h2><p class="pay-lead">${esc(payment.note || 'Open any UPI app, scan, and pay the broker fee.')}</p><div class="qr-stage">${payment.qrUrl ? `<div class="qr-frame"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"><span class="qr-scan"></span></div>` : '<p class="pay-missing">The payment QR is not ready yet. Ask the admin to add it.</p>'}<b>${money(payment.amount)}</b></div><div class="pay-step"><small>STEP 2 · UPLOAD</small><h3>Upload the payment receipt</h3><form id="receiptForm"><label class="receipt-drop"><input name="receipt" type="file" accept="image/*" required><span id="receiptLabel">Choose a photo of your receipt</span></label><button class="pay-now" type="submit" ${payment.qrUrl ? '' : 'disabled'}>Submit receipt</button></form><p class="pay-message" id="requestMessage"></p></div></div>`;
+    const fee = feeOf(item);
+    modal.innerHTML = `<div class="pay-sheet" role="dialog" aria-modal="true" aria-labelledby="payTitle"><button class="pay-close" type="button" aria-label="Close">×</button><small>STEP 1 · SCAN</small><h2 id="payTitle">Scan the QR code</h2><p class="pay-lead">Pay ${money(fee)} for this house. That is half the monthly rent. Scan this QR and enter that amount.</p><div class="qr-stage">${payment.qrUrl ? `<div class="qr-frame"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"><span class="qr-scan"></span></div>` : '<p class="pay-missing">The payment QR is not ready yet. Ask the admin to add it.</p>'}<b>${money(fee)}</b><span>Half of ${money(item.rent)} rent</span></div><div class="pay-step"><small>STEP 2 · UPLOAD</small><h3>Upload the payment receipt</h3><form id="receiptForm"><label class="receipt-drop"><input name="receipt" type="file" accept="image/*" required><span id="receiptLabel">Choose a photo of your receipt</span></label><button class="pay-now" type="submit" ${payment.qrUrl ? '' : 'disabled'}>Submit receipt</button></form><p class="pay-message" id="requestMessage"></p></div></div>`;
     document.body.appendChild(modal);
     document.body.classList.add('pay-open');
     const close = () => { modal.remove(); document.body.classList.remove('pay-open'); };
@@ -83,7 +89,7 @@
     let aside = '';
     let payment = null;
     if (unlocked) aside = people(item);
-    else if (!user) aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2><p>Sign in as a student first. Then you can scan the QR and upload your receipt.</p><a class="pay-now" href="access.html#student">Sign in to pay</a></section>`;
+    else if (!user) aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2><p class="pay-amount">${money(feeOf(item))}</p><p>Half of the ${money(item.rent)} monthly rent. Sign in as a student, then scan the QR.</p><a class="pay-now" href="access.html#student">Sign in to pay</a></section>`;
     else if (user.role !== 'student') aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Students pay this fee</h2><p>A student account is what unlocks the address and the phone numbers.</p></section>`;
     else if (item.unlockStatus === 'pending') aside = waitingCard();
     else {
@@ -91,7 +97,7 @@
         const response = await fetch(`${API_BASE}/payment`);
         if (response.ok) payment = await response.json();
       } catch { payment = { amount: 0, qrUrl: '', note: '' }; }
-      aside = payCard(payment?.amount);
+      aside = payCard(item);
     }
     target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt=""></button>`).join('')}</div></div>${map}</section><aside><section class="detail-content"><span class="detail-badge">${esc(item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(unlocked ? fullAddress : area)}</p><div class="detail-price">${money(item.rent)} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || '')}</p>${item.available ? `<p class="detail-notice">Available from ${esc(item.available)}</p>` : ''}</section>${aside}</aside></div>`;
     const mainPhoto = document.querySelector('#mainPhoto');

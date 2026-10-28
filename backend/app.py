@@ -282,6 +282,7 @@ def serialize_listing(listing, viewer=None, approved=None, pending=None):
         'title': listing.title,
         'type': listing.type,
         'rent': listing.rent,
+        'brokerFee': int(listing.rent or 0) // 2,
         'available': listing.available,
         'sector': area,
         'city': listing.city or 'Greater Noida',
@@ -1081,6 +1082,7 @@ def unlock_payload(row):
             'sector': (listing.sector or listing.city) if listing else '',
             'address': listing.address if listing else '',
             'rent': listing.rent if listing else 0,
+            'brokerFee': int(listing.rent or 0) // 2 if listing else 0,
         },
     }
 
