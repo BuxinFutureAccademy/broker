@@ -9,13 +9,17 @@
     {name:'Hyderabad',count:'700+',image:'photo-1567157577867-05ccb1388e66',alt:'Historic Indian architecture'}
   ];
   const cityGrid = document.querySelector('#allCities');
-  if (cityGrid) cityGrid.innerHTML = cities.map(city => {
-    const liveCount = saved.filter(item => `${item.city || ''} ${item.address || ''}`.toLowerCase().includes(city.name.toLowerCase())).length;
-    return `<a class="city-card" href="properties.html?city=${encodeURIComponent(city.name)}"><img src="https://images.unsplash.com/${city.image}?auto=format&fit=crop&w=800&q=85" alt="${esc(city.alt)}"><b>${esc(city.name)}</b><small>${liveCount ? `${liveCount} student ${liveCount === 1 ? 'stay' : 'stays'} listed` : `${city.count} properties`}</small></a>`;
-  }).join('');
+  const paintCities = source => {
+    if (!cityGrid) return;
+    cityGrid.innerHTML = cities.map(city => {
+      const liveCount = source.filter(item => `${item.city || ''} ${item.address || ''}`.toLowerCase().includes(city.name.toLowerCase())).length;
+      return `<a class="city-card" href="properties.html?city=${encodeURIComponent(city.name)}"><img src="https://images.unsplash.com/${city.image}?auto=format&fit=crop&w=800&q=85" alt="${esc(city.alt)}"><b>${esc(city.name)}</b><small>${liveCount ? `${liveCount} student ${liveCount === 1 ? 'stay' : 'stays'} listed` : `${city.count} properties`}</small></a>`;
+    }).join('');
+  };
+  paintCities(saved);
 
   const featured = window.STUDENTSTAY_SAMPLES || [];
-  const cards = [...saved, ...featured];
+  let cards = [...saved, ...featured];
   const grid = document.querySelector('#allProperties');
   const cityParam = new URLSearchParams(location.search).get('city') || '';
   const search = document.querySelector('#propertyQuery');
@@ -31,5 +35,11 @@
     grid.querySelectorAll('.heart').forEach(button => button.addEventListener('click', () => button.classList.toggle('saved')));
   };
   if (grid) display(cityParam);
+  fetch('https://broker-961c.onrender.com/api/listings').then(response => response.ok ? response.json() : []).then(items => {
+    if (!Array.isArray(items) || !items.length) return;
+    cards = items;
+    paintCities(items);
+    if (grid) display(search?.value || cityParam);
+  }).catch(() => {});
   document.querySelector('#catalogSearch')?.addEventListener('submit', event => { event.preventDefault(); const query = search.value.trim(); history.replaceState(null, '', query ? `?city=${encodeURIComponent(query)}` : location.pathname); display(query); });
 })();

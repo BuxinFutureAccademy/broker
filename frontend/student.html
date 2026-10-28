@@ -26,6 +26,7 @@
       <a class="selected" href="#overview">▦ &nbsp; Overview</a>
       <a href="#browse">⌂ &nbsp; Browse Homes</a>
       <a href="#requests">▣ &nbsp; My Requests</a>
+      <a href="#contact">✉ &nbsp; Contact</a>
       <a href="index.html">↗ &nbsp; View Website</a>
       <div class="sidebar-help">
         <b>Need help?</b>
@@ -67,7 +68,7 @@
         </div>
       </div>
 
-      <section class="panel">
+      <section class="panel" id="browse">
         <div class="panel-heading">
           <div>
             <h2>Homes You Might Like</h2>
@@ -78,7 +79,7 @@
         <div class="listing-grid" id="studentListings"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="requests">
         <div class="panel-heading">
           <div>
             <h2>Your Housing Requests</h2>
@@ -87,6 +88,20 @@
           <span class="panel-icon">▣</span>
         </div>
         <div id="studentRequests" class="request-list"></div>
+      </section>
+
+      <section class="panel" id="contact">
+        <div class="panel-heading">
+          <div>
+            <h2>Contact</h2>
+            <p>Reach the landlord from a home page, or write to StudentStay support.</p>
+          </div>
+          <span class="panel-icon">✉</span>
+        </div>
+        <div class="request-list">
+          <div class="request-row"><div><b>Landlord contact</b><p>Open a home and use Request this room. Your name, email, and phone are shared with that landlord and show up under My Requests.</p></div><a class="primary-button" href="properties.html">Browse homes</a></div>
+          <div class="request-row"><div><b>StudentStay support</b><p>Questions about your account or a request.</p></div><a class="primary-button" href="mailto:help@studentstay.example">Email support</a></div>
+        </div>
       </section>
     </section>
   </main>

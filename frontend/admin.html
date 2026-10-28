@@ -1,7 +1,102 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Admin workspace · StudentStay</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="portal.css"></head>
-<body class="portal-body"><header class="portal-header"><a class="brand" href="index.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Administration</small></span></a><div class="header-user"><span class="user-avatar admin-avatar">A</span><span>Site administrator</span><button class="outline-button" data-logout>Sign out</button></div></header>
-<main class="dashboard admin-dashboard"><aside class="side-nav"><span class="side-label">SITE MANAGEMENT</span><a class="selected" href="#overview">▦ &nbsp; Overview</a><a href="#users">♙ &nbsp; Users</a><a href="#landlords">⌂ &nbsp; Landlords</a><a href="#listings">▣ &nbsp; Listings</a><a href="index.html">↗ &nbsp; View website</a><div class="sidebar-help"><b>Admin access</b><p>Review community activity and submitted property details.</p></div></aside><section class="dashboard-main" id="overview"><div class="page-heading"><div><span class="eyebrow">ADMIN CONSOLE</span><h1>Website overview</h1><p>Review landlord profiles, student accounts and room listings.</p></div><span class="admin-status">● &nbsp; Local demo data</span></div><div class="stat-row" id="adminStats"></div>
-<section class="panel" id="users"><div class="panel-heading"><div><h2>All users</h2><p>Student and landlord accounts created in this browser.</p></div><input class="table-search" id="userSearch" placeholder="Search users…"></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Joined</th></tr></thead><tbody id="userRows"></tbody></table></div></section>
-<section class="panel" id="landlords"><div class="panel-heading"><div><h2>Landlords</h2><p>Profiles and property addresses submitted by landlords.</p></div></div><div class="landlord-grid" id="landlordCards"></div></section>
-<section class="panel" id="listings"><div class="panel-heading"><div><h2>All room listings</h2><p>Review the room details and photos added to the site.</p></div></div><div class="listing-grid" id="adminListings"></div></section></section></main><script src="portal-api.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin workspace · StudentStay</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body class="portal-body">
+  <header class="portal-header">
+    <a class="brand" href="index.html">
+      <span class="brand-icon">⌂</span>
+      <span><strong>Student<span>Stay</span></strong><small>Administration</small></span>
+    </a>
+    <div class="header-user">
+      <span class="user-avatar admin-avatar">A</span>
+      <span>Site administrator</span>
+      <button class="outline-button" data-logout>Sign out</button>
+    </div>
+  </header>
+  <main class="dashboard admin-dashboard">
+    <aside class="side-nav">
+      <span class="side-label">SITE MANAGEMENT</span>
+      <a class="selected" href="#overview">▦ &nbsp; Overview</a>
+      <a href="#users">♙ &nbsp; All users</a>
+      <a href="#students">🎓 &nbsp; Students</a>
+      <a href="#landlords">⌂ &nbsp; Landlords</a>
+      <a href="#brokers">🤝 &nbsp; Brokers</a>
+      <a href="#listings">▣ &nbsp; Listings</a>
+      <a href="index.html">↗ &nbsp; View website</a>
+      <div class="sidebar-help">
+        <b>Admin access</b>
+        <p>Review students, landlords, brokers, and the homes on the site.</p>
+      </div>
+    </aside>
+    <section class="dashboard-main" id="overview">
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">ADMIN CONSOLE</span>
+          <h1>Website overview</h1>
+          <p>Live accounts and room listings from the server.</p>
+        </div>
+        <span class="admin-status">● &nbsp; Live data</span>
+      </div>
+      <div class="stat-row" id="adminStats"></div>
+      <section class="panel" id="users">
+        <div class="panel-heading">
+          <div>
+            <h2>All users</h2>
+            <p>Every student, landlord, broker, and admin account.</p>
+          </div>
+          <input class="table-search" id="userSearch" placeholder="Search users…">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>City</th><th>Address</th><th>Joined</th></tr></thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel" id="students">
+        <div class="panel-heading">
+          <div>
+            <h2>Students</h2>
+            <p>Student accounts and the contact details they share.</p>
+          </div>
+        </div>
+        <div class="landlord-grid" id="studentCards"></div>
+      </section>
+      <section class="panel" id="landlords">
+        <div class="panel-heading">
+          <div>
+            <h2>Landlords</h2>
+            <p>Profiles and property addresses submitted by landlords.</p>
+          </div>
+        </div>
+        <div class="landlord-grid" id="landlordCards"></div>
+      </section>
+      <section class="panel" id="brokers">
+        <div class="panel-heading">
+          <div>
+            <h2>Brokers</h2>
+            <p>Broker profiles, licenses, companies, and service locations.</p>
+          </div>
+        </div>
+        <div class="landlord-grid" id="brokerCards"></div>
+      </section>
+      <section class="panel" id="listings">
+        <div class="panel-heading">
+          <div>
+            <h2>All room listings</h2>
+            <p>Homes published by landlords.</p>
+          </div>
+        </div>
+        <div class="listing-grid" id="adminListings"></div>
+      </section>
+    </section>
+  </main>
+  <script src="portal-api.js"></script>
+</body>
+</html>

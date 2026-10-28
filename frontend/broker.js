@@ -2,6 +2,8 @@
   const API_BASE = 'https://broker-961c.onrender.com/api'; // Production backend URL
   let token = localStorage.getItem('studentstay_token');
   let currentUser = JSON.parse(localStorage.getItem('studentstay_user') || 'null');
+  let editingId = null;
+  let editingPhotos = [];
 
   const esc = (value = '') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
@@ -111,6 +113,8 @@
     profileForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(profileForm));
+      if (data.experience === '') delete data.experience;
+      else data.experience = Number(data.experience);
       
       try {
         const updated = await apiCall('/broker/profile', {
@@ -155,6 +159,8 @@
     locationForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(locationForm));
+      if (data.radius === '') delete data.radius;
+      else data.radius = Number(data.radius);
       
       try {
         await apiCall('/broker/location', {
@@ -210,12 +216,29 @@
           </div>
           <p class="portfolio-description">${esc(item.description)}</p>
           <div class="portfolio-actions">
-            <button class="edit-btn" data-edit-portfolio="${esc(item.id)}">Edit</button>
-            <button class="delete-btn" data-delete-portfolio="${esc(item.id)}">Delete</button>
+            <button class="edit-btn" type="button" data-edit-portfolio="${esc(item.id)}">Edit</button>
+            <button class="delete-btn" type="button" data-delete-portfolio="${esc(item.id)}">Delete</button>
           </div>
         </div>
       </div>
     `).join('');
+
+    container.querySelectorAll('[data-edit-portfolio]').forEach(button => {
+      button.addEventListener('click', () => {
+        const item = items.find(entry => entry.id === button.dataset.editPortfolio);
+        const form = document.querySelector('#portfolioForm');
+        if (!item || !form) return;
+        editingId = item.id;
+        editingPhotos = item.photos || [];
+        form.elements.title.value = item.title || '';
+        form.elements.type.value = item.type || 'apartment';
+        form.elements.price.value = item.price || '';
+        form.elements.location.value = item.location || '';
+        form.elements.description.value = item.description || '';
+        form.querySelector('button').textContent = 'Save changes';
+        location.hash = 'portfolio';
+      });
+    });
 
     // Add delete handlers
     container.querySelectorAll('[data-delete-portfolio]').forEach(button => {
@@ -276,36 +299,51 @@
         return alert('Choose up to 10 photos.');
       }
       
-      if (files.length === 0) {
+      if (files.length === 0 && !editingId) {
         return alert('Please select at least one photo.');
       }
 
       try {
-        // Upload images
-        const photos = await Promise.all(files.map(uploadImage));
-        
-        // Create portfolio item
+        const uploaded = files.length ? await Promise.all(files.map(uploadImage)) : [];
         const portfolioData = {
           title: String(data.get('title')).trim(),
           type: String(data.get('type')),
           price: String(data.get('price')).trim(),
           location: String(data.get('location')).trim(),
           description: String(data.get('description')).trim(),
-          photos: photos.map(p => p.url)
+          photos: uploaded.length ? uploaded.map(photo => photo.url) : editingPhotos
         };
 
-        await apiCall('/broker/portfolio', {
-          method: 'POST',
-          body: JSON.stringify(portfolioData)
-        });
+        const wasEdit = Boolean(editingId);
+        if (editingId) {
+          await apiCall(`/broker/portfolio/${editingId}`, {
+            method: 'PUT',
+            body: JSON.stringify(portfolioData)
+          });
+        } else {
+          await apiCall('/broker/portfolio', {
+            method: 'POST',
+            body: JSON.stringify(portfolioData)
+          });
+        }
 
+        editingId = null;
+        editingPhotos = [];
         form.reset();
+        form.querySelector('button').textContent = 'Add to Portfolio';
         document.querySelector('#photoPreview').innerHTML = '';
         await loadBrokerPortfolio();
-        alert('Portfolio item added successfully!');
+        alert(wasEdit ? 'Portfolio item updated.' : 'Portfolio item added successfully!');
       } catch (error) {
         alert(error.message || 'Failed to add portfolio item');
       }
     });
   }
+
+  document.querySelectorAll('.side-nav a[href^="#"]').forEach(link => {
+    link.addEventListener('click', () => {
+      document.querySelectorAll('.side-nav a').forEach(item => item.classList.remove('selected'));
+      link.classList.add('selected');
+    });
+  });
 })();

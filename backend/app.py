@@ -146,10 +146,105 @@ def ensure_demo_users():
             db.session.rollback()
             app.logger.exception('Could not ensure demo user %s', user_data['email'])
 
+DEMO_LISTINGS = [
+    {
+        'title': 'Single Room in PG',
+        'type': 'Private room',
+        'rent': 8000,
+        'available': '2026-11-01',
+        'address': 'Sector 62, Noida',
+        'city': 'Noida',
+        'description': 'Bright private room with WiFi, AC and meals available.',
+        'photos': ['https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1000&q=85'],
+    },
+    {
+        'title': 'Shared Room (2 Students)',
+        'type': 'Shared room',
+        'rent': 6500,
+        'available': '2026-11-01',
+        'address': 'Hauz Khas, Delhi',
+        'city': 'Delhi',
+        'description': 'Comfortable shared room close to shops and transit.',
+        'photos': ['https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1000&q=85'],
+    },
+    {
+        'title': '1 BHK Apartment',
+        'type': 'Apartment',
+        'rent': 12000,
+        'available': '2026-11-01',
+        'address': 'Electronic City, Bangalore',
+        'city': 'Bangalore',
+        'description': 'Modern apartment with kitchen and easy campus access.',
+        'photos': ['https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=85'],
+    },
+]
+
+def ensure_demo_listings():
+    """Give the demo landlord real homes students can request."""
+    import uuid
+    landlord = User.query.filter_by(email='landlord@test.com').first()
+    if not landlord:
+        return
+    for item in DEMO_LISTINGS:
+        existing = Listing.query.filter_by(title=item['title'], owner_id=landlord.id).first()
+        if existing:
+            existing.type = item['type']
+            existing.rent = item['rent']
+            existing.available = item['available']
+            existing.address = item['address']
+            existing.city = item['city']
+            existing.description = item['description']
+            existing.photos = item['photos']
+            existing.owner_name = landlord.name
+            continue
+        db.session.add(Listing(
+            id=str(uuid.uuid4()),
+            owner_id=landlord.id,
+            owner_name=landlord.name,
+            title=item['title'],
+            type=item['type'],
+            rent=item['rent'],
+            available=item['available'],
+            address=item['address'],
+            city=item['city'],
+            description=item['description'],
+            photos=item['photos'],
+        ))
+    db.session.commit()
+
+def clean_int(value, fallback=0):
+    if value is None or value == '':
+        return fallback
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+def serialize_listing(listing):
+    owner = User.query.get(listing.owner_id)
+    return {
+        'id': listing.id,
+        'ownerId': listing.owner_id,
+        'ownerName': listing.owner_name,
+        'ownerPhone': owner.phone if owner else '',
+        'ownerEmail': owner.email if owner else '',
+        'ownerAddress': owner.address if owner else '',
+        'title': listing.title,
+        'type': listing.type,
+        'rent': listing.rent,
+        'available': listing.available,
+        'address': listing.address,
+        'city': listing.city,
+        'description': listing.description,
+        'photos': listing.photos,
+        'created': listing.created.isoformat() if listing.created else None,
+    }
+
 # Initialize database
 with app.app_context():
     db.create_all()
     ensure_demo_users()
+    ensure_demo_listings()
 
 # Helper function for sending emails. Signup and requests must still succeed
 # when SMTP is not configured on the server.
@@ -281,21 +376,8 @@ def get_current_user():
 # Listing Routes
 @app.route('/api/listings', methods=['GET'])
 def get_listings():
-    listings = Listing.query.all()
-    return jsonify([{
-        'id': l.id,
-        'ownerId': l.owner_id,
-        'ownerName': l.owner_name,
-        'title': l.title,
-        'type': l.type,
-        'rent': l.rent,
-        'available': l.available,
-        'address': l.address,
-        'city': l.city,
-        'description': l.description,
-        'photos': l.photos,
-        'created': l.created.isoformat()
-    } for l in listings])
+    listings = Listing.query.order_by(Listing.created.desc()).all()
+    return jsonify([serialize_listing(listing) for listing in listings])
 
 @app.route('/api/listings', methods=['POST'])
 @jwt_required()
@@ -318,7 +400,7 @@ def create_listing():
         rent=data['rent'],
         available=data.get('available', ''),
         address=data['address'],
-        city=user.city,
+        city=data.get('city') or user.city or '',
         description=data['description'],
         photos=data.get('photos', [])
     )
@@ -351,20 +433,7 @@ def get_landlord_listings():
     user_id = get_jwt_identity()
     listings = Listing.query.filter_by(owner_id=user_id).all()
     
-    return jsonify([{
-        'id': l.id,
-        'ownerId': l.owner_id,
-        'ownerName': l.owner_name,
-        'title': l.title,
-        'type': l.type,
-        'rent': l.rent,
-        'available': l.available,
-        'address': l.address,
-        'city': l.city,
-        'description': l.description,
-        'photos': l.photos,
-        'created': l.created.isoformat()
-    } for l in listings])
+    return jsonify([serialize_listing(listing) for listing in listings])
 
 # Image Upload Route
 @app.route('/api/upload', methods=['POST'])
@@ -397,11 +466,18 @@ def create_request():
     if not user or user.role != 'student':
         return jsonify({'error': 'Only students can make requests'}), 403
     
-    data = request.get_json()
+    data = request.get_json() or {}
+    listing_id = data.get('listing_id') or data.get('listingId')
+    if not listing_id:
+        return jsonify({'error': 'Choose a home to request'}), 400
+
+    listing = Listing.query.get(listing_id)
+    if not listing:
+        return jsonify({'error': 'That home is no longer listed'}), 404
     
     # Check if request already exists
     existing = Request.query.filter_by(
-        listing_id=data['listing_id'],
+        listing_id=listing_id,
         student_id=user_id
     ).first()
     
@@ -411,7 +487,7 @@ def create_request():
     import uuid
     new_request = Request(
         id=str(uuid.uuid4()),
-        listing_id=data['listing_id'],
+        listing_id=listing_id,
         student_id=user_id,
         status='New request'
     )
@@ -420,7 +496,6 @@ def create_request():
     db.session.commit()
     
     # Notify landlord via email
-    listing = Listing.query.get(data['listing_id'])
     landlord = User.query.get(listing.owner_id)
     
     if landlord:
@@ -507,6 +582,12 @@ def update_profile():
     user.phone = data.get('phone', user.phone)
     user.city = data.get('city', user.city)
     user.address = data.get('address', user.address)
+    email = str(data.get('email') or '').strip().lower()
+    if email and email != user.email:
+        if User.query.filter_by(email=email).first():
+            db.session.rollback()
+            return jsonify({'error': 'Email already registered'}), 400
+        user.email = email
     
     db.session.commit()
     
@@ -531,16 +612,32 @@ def get_all_users():
         return jsonify({'error': 'Admin access required'}), 403
     
     users = User.query.all()
-    
-    return jsonify([{
-        'id': u.id,
-        'name': u.name,
-        'email': u.email,
-        'role': u.role,
-        'phone': u.phone,
-        'city': u.city,
-        'joined': u.joined.isoformat() if u.joined else None
-    } for u in users])
+    profiles = {profile.user_id: profile for profile in BrokerProfile.query.all()}
+    locations = {location.user_id: location for location in BrokerLocation.query.all()}
+
+    result = []
+    for u in users:
+        profile = profiles.get(u.id)
+        location = locations.get(u.id)
+        result.append({
+            'id': u.id,
+            'name': u.name,
+            'email': u.email,
+            'role': u.role,
+            'phone': u.phone,
+            'city': u.city,
+            'address': u.address,
+            'joined': u.joined.isoformat() if u.joined else None,
+            'license': profile.license if profile else '',
+            'company': profile.company if profile else '',
+            'experience': profile.experience if profile else '',
+            'specialization': profile.specialization if profile else '',
+            'bio': profile.bio if profile else '',
+            'area': location.area if location else '',
+            'serviceAddress': location.address if location else '',
+            'hours': location.hours if location else '',
+        })
+    return jsonify(result)
 
 @app.route('/api/admin/stats', methods=['GET'])
 @jwt_required()
@@ -625,7 +722,7 @@ def update_broker_profile():
             user_id=user_id,
             license=data.get('license', ''),
             company=data.get('company', ''),
-            experience=data.get('experience', 0),
+            experience=clean_int(data.get('experience'), 0),
             specialization=data.get('specialization', ''),
             bio=data.get('bio', '')
         )
@@ -633,9 +730,15 @@ def update_broker_profile():
     else:
         profile.license = data.get('license', profile.license)
         profile.company = data.get('company', profile.company)
-        profile.experience = data.get('experience', profile.experience)
+        profile.experience = clean_int(data.get('experience'), profile.experience or 0)
         profile.specialization = data.get('specialization', profile.specialization)
         profile.bio = data.get('bio', profile.bio)
+    email = str(data.get('email') or '').strip().lower()
+    if email and email != user.email:
+        if User.query.filter_by(email=email).first():
+            db.session.rollback()
+            return jsonify({'error': 'Email already registered'}), 400
+        user.email = email
     
     db.session.commit()
     
@@ -699,7 +802,7 @@ def update_broker_location():
             city=data.get('city', ''),
             area=data.get('area', ''),
             address=data.get('address', ''),
-            radius=data.get('radius', 10),
+            radius=clean_int(data.get('radius'), 10),
             hours=data.get('hours', '')
         )
         db.session.add(location)
@@ -707,7 +810,7 @@ def update_broker_location():
         location.city = data.get('city', location.city)
         location.area = data.get('area', location.area)
         location.address = data.get('address', location.address)
-        location.radius = data.get('radius', location.radius)
+        location.radius = clean_int(data.get('radius'), location.radius or 10)
         location.hours = data.get('hours', location.hours)
     
     db.session.commit()
@@ -769,6 +872,32 @@ def add_to_broker_portfolio():
     db.session.commit()
     
     return jsonify({'message': 'Portfolio item added successfully', 'id': new_portfolio.id}), 201
+
+@app.route('/api/broker/portfolio/<portfolio_id>', methods=['PUT'])
+@jwt_required()
+def update_broker_portfolio_item(portfolio_id):
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if not user or user.role != 'broker':
+        return jsonify({'error': 'Broker access required'}), 403
+
+    portfolio = BrokerPortfolio.query.get(portfolio_id)
+    if not portfolio:
+        return jsonify({'error': 'Portfolio item not found'}), 404
+    if portfolio.broker_id != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    portfolio.title = data.get('title', portfolio.title)
+    portfolio.type = data.get('type', portfolio.type)
+    portfolio.price = data.get('price', portfolio.price)
+    portfolio.location = data.get('location', portfolio.location)
+    portfolio.description = data.get('description', portfolio.description)
+    if data.get('photos'):
+        portfolio.photos = data.get('photos')
+    db.session.commit()
+    return jsonify({'message': 'Portfolio item updated', 'id': portfolio.id})
 
 @app.route('/api/broker/portfolio/<portfolio_id>', methods=['DELETE'])
 @jwt_required()

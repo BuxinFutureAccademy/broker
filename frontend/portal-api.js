@@ -117,6 +117,12 @@
     if (new URLSearchParams(location.search).get('mode') === 'signup') document.querySelector('[data-mode="signup"]').click();
     if (location.hash === '#student') showStudentArea();
     updateAuth();
+    const signedInNote = document.querySelector('#signedInNote');
+    if (signedInNote && currentUser && token) {
+      const dashboards = { student: 'student.html', landlord: 'landlord.html', broker: 'broker.html', admin: 'admin.html' };
+      signedInNote.classList.remove('hidden');
+      signedInNote.innerHTML = `<span>You are signed in as <b>${esc(currentUser.name)}</b> (${esc(currentUser.role)}).</span><a href="${dashboards[currentUser.role] || 'student.html'}">Go to dashboard</a>`;
+    }
 
     authForm.addEventListener('submit', async event => {
       event.preventDefault();
@@ -178,10 +184,23 @@
     });
   }
 
+  async function claimPendingRequest() {
+    const pending = localStorage.getItem('studentstay.pendingListing');
+    if (!pending) return;
+    localStorage.removeItem('studentstay.pendingListing');
+    if (String(pending).startsWith('sample-')) return;
+    try {
+      await apiCall('/requests', { method: 'POST', body: JSON.stringify({ listing_id: pending }) });
+    } catch (error) {
+      if (!/already exists/i.test(error.message || '')) console.error(error);
+    }
+  }
+
   async function showStudentArea() {
     if (!currentUser || currentUser.role !== 'student') return;
 
     try {
+      await claimPendingRequest();
       const [listings, requests] = await Promise.all([
         apiCall('/listings'),
         apiCall('/requests/student')
@@ -223,7 +242,7 @@
     target.innerHTML = items.map(item => `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.city || item.address)}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc(item.address)}</p>${options.owner ? `<div class="listing-actions"><button class="small-button" data-delete-listing="${esc(item.id)}">Remove listing</button></div>` : options.request ? `<div class="listing-actions"><button class="primary-button" data-request-listing="${esc(item.id)}">Request this room</button></div>` : ''}</div></article>`).join('');
     target.querySelectorAll('[data-property-id]').forEach(tile => { tile.addEventListener('click', event => { if (!event.target.closest('button')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }); tile.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } }); });
     target.querySelectorAll('[data-delete-listing]').forEach(button => button.addEventListener('click', async () => { if (!confirm('Remove this listing?')) return; try { await apiCall(`/listings/${button.dataset.deleteListing}`, { method: 'DELETE' }); refreshLandlord(); } catch (error) { alert(error.message); } }));
-    target.querySelectorAll('[data-request-listing]').forEach(button => button.addEventListener('click', async () => { try { await apiCall('/requests', { method: 'POST', body: JSON.stringify({ listingId: button.dataset.requestListing }) }); showStudentArea(); } catch (error) { alert(error.message); } }));
+    target.querySelectorAll('[data-request-listing]').forEach(button => button.addEventListener('click', async () => { try { await apiCall('/requests', { method: 'POST', body: JSON.stringify({ listing_id: button.dataset.requestListing }) }); alert('Request sent. It is saved under My Requests.'); showStudentArea(); } catch (error) { alert(error.message); } }));
   }
 
   function guard(role) {
@@ -322,27 +341,51 @@
     const session = guard('admin'); if (session) refreshAdmin();
   }
 
+  function personCard(item) {
+    const extra = item.role === 'broker'
+      ? `<p>${esc(item.company || 'No company')} · License ${esc(item.license || 'not added')}</p><p>${esc(item.specialization || 'No specialization')} · ${esc(item.experience ? `${item.experience} years` : 'Experience not added')}</p><p>${esc(item.area || item.city || 'Area not added')} · ${esc(item.hours || 'Hours not added')}</p><p>${esc(item.serviceAddress || item.address || 'Address not provided')}</p>`
+      : `<p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p><p>Address: ${esc(item.address || 'Not provided')}</p>`;
+    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p>${item.role === 'broker' ? `<p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p>` : ''}${extra}</div></article>`;
+  }
+
+  let adminCache = null;
   async function refreshAdmin(search = '') {
     try {
-      const [users, stats] = await Promise.all([
-        apiCall('/admin/users'),
-        apiCall('/admin/stats')
-      ]);
+      if (!adminCache) {
+        const [users, stats, listings] = await Promise.all([
+          apiCall('/admin/users'),
+          apiCall('/admin/stats'),
+          apiCall('/listings')
+        ]);
+        adminCache = { users, stats, listings };
+      }
+      const { users, stats, listings } = adminCache;
+      const query = search.toLowerCase();
+      const matches = item => `${item.name} ${item.email} ${item.role} ${item.city || ''} ${item.phone || ''} ${item.address || ''} ${item.company || ''}`.toLowerCase().includes(query);
+      const filtered = users.filter(matches);
 
-      document.querySelector('#adminStats').innerHTML = `<div class="stat-card"><span class="stat-icon">♙</span><div><strong>${stats.total_users}</strong><small>Total users</small></div></div><div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${stats.landlords}</strong><small>Landlords</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${stats.listings}</strong><small>Room listings</small></div></div>`;
-      
-      const filtered = users.filter(item => `${item.name} ${item.email} ${item.role}`.toLowerCase().includes(search.toLowerCase()));
-      document.querySelector('#userRows').innerHTML = filtered.map(item => `<tr><td><b>${esc(item.name)}</b></td><td><span class="role-badge">${esc(item.role)}</span></td><td>${esc(item.email)}</td><td>${esc(item.phone || '—')}</td><td>${item.joined ? new Date(item.joined).toLocaleDateString() : '—'}</td></tr>`).join('') || '<tr><td colspan="5">No matching users.</td></tr>';
-      
-      const landlords = users.filter(item => item.role === 'landlord');
-      document.querySelector('#landlordCards').innerHTML = landlords.map(item => `<article class="landlord-card"><span class="user-avatar">${esc(item.name.slice(0,1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p><p>Address: ${esc(item.address || 'Not provided')}</p></div></article>`).join('') || '<div class="empty-state">No landlord accounts yet.</div>';
-      
-      const listings = await apiCall('/listings');
+      document.querySelector('#adminStats').innerHTML = `<div class="stat-card"><span class="stat-icon">🎓</span><div><strong>${stats.students}</strong><small>Students</small></div></div><div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${stats.landlords}</strong><small>Landlords</small></div></div><div class="stat-card"><span class="stat-icon">🤝</span><div><strong>${stats.brokers}</strong><small>Brokers</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${stats.listings}</strong><small>Room listings</small></div></div>`;
+      document.querySelector('#userRows').innerHTML = filtered.map(item => `<tr><td><b>${esc(item.name)}</b></td><td><span class="role-badge">${esc(item.role)}</span></td><td>${esc(item.email)}</td><td>${esc(item.phone || '—')}</td><td>${esc(item.city || '—')}</td><td>${esc(item.address || '—')}</td><td>${item.joined ? new Date(item.joined).toLocaleDateString() : '—'}</td></tr>`).join('') || '<tr><td colspan="7">No matching users.</td></tr>';
+      const fill = (selector, role) => {
+        const people = filtered.filter(item => item.role === role);
+        document.querySelector(selector).innerHTML = people.map(personCard).join('') || '<div class="empty-state">No matching accounts.</div>';
+      };
+      fill('#studentCards', 'student');
+      fill('#landlordCards', 'landlord');
+      fill('#brokerCards', 'broker');
       renderListings('#adminListings', listings);
-      
-      document.querySelector('#userSearch').oninput = event => refreshAdmin(event.target.value);
+      const searchBox = document.querySelector('#userSearch');
+      if (searchBox && searchBox.value !== search) searchBox.value = search;
+      searchBox.oninput = event => refreshAdmin(event.target.value);
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
   }
+
+  document.querySelectorAll('.side-nav a[href^="#"]').forEach(link => {
+    link.addEventListener('click', () => {
+      document.querySelectorAll('.side-nav a').forEach(item => item.classList.remove('selected'));
+      link.classList.add('selected');
+    });
+  });
 })();
