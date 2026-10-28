@@ -32,7 +32,7 @@
         headers
       });
 
-      if (response.status === 401) {
+      if (response.status === 401 && !endpoint.startsWith('/auth/')) {
         localStorage.removeItem('studentstay_token');
         localStorage.removeItem('studentstay_user');
         window.location.href = 'access.html';
@@ -80,7 +80,7 @@
     return response.json();
   }
 
-  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'broker' ? 'broker.html' : role === 'admin' ? 'admin.html' : 'access.html#student'; };
+  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'broker' ? 'broker.html' : role === 'admin' ? 'admin.html' : 'student.html'; };
 
   document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', () => {
     localStorage.removeItem('studentstay_token');

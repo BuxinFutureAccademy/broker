@@ -31,6 +31,7 @@ app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() in ['true
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@studentstay.com')
+app.config['MAIL_TIMEOUT'] = 5
 
 # Cloudinary configuration
 cloudinary.config(
@@ -107,18 +108,63 @@ class Request(db.Model):
     created = db.Column(db.DateTime, default=db.func.current_timestamp())
     status = db.Column(db.String(50), default='New request')
 
+DEMO_USERS = [
+    {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Delhi'},
+    {'name': 'Test Landlord', 'email': 'landlord@test.com', 'password': 'landlord123', 'role': 'landlord', 'phone': '+91 98765 43211', 'city': 'Noida', 'address': 'Sector 62, Noida'},
+    {'name': 'Test Broker', 'email': 'broker@test.com', 'password': 'broker123', 'role': 'broker', 'phone': '+91 98765 43212', 'city': 'Bangalore'},
+    {'name': 'Test Admin', 'email': 'admin@test.com', 'password': 'admin123', 'role': 'admin', 'phone': '+91 98765 43213', 'city': 'Mumbai'},
+]
+
+def ensure_demo_users():
+    """Keep the accounts printed on the sign-in page available."""
+    import bcrypt
+    import uuid
+    for user_data in DEMO_USERS:
+        try:
+            hashed = bcrypt.hashpw(user_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            existing = User.query.filter_by(email=user_data['email']).first()
+            if existing:
+                existing.name = user_data['name']
+                existing.password = hashed
+                existing.role = user_data['role']
+                existing.phone = user_data.get('phone', '')
+                existing.city = user_data.get('city', '')
+                existing.address = user_data.get('address', '')
+            else:
+                db.session.add(User(
+                    id=str(uuid.uuid4()),
+                    name=user_data['name'],
+                    email=user_data['email'],
+                    password=hashed,
+                    role=user_data['role'],
+                    phone=user_data.get('phone', ''),
+                    city=user_data.get('city', ''),
+                    address=user_data.get('address', '')
+                ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Could not ensure demo user %s', user_data['email'])
+
 # Initialize database
 with app.app_context():
     db.create_all()
+    ensure_demo_users()
 
-# Helper function for sending emails
+# Helper function for sending emails. Signup and requests must still succeed
+# when SMTP is not configured on the server.
 def send_email(to, subject, template):
-    msg = Message(
-        subject,
-        recipients=[to],
-        html=template
-    )
-    mail.send(msg)
+    if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+        return
+    try:
+        msg = Message(
+            subject,
+            recipients=[to],
+            html=template
+        )
+        mail.send(msg)
+    except Exception:
+        app.logger.exception('Email could not be sent to %s', to)
 
 # Auth Routes
 @app.route('/api/auth/signup', methods=['POST'])
