@@ -140,7 +140,73 @@
     const altNote = document.querySelector('#altNote');
     const say = message => { if (altNote) altNote.textContent = message; else alert(message); };
     const phoneForm = document.querySelector('#phoneForm');
-    document.querySelector('#phoneToggle')?.addEventListener('click', () => phoneForm?.classList.toggle('hidden'));
+    const countries = [
+      ['India', '+91', 10], ['Nepal', '+977', 10], ['Bangladesh', '+880', 10], ['Nigeria', '+234', 10],
+      ['Ghana', '+233', 9], ['Gambia', '+220', 7], ['Kenya', '+254', 9], ['China', '+86', 11],
+      ['United States', '+1', 10], ['United Kingdom', '+44', 10], ['UAE', '+971', 9]
+    ];
+    const countrySelect = phoneForm?.elements.country;
+    const localInput = phoneForm?.elements.local;
+    const dialCode = document.querySelector('#dialCode');
+    const phoneCheck = document.querySelector('#phoneCheck');
+    const phoneStatus = document.querySelector('#phoneStatus');
+    const sendCode = document.querySelector('#sendCode');
+    const stepNumber = document.querySelector('#phoneStepNumber');
+    const stepCode = document.querySelector('#phoneStepCode');
+    countries.forEach(([name, code, length]) => {
+      const option = document.createElement('option');
+      option.value = `${code}|${length}`;
+      option.textContent = `${name} ${code}`;
+      countrySelect?.appendChild(option);
+    });
+    const chosenCountry = () => {
+      const [code, length] = (countrySelect?.value || '+91|10').split('|');
+      return { code, length: Number(length) };
+    };
+    const localDigits = () => (localInput?.value || '').replace(/\D/g, '');
+    const fullPhone = () => `${chosenCountry().code}${localDigits()}`;
+    const setPhoneStatus = (message, kind) => {
+      if (!phoneStatus) return;
+      phoneStatus.textContent = message || '';
+      phoneStatus.className = `phone-status${kind ? ` ${kind}` : ''}`;
+    };
+    const refreshPhone = () => {
+      const { code, length } = chosenCountry();
+      if (dialCode) dialCode.textContent = code;
+      const digits = localDigits();
+      const ready = digits.length === length;
+      if (sendCode && sendCode.dataset.busy !== '1') sendCode.disabled = !ready;
+      if (!phoneCheck) return;
+      if (!digits.length) {
+        phoneCheck.textContent = `Enter ${length} digits after ${code}.`;
+        phoneCheck.className = 'phone-check';
+      } else if (digits.length < length) {
+        phoneCheck.textContent = `${length - digits.length} more digit${length - digits.length === 1 ? '' : 's'} to go.`;
+        phoneCheck.className = 'phone-check';
+      } else if (digits.length > length) {
+        phoneCheck.textContent = `That is too long for ${code}. Use ${length} digits.`;
+        phoneCheck.className = 'phone-check bad';
+      } else {
+        phoneCheck.textContent = `Number looks correct: ${fullPhone()}`;
+        phoneCheck.className = 'phone-check ok';
+      }
+    };
+    countrySelect?.addEventListener('change', refreshPhone);
+    localInput?.addEventListener('input', () => {
+      localInput.value = localDigits();
+      refreshPhone();
+    });
+    refreshPhone();
+    document.querySelector('#phoneToggle')?.addEventListener('click', () => {
+      phoneForm?.classList.toggle('hidden');
+      if (!phoneForm?.classList.contains('hidden')) localInput?.focus();
+    });
+    document.querySelector('#phoneBack')?.addEventListener('click', () => {
+      stepCode?.classList.add('hidden');
+      stepNumber?.classList.remove('hidden');
+      setPhoneStatus('');
+      refreshPhone();
+    });
     document.querySelector('#googleFallback')?.addEventListener('click', () => say('Google sign-in is not turned on yet. Add the Google client ID on the server.'));
     fetch(`${API_BASE}/auth/providers`).then(response => response.ok ? response.json() : null).then(providers => {
       if (!providers?.googleClientId) return;
@@ -163,22 +229,45 @@
       };
       document.head.appendChild(script);
     }).catch(() => {});
-    document.querySelector('#sendCode')?.addEventListener('click', async () => {
-      const phone = phoneForm?.elements.phone.value || '';
+    sendCode?.addEventListener('click', async () => {
+      if (sendCode.disabled && sendCode.dataset.busy === '1') return;
+      const phone = fullPhone();
       const name = phoneForm?.elements.name.value || '';
+      sendCode.dataset.busy = '1';
+      sendCode.disabled = true;
+      sendCode.textContent = 'Sending code...';
+      setPhoneStatus(`Sending a text to ${phone}. Wait here.`, '');
       try {
         const response = await apiCall('/auth/phone/send', { method: 'POST', body: JSON.stringify({ phone, role, name }) });
         if (!response) return;
-        document.querySelector('#codeLabel')?.classList.remove('hidden');
-        document.querySelector('#verifyCode')?.classList.remove('hidden');
-        say(`Code sent to ${response.phone}. Enter it below.`);
-      } catch (error) { say(error.message); }
+        stepNumber?.classList.add('hidden');
+        stepCode?.classList.remove('hidden');
+        const sent = document.querySelector('#phoneSent');
+        if (sent) sent.textContent = `Code sent to ${response.phone || phone}. Type the 6 digits from the text.`;
+        setPhoneStatus('');
+        phoneForm.elements.code.value = '';
+        phoneForm.elements.code.focus();
+      } catch (error) {
+        setPhoneStatus(error.message, 'bad');
+      } finally {
+        sendCode.dataset.busy = '';
+        sendCode.textContent = 'Send code';
+        refreshPhone();
+      }
     });
     phoneForm?.addEventListener('submit', async event => {
       event.preventDefault();
+      const verify = document.querySelector('#verifyCode');
+      const phone = fullPhone();
+      if (verify) { verify.disabled = true; verify.textContent = 'Checking code...'; }
+      setPhoneStatus('Checking the code.', '');
       try {
-        finish(await apiCall('/auth/phone/verify', { method: 'POST', body: JSON.stringify({ phone: phoneForm.elements.phone.value, code: phoneForm.elements.code.value, name: phoneForm.elements.name.value, role }) }));
-      } catch (error) { say(error.message); }
+        finish(await apiCall('/auth/phone/verify', { method: 'POST', body: JSON.stringify({ phone, code: phoneForm.elements.code.value, name: phoneForm.elements.name.value, role }) }));
+      } catch (error) {
+        setPhoneStatus(error.message, 'bad');
+      } finally {
+        if (verify) { verify.disabled = false; verify.textContent = 'Verify and sign in'; }
+      }
     });
 
     authForm.addEventListener('submit', async event => {

@@ -38,7 +38,14 @@
 .phone-form { display: grid; gap: 10px; margin-top: 12px; }
 .phone-form.hidden { display: none; }
 .phone-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: #38556f; }
-.phone-form input { height: 46px; border: 1px solid #d5e0ec; border-radius: 12px; padding: 0 12px; font: 16px inherit; }
+.phone-form input, .phone-form select { height: 46px; border: 1px solid #d5e0ec; border-radius: 12px; padding: 0 12px; font: 16px inherit; background: #fff; }
+.phone-row { display: flex; align-items: center; gap: 8px; }
+.phone-row b { min-width: 58px; height: 46px; display: grid; place-items: center; border-radius: 12px; background: #eaf2ff; color: #0759d6; }
+.phone-row input { flex: 1; min-width: 0; }
+.phone-check, .phone-status { margin: 0; font-size: 13px; font-weight: 700; color: #60758d; }
+.phone-check.ok, .phone-status.ok { color: #0d7a45; }
+.phone-check.bad, .phone-status.bad { color: #9b1c1c; }
+.phone-form .primary-button:disabled { opacity: .55; cursor: not-allowed; }
 .phone-form .hidden, .alt-button.hidden, #googleSlot.hidden { display: none; }
 
 @media (max-width: 650px) {
