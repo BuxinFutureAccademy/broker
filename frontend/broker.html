@@ -28,6 +28,7 @@
       <a href="#profile">♙ &nbsp; My Profile</a>
       <a href="#portfolio">📷 &nbsp; My Portfolio</a>
       <a href="#location">📍 &nbsp; My Location</a>
+      <a href="#visits">🤝 &nbsp; Visits</a>
       <a href="index.html">↗ &nbsp; View Website</a>
       <div class="sidebar-help">
         <b>Need help?</b>
@@ -126,7 +127,7 @@
               <input name="city" required placeholder="e.g. Delhi, Bangalore, Mumbai">
             </label>
             <label class="wide">Area/Neighborhood
-              <input name="area" placeholder="e.g. Connaught Place, Indiranagar">
+              <input name="area" placeholder="Sectors you cover, e.g. Gamma 1, Alpha 1, Knowledge Park 3">
             </label>
             <label class="wide">Full Address
               <textarea name="address" rows="3" required placeholder="Office address, street, area, city and PIN code"></textarea>
@@ -187,6 +188,17 @@
         </form>
 
         <div class="portfolio-grid" id="brokerPortfolio"></div>
+      </section>
+
+      <section class="panel" id="visits">
+        <div class="panel-heading">
+          <div>
+            <h2>Students ready for a visit</h2>
+            <p>After the admin approves a broker fee, students in your sectors appear here with the address so you can take them to the house.</p>
+          </div>
+          <span class="panel-icon">🤝</span>
+        </div>
+        <div id="brokerVisits" class="request-list"></div>
       </section>
     </section>
   </main>

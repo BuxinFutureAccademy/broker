@@ -23,6 +23,8 @@
     <aside class="side-nav">
       <span class="side-label">SITE MANAGEMENT</span>
       <a class="selected" href="#overview">▦ &nbsp; Overview</a>
+      <a href="#payments">₹ &nbsp; Payments</a>
+      <a href="#receipts">▣ &nbsp; Receipts</a>
       <a href="#users">♙ &nbsp; All users</a>
       <a href="#students">🎓 &nbsp; Students</a>
       <a href="#landlords">⌂ &nbsp; Landlords</a>
@@ -44,6 +46,30 @@
         <span class="admin-status">● &nbsp; Live data</span>
       </div>
       <div class="stat-row" id="adminStats"></div>
+      <section class="panel" id="payments">
+        <div class="panel-heading">
+          <div>
+            <h2>Broker fee</h2>
+            <p>Students pay this amount by scanning your QR, then upload the receipt.</p>
+          </div>
+        </div>
+        <form id="paymentForm" class="form-grid">
+          <label>Fee amount (₹)<input name="amount" type="number" min="0" required></label>
+          <label>Note for students<input name="note" placeholder="Pay by UPI and upload the receipt"></label>
+          <label class="wide">QR code image<input name="qr" type="file" accept="image/*"></label>
+          <div class="wide" id="qrPreview"></div>
+          <button class="primary-button">Save payment details</button>
+        </form>
+      </section>
+      <section class="panel" id="receipts">
+        <div class="panel-heading">
+          <div>
+            <h2>Payment receipts</h2>
+            <p>Approve a receipt to reveal the address and landlord number to that student.</p>
+          </div>
+        </div>
+        <div id="receiptList" class="request-list"></div>
+      </section>
       <section class="panel" id="users">
         <div class="panel-heading">
           <div>

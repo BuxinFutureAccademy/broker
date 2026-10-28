@@ -88,6 +88,7 @@
     await loadBrokerProfile();
     await loadBrokerLocation();
     await loadBrokerPortfolio();
+    await loadBrokerVisits();
   }
 
   // Load broker profile
@@ -173,6 +174,17 @@
         alert(error.message || 'Failed to save location');
       }
     });
+  }
+
+  async function loadBrokerVisits() {
+    try {
+      const visits = await apiCall('/broker/visits') || [];
+      const container = document.querySelector('#brokerVisits');
+      if (!container) return;
+      container.innerHTML = visits.length ? visits.map(item => `<div class="request-row"><div><b>${esc(item.student?.name || 'Student')}</b><p>${esc(item.student?.phone || 'No phone')} · ${esc(item.listing?.title || 'Home')}<br>${esc(item.listing?.address || item.listing?.sector || '')}</p></div><span class="status-pill">Ready to visit</span></div>`).join('') : '<div class="portfolio-empty"><p>No paid students in your sectors yet. Set My Location to the sectors you cover, such as Gamma 1 or Alpha 1.</p></div>';
+    } catch (error) {
+      console.error('Error loading visits:', error);
+    }
   }
 
   // Load broker portfolio

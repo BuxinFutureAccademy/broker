@@ -6,68 +6,73 @@
   const session = () => {
     try { return JSON.parse(localStorage.getItem('studentstay_user') || 'null'); } catch { return null; }
   };
+  const token = () => localStorage.getItem('studentstay_token');
 
-  const render = item => {
+  const render = async item => {
     const user = session();
     const photos = (item.photos || []).filter(Boolean);
-    const ownerName = item.ownerName || 'StudentStay host';
-    const email = item.ownerEmail || '';
-    const phone = item.ownerPhone || '';
-    const fullAddress = [item.address, item.city].filter((part, index, all) => part && all.indexOf(part) === index).join(', ');
-    const addressQuery = encodeURIComponent(fullAddress || item.city || 'India');
-    const mapEmbed = `https://maps.google.com/maps?q=${addressQuery}&output=embed`;
-    const mapLink = `https://www.google.com/maps/search/?api=1&query=${addressQuery}`;
-    target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt="${esc(item.title)} photo ${index + 1}"></button>`).join('')}</div></div><section class="map-panel"><h2>Location</h2><p>${esc(fullAddress || item.city || 'Location supplied by the landlord')}</p><iframe class="map-frame" title="Map showing ${esc(item.title)} location" src="${mapEmbed}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe><div class="map-actions"><a href="${mapLink}" target="_blank" rel="noopener">Open directions in Google Maps ↗</a></div><p class="detail-notice">Map position is based on the address provided by the landlord. Confirm the exact location with the landlord before visiting.</p></section></section><aside><section class="detail-content"><span class="detail-badge">${esc(item.badge || item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(fullAddress || item.city || 'India')}</p><div class="detail-price">₹${Number(item.rent || 0).toLocaleString('en-IN')} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || 'A student-friendly home. Contact the landlord to learn more about the property and availability.')}</p><div class="detail-features">${(item.amenities || []).map(feature => `<span>${esc(feature)}</span>`).join('')}${item.available ? `<span>Available from ${esc(item.available)}</span>` : ''}</div><div class="detail-divider"></div><h2>Property details</h2><p class="detail-description">${esc(item.type || 'Student accommodation')} · ${esc(item.city || 'India')}</p></section><section class="contact-card" id="contact"><h2>Contact the landlord</h2><div class="owner-row"><span class="owner-avatar">${esc(ownerName.slice(0, 1).toUpperCase())}</span><div><b>${esc(ownerName)}</b><small>${user ? 'Signed in as ' + user.name : 'Sign in to send a request'}</small></div></div>${phone ? `<a class="contact-line" href="tel:${esc(phone.replace(/[^+\d]/g, ''))}">☎ &nbsp;${esc(phone)}</a>` : '<p class="contact-line">☎ &nbsp;Phone appears after the landlord adds one</p>'}${email ? `<a class="contact-line" href="mailto:${esc(email)}">✉ &nbsp;${esc(email)}</a>` : ''}<button class="primary-button contact-cta" id="requestRoom">Request this room</button><p class="detail-notice" id="requestMessage">${user && user.role === 'student' ? 'Your request is saved to My Requests.' : 'Sign in as a student to send this request to your dashboard.'}</p></section></aside></div>`;
+    const area = item.sector || item.city || 'Greater Noida';
+    const unlocked = item.unlocked === true;
+    const fullAddress = unlocked ? [item.address, item.city].filter(Boolean).join(', ') : area;
+    const map = unlocked ? `<section class="map-panel"><h2>Exact location</h2><p>${esc(fullAddress)}</p><iframe class="map-frame" title="Map showing ${esc(item.title)}" src="https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe><div class="map-actions"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}" target="_blank" rel="noopener">Open directions in Google Maps ↗</a></div></section>` : `<section class="map-panel"><h2>Area</h2><p>${esc(area)}, Greater Noida</p><p class="detail-notice">The street address and map stay hidden until the broker fee is approved.</p></section>`;
+    let contact = '';
+    if (unlocked) {
+      const phone = item.ownerPhone || '';
+      const email = item.ownerEmail || '';
+      contact = `<section class="contact-card" id="contact"><h2>Contact the landlord</h2><div class="owner-row"><span class="owner-avatar">${esc((item.ownerName || 'L').slice(0, 1).toUpperCase())}</span><div><b>${esc(item.ownerName || 'Landlord')}</b><small>Unlocked for you</small></div></div><p class="detail-location">⌖ ${esc(fullAddress)}</p>${phone ? `<a class="contact-line" href="tel:${esc(phone.replace(/[^+\d]/g, ''))}">☎ &nbsp;${esc(phone)}</a>` : '<p class="contact-line">☎ &nbsp;Phone not added yet</p>'}${email ? `<a class="contact-line" href="mailto:${esc(email)}">✉ &nbsp;${esc(email)}</a>` : ''}</section>`;
+    } else if (!user) {
+      contact = `<section class="contact-card" id="contact"><h2>Broker fee</h2><p class="detail-notice">Sign in as a student before you pay. After approval you will see the exact address and the landlord’s number.</p><a class="primary-button contact-cta" href="access.html#student">Sign in to continue</a></section>`;
+    } else if (user.role !== 'student') {
+      contact = `<section class="contact-card" id="contact"><h2>Broker fee</h2><p class="detail-notice">Only a student account can pay to unlock a home.</p></section>`;
+    } else if (item.unlockStatus === 'pending') {
+      contact = `<section class="contact-card" id="contact"><h2>Receipt received</h2><p class="detail-notice">Your payment is waiting for approval. The address and landlord number will appear here after it is approved.</p><a class="primary-button contact-cta" href="student.html#requests">Check status</a></section>`;
+    } else {
+      let payment = { amount: 0, qrUrl: '', note: '' };
+      try {
+        const response = await fetch(`${API_BASE}/payment`);
+        if (response.ok) payment = await response.json();
+      } catch { /* show the form even if the fee details are slow */ }
+      contact = `<section class="contact-card" id="contact"><h2>Pay the broker fee</h2><p class="detail-price">₹${Number(payment.amount || 0).toLocaleString('en-IN')}</p><p class="detail-notice">${esc(payment.note || 'Scan the QR, pay, then upload a photo of the receipt.')}</p>${payment.qrUrl ? `<img alt="Payment QR code" src="${esc(payment.qrUrl)}" style="width:180px;height:180px;object-fit:contain;background:#fff;border-radius:8px">` : '<p class="detail-notice">The payment QR is not set yet. Ask the admin to add it.</p>'}<form id="receiptForm" class="form-grid"><label class="wide">Payment receipt<input name="receipt" type="file" accept="image/*" required></label><button class="primary-button wide">Submit receipt</button></form><p class="detail-notice" id="requestMessage"></p></section>`;
+    }
+    target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt=""></button>`).join('')}</div></div>${map}</section><aside><section class="detail-content"><span class="detail-badge">${esc(item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(area)}</p><div class="detail-price">₹${Number(item.rent || 0).toLocaleString('en-IN')} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || '')}</p>${item.available ? `<p class="detail-notice">Available from ${esc(item.available)}</p>` : ''}</section>${contact}</aside></div>`;
     const mainPhoto = document.querySelector('#mainPhoto');
     document.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
       const photo = photos[Number(button.dataset.photoIndex)];
-      if (photo) mainPhoto.src = photo;
-      document.querySelectorAll('[data-photo-index]').forEach(itemButton => itemButton.classList.toggle('active', itemButton === button));
+      if (photo && mainPhoto) mainPhoto.src = photo;
     }));
-    document.querySelector('#requestRoom').addEventListener('click', async () => {
+    document.querySelector('#receiptForm')?.addEventListener('submit', async event => {
+      event.preventDefault();
       const message = document.querySelector('#requestMessage');
-      const current = session();
-      const token = localStorage.getItem('studentstay_token');
-      if (!current || current.role !== 'student' || !token) {
-        localStorage.setItem('studentstay.pendingListing', item.id);
-        location.href = 'access.html#student';
-        return;
-      }
-      if (String(item.id).startsWith('sample-')) {
-        message.textContent = 'This sample home is not bookable. Open a live listing from the properties page.';
-        return;
-      }
+      const file = event.currentTarget.elements.receipt.files[0];
+      if (!file) return;
+      message.textContent = 'Uploading receipt…';
       try {
-        const response = await fetch(`${API_BASE}/requests`, {
+        const body = new FormData();
+        body.append('file', file);
+        const uploaded = await fetch(`${API_BASE}/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token()}` }, body });
+        const uploadPayload = await uploaded.json();
+        if (!uploaded.ok) throw new Error(uploadPayload.error || 'Could not upload the receipt.');
+        const saved = await fetch(`${API_BASE}/unlocks`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ listing_id: item.id })
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+          body: JSON.stringify({ listing_id: item.id, receipt_url: uploadPayload.url })
         });
-        const text = await response.text();
-        let payload = {};
-        try { payload = JSON.parse(text); } catch { payload = {}; }
-        if (!response.ok && response.status !== 400) throw new Error(payload.error || 'The request could not be sent.');
-        if (response.status === 400 && payload.error && !/already exists/i.test(payload.error)) throw new Error(payload.error);
-        message.textContent = 'Request saved. Open your dashboard to see it under My Requests.';
-        document.querySelector('#requestRoom').insertAdjacentHTML('afterend', '<a class="primary-button contact-cta" href="student.html#requests">View my requests</a>');
-        document.querySelector('#requestRoom').remove();
+        const savedPayload = await saved.json();
+        if (!saved.ok) throw new Error(savedPayload.error || 'Could not send the receipt.');
+        message.textContent = 'Receipt sent. It will show under Broker fee while you wait for approval.';
       } catch (error) {
-        message.textContent = error.message || 'The request could not be sent.';
+        message.textContent = error.message || 'Could not send the receipt.';
       }
     });
   };
 
   const load = async () => {
-    const samples = window.STUDENTSTAY_SAMPLES || [];
-    try {
-      const response = await fetch(`${API_BASE}/listings`);
-      if (response.ok) {
-        const listings = await response.json();
-        const found = listings.find(listing => listing.id === id);
-        if (found) return found;
-      }
-    } catch { /* show a sample if the server is waking up */ }
-    return samples.find(listing => listing.id === id);
+    const headers = {};
+    if (token()) headers.Authorization = `Bearer ${token()}`;
+    const response = await fetch(`${API_BASE}/listings`, { headers });
+    if (!response.ok) return null;
+    const listings = await response.json();
+    return listings.find(listing => listing.id === id) || null;
   };
 
   load().then(item => {
@@ -76,5 +81,7 @@
       return;
     }
     render(item);
+  }).catch(() => {
+    target.innerHTML = '<section class="not-found"><h1>The homes are waking up</h1><p>Wait a few seconds and refresh this page.</p></section>';
   });
 })();

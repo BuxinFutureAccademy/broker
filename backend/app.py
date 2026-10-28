@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
 from flask_mail import Mail, Message
 from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
@@ -96,6 +96,7 @@ class Listing(db.Model):
     rent = db.Column(db.Integer, nullable=False)
     available = db.Column(db.String(20))
     address = db.Column(db.String(200), nullable=False)
+    sector = db.Column(db.String(80))
     city = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text, nullable=False)
     photos = db.Column(db.JSON)  # Array of Cloudinary URLs
@@ -107,6 +108,21 @@ class Request(db.Model):
     student_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False)
     created = db.Column(db.DateTime, default=db.func.current_timestamp())
     status = db.Column(db.String(50), default='New request')
+
+class PaymentSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Integer, default=2000)
+    qr_url = db.Column(db.Text)
+    note = db.Column(db.Text, default='Pay the broker fee, then upload a clear photo of your receipt.')
+
+class Unlock(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    student_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False)
+    listing_id = db.Column(db.String(36), db.ForeignKey('listing.id'), nullable=False)
+    receipt_url = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='pending')
+    note = db.Column(db.Text)
+    created = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 DEMO_USERS = [
     {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Delhi'},
@@ -152,8 +168,9 @@ DEMO_LISTINGS = [
         'type': 'Private room',
         'rent': 8000,
         'available': '2026-11-01',
-        'address': 'Sector 62, Noida',
-        'city': 'Noida',
+        'address': 'Tower C, Galaxy Apartments, Gamma 1, Greater Noida',
+        'sector': 'Gamma 1',
+        'city': 'Greater Noida',
         'description': 'Bright private room with WiFi, AC and meals available.',
         'photos': ['https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1000&q=85'],
     },
@@ -162,8 +179,9 @@ DEMO_LISTINGS = [
         'type': 'Shared room',
         'rent': 6500,
         'available': '2026-11-01',
-        'address': 'Hauz Khas, Delhi',
-        'city': 'Delhi',
+        'address': 'House 18, Alpha 1, Greater Noida',
+        'sector': 'Alpha 1',
+        'city': 'Greater Noida',
         'description': 'Comfortable shared room close to shops and transit.',
         'photos': ['https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1000&q=85'],
     },
@@ -172,8 +190,9 @@ DEMO_LISTINGS = [
         'type': 'Apartment',
         'rent': 12000,
         'available': '2026-11-01',
-        'address': 'Electronic City, Bangalore',
-        'city': 'Bangalore',
+        'address': 'Block B, Knowledge Park 3, Greater Noida',
+        'sector': 'Knowledge Park 3',
+        'city': 'Greater Noida',
         'description': 'Modern apartment with kitchen and easy campus access.',
         'photos': ['https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=85'],
     },
@@ -192,6 +211,7 @@ def ensure_demo_listings():
             existing.rent = item['rent']
             existing.available = item['available']
             existing.address = item['address']
+            existing.sector = item.get('sector') or existing.sector
             existing.city = item['city']
             existing.description = item['description']
             existing.photos = item['photos']
@@ -206,6 +226,7 @@ def ensure_demo_listings():
             rent=item['rent'],
             available=item['available'],
             address=item['address'],
+            sector=item.get('sector'),
             city=item['city'],
             description=item['description'],
             photos=item['photos'],
@@ -220,29 +241,74 @@ def clean_int(value, fallback=0):
     except (TypeError, ValueError):
         return fallback
 
-def serialize_listing(listing):
+def viewer_from_request():
+    try:
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+        return User.query.get(user_id) if user_id else None
+    except Exception:
+        return None
+
+def unlock_maps(viewer):
+    approved, pending = set(), set()
+    if viewer and viewer.role == 'student':
+        for row in Unlock.query.filter_by(student_id=viewer.id).all():
+            if row.status == 'approved':
+                approved.add(row.listing_id)
+            elif row.status == 'pending':
+                pending.add(row.listing_id)
+    return approved, pending
+
+def serialize_listing(listing, viewer=None, approved=None, pending=None):
     owner = User.query.get(listing.owner_id)
-    return {
+    approved = approved or set()
+    pending = pending or set()
+    is_owner = bool(viewer and viewer.id == listing.owner_id)
+    is_admin = bool(viewer and viewer.role == 'admin')
+    is_unlocked = is_owner or is_admin or listing.id in approved
+    area = listing.sector or listing.city or 'Greater Noida'
+    status = ''
+    if viewer and viewer.role == 'student':
+        if listing.id in approved:
+            status = 'approved'
+        elif listing.id in pending:
+            status = 'pending'
+    data = {
         'id': listing.id,
         'ownerId': listing.owner_id,
-        'ownerName': listing.owner_name,
-        'ownerPhone': owner.phone if owner else '',
-        'ownerEmail': owner.email if owner else '',
-        'ownerAddress': owner.address if owner else '',
+        'ownerName': listing.owner_name if is_unlocked else 'Landlord',
         'title': listing.title,
         'type': listing.type,
         'rent': listing.rent,
         'available': listing.available,
-        'address': listing.address,
-        'city': listing.city,
+        'sector': area,
+        'city': listing.city or 'Greater Noida',
         'description': listing.description,
         'photos': listing.photos,
+        'unlocked': is_unlocked,
+        'unlockStatus': status,
         'created': listing.created.isoformat() if listing.created else None,
     }
+    if is_unlocked:
+        data['address'] = listing.address
+        data['ownerPhone'] = owner.phone if owner else ''
+        data['ownerEmail'] = owner.email if owner else ''
+    return data
+
+def ensure_schema():
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    if 'listing' in tables:
+        columns = {column['name'] for column in inspector.get_columns('listing')}
+        if 'sector' not in columns:
+            db.session.execute(text('ALTER TABLE listing ADD COLUMN sector VARCHAR(80)'))
+            db.session.commit()
 
 # Initialize database
 with app.app_context():
     db.create_all()
+    ensure_schema()
     ensure_demo_users()
     ensure_demo_listings()
 
@@ -376,8 +442,10 @@ def get_current_user():
 # Listing Routes
 @app.route('/api/listings', methods=['GET'])
 def get_listings():
+    viewer = viewer_from_request()
+    approved, pending = unlock_maps(viewer)
     listings = Listing.query.order_by(Listing.created.desc()).all()
-    return jsonify([serialize_listing(listing) for listing in listings])
+    return jsonify([serialize_listing(listing, viewer, approved, pending) for listing in listings])
 
 @app.route('/api/listings', methods=['POST'])
 @jwt_required()
@@ -400,7 +468,8 @@ def create_listing():
         rent=data['rent'],
         available=data.get('available', ''),
         address=data['address'],
-        city=data.get('city') or user.city or '',
+        sector=data.get('sector') or '',
+        city=data.get('city') or 'Greater Noida',
         description=data['description'],
         photos=data.get('photos', [])
     )
@@ -433,7 +502,7 @@ def get_landlord_listings():
     user_id = get_jwt_identity()
     listings = Listing.query.filter_by(owner_id=user_id).all()
     
-    return jsonify([serialize_listing(listing) for listing in listings])
+    return jsonify([serialize_listing(listing, user) for listing in listings])
 
 # Image Upload Route
 @app.route('/api/upload', methods=['POST'])
@@ -920,6 +989,157 @@ def delete_broker_portfolio_item(portfolio_id):
     db.session.commit()
     
     return jsonify({'message': 'Portfolio item deleted successfully'})
+
+def payment_payload():
+    setting = PaymentSetting.query.first()
+    if not setting:
+        setting = PaymentSetting(amount=2000, note='Pay the broker fee, then upload a clear photo of your receipt.')
+        db.session.add(setting)
+        db.session.commit()
+    return {
+        'amount': setting.amount or 0,
+        'qrUrl': setting.qr_url or '',
+        'note': setting.note or '',
+    }
+
+@app.route('/api/payment', methods=['GET'])
+def get_payment_settings():
+    return jsonify(payment_payload())
+
+@app.route('/api/admin/payment', methods=['PUT'])
+@jwt_required()
+def update_payment_settings():
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    data = request.get_json() or {}
+    setting = PaymentSetting.query.first()
+    if not setting:
+        setting = PaymentSetting()
+        db.session.add(setting)
+    if 'amount' in data:
+        setting.amount = clean_int(data.get('amount'), setting.amount or 0)
+    if 'qrUrl' in data:
+        setting.qr_url = data.get('qrUrl') or ''
+    if 'note' in data:
+        setting.note = data.get('note') or ''
+    db.session.commit()
+    return jsonify(payment_payload())
+
+def unlock_payload(row):
+    student = User.query.get(row.student_id)
+    listing = Listing.query.get(row.listing_id)
+    return {
+        'id': row.id,
+        'status': row.status,
+        'note': row.note or '',
+        'receiptUrl': row.receipt_url,
+        'created': row.created.isoformat() if row.created else None,
+        'student': {
+            'name': student.name if student else 'Student',
+            'email': student.email if student else '',
+            'phone': student.phone if student else '',
+        },
+        'listing': {
+            'id': listing.id if listing else '',
+            'title': listing.title if listing else 'Home removed',
+            'sector': (listing.sector or listing.city) if listing else '',
+            'address': listing.address if listing else '',
+            'rent': listing.rent if listing else 0,
+        },
+    }
+
+@app.route('/api/unlocks', methods=['POST'])
+@jwt_required()
+def submit_unlock():
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'student':
+        return jsonify({'error': 'Sign in as a student before paying the broker fee'}), 403
+    data = request.get_json() or {}
+    listing_id = data.get('listing_id') or data.get('listingId')
+    receipt = (data.get('receipt_url') or data.get('receiptUrl') or '').strip()
+    if not listing_id or not receipt:
+        return jsonify({'error': 'Upload your payment receipt'}), 400
+    if not Listing.query.get(listing_id):
+        return jsonify({'error': 'That home is no longer listed'}), 404
+    existing = Unlock.query.filter_by(student_id=user.id, listing_id=listing_id).order_by(Unlock.created.desc()).first()
+    if existing and existing.status == 'approved':
+        return jsonify({'error': 'You already unlocked this home'}), 400
+    if existing and existing.status == 'pending':
+        existing.receipt_url = receipt
+        existing.note = ''
+        db.session.commit()
+        return jsonify({'message': 'Receipt updated. Waiting for approval.', 'id': existing.id, 'status': 'pending'})
+    import uuid
+    row = Unlock(id=str(uuid.uuid4()), student_id=user.id, listing_id=listing_id, receipt_url=receipt, status='pending')
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({'message': 'Receipt sent. The admin will approve it.', 'id': row.id, 'status': 'pending'}), 201
+
+@app.route('/api/unlocks/student', methods=['GET'])
+@jwt_required()
+def student_unlocks():
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'student':
+        return jsonify({'error': 'Student access required'}), 403
+    rows = Unlock.query.filter_by(student_id=user.id).order_by(Unlock.created.desc()).all()
+    return jsonify([unlock_payload(row) for row in rows])
+
+@app.route('/api/unlocks/landlord', methods=['GET'])
+@jwt_required()
+def landlord_unlocks():
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'landlord':
+        return jsonify({'error': 'Landlord access required'}), 403
+    listing_ids = [item.id for item in Listing.query.filter_by(owner_id=user.id).all()]
+    rows = Unlock.query.filter(Unlock.listing_id.in_(listing_ids), Unlock.status == 'approved').all() if listing_ids else []
+    return jsonify([unlock_payload(row) for row in rows])
+
+@app.route('/api/admin/unlocks', methods=['GET'])
+@jwt_required()
+def admin_unlocks():
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    rows = Unlock.query.order_by(Unlock.created.desc()).all()
+    return jsonify([unlock_payload(row) for row in rows])
+
+@app.route('/api/admin/unlocks/<unlock_id>', methods=['PUT'])
+@jwt_required()
+def decide_unlock(unlock_id):
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    row = Unlock.query.get(unlock_id)
+    if not row:
+        return jsonify({'error': 'Receipt not found'}), 404
+    data = request.get_json() or {}
+    status = data.get('status')
+    if status not in ('approved', 'rejected', 'pending'):
+        return jsonify({'error': 'Choose approve or reject'}), 400
+    row.status = status
+    row.note = data.get('note') or ''
+    db.session.commit()
+    return jsonify(unlock_payload(row))
+
+@app.route('/api/broker/visits', methods=['GET'])
+@jwt_required()
+def broker_visits():
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'broker':
+        return jsonify({'error': 'Broker access required'}), 403
+    location = BrokerLocation.query.filter_by(user_id=user.id).first()
+    covered = f"{location.area if location else ''} {location.city if location else ''}".lower()
+    rows = Unlock.query.filter_by(status='approved').order_by(Unlock.created.desc()).all()
+    visits = []
+    for row in rows:
+        payload = unlock_payload(row)
+        sector = (payload['listing'].get('sector') or '').lower()
+        if covered.strip() and sector and sector in covered:
+            visits.append(payload)
+        elif not covered.strip():
+            continue
+    return jsonify(visits)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

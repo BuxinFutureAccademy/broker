@@ -201,22 +201,22 @@
 
     try {
       await claimPendingRequest();
-      const [listings, requests] = await Promise.all([
+      const [listings, unlocks] = await Promise.all([
         apiCall('/listings'),
-        apiCall('/requests/student')
+        apiCall('/unlocks/student')
       ]);
 
       const listingCountEl = document.querySelector('#listingCount');
       const requestCountEl = document.querySelector('#requestCount');
       if (listingCountEl) listingCountEl.textContent = listings.length;
-      if (requestCountEl) requestCountEl.textContent = requests.length;
+      if (requestCountEl) requestCountEl.textContent = unlocks.length;
 
       renderListings('#studentListings', listings, { request: true, studentId: currentUser.id });
 
-      const requestRows = requests.map(r => `<div class="request-row"><div><b>${esc(r.listing?.title || 'Listing removed')}</b><p>Requested ${new Date(r.created).toLocaleDateString()}</p></div><span class="status-pill">${esc(r.status)}</span></div>`).join('');
+      const requestRows = unlocks.map(r => `<div class="request-row"><div><b>${esc(r.listing?.title || 'Home')}</b><p>${esc(r.listing?.sector || '')} · ${esc(r.status)}</p></div><span class="status-pill">${esc(r.status)}</span></div>`).join('');
       const requestsEl = document.querySelector('#studentRequests');
       if (requestsEl) {
-        requestsEl.innerHTML = requestRows || '<div class="empty-state">You have not requested a room yet.</div>';
+        requestsEl.innerHTML = requestRows || '<div class="empty-state">You have not paid a broker fee yet. Open a home to pay and upload your receipt.</div>';
       }
     } catch (error) {
       console.error('Error loading student area:', error);
@@ -239,7 +239,7 @@
   function renderListings(selector, items, options = {}) {
     const target = document.querySelector(selector); if (!target) return;
     if (!items.length) { target.innerHTML = '<div class="empty-state">No room listings here yet. Add the first property to get started.</div>'; return; }
-    target.innerHTML = items.map(item => `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.city || item.address)}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc(item.address)}</p>${options.owner ? `<div class="listing-actions"><button class="small-button" data-delete-listing="${esc(item.id)}">Remove listing</button></div>` : options.request ? `<div class="listing-actions"><button class="primary-button" data-request-listing="${esc(item.id)}">Request this room</button></div>` : ''}</div></article>`).join('');
+    target.innerHTML = items.map(item => `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc(item.unlocked ? (item.address || item.sector || item.city) : (item.sector || item.city || 'Greater Noida'))}</p>${options.owner ? `<div class="listing-actions"><button class="small-button" data-delete-listing="${esc(item.id)}">Remove listing</button></div>` : `<div class="listing-actions"><a class="primary-button" href="property.html?id=${encodeURIComponent(item.id)}">View home</a></div>`}</div></article>`).join('');
     target.querySelectorAll('[data-property-id]').forEach(tile => { tile.addEventListener('click', event => { if (!event.target.closest('button')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }); tile.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } }); });
     target.querySelectorAll('[data-delete-listing]').forEach(button => button.addEventListener('click', async () => { if (!confirm('Remove this listing?')) return; try { await apiCall(`/listings/${button.dataset.deleteListing}`, { method: 'DELETE' }); refreshLandlord(); } catch (error) { alert(error.message); } }));
     target.querySelectorAll('[data-request-listing]').forEach(button => button.addEventListener('click', async () => { try { await apiCall('/requests', { method: 'POST', body: JSON.stringify({ listing_id: button.dataset.requestListing }) }); alert('Request sent. It is saved under My Requests.'); showStudentArea(); } catch (error) { alert(error.message); } }));
@@ -301,6 +301,8 @@
               rent: Number(data.get('rent')),
               available: String(data.get('available')),
               address: String(data.get('address')).trim(),
+              sector: String(data.get('sector') || '').trim(),
+              city: 'Greater Noida',
               description: String(data.get('description')).trim(),
               photos: photos.map(p => p.url)
             })
@@ -322,16 +324,16 @@
     if (!currentUser || !document.querySelector('#landlordListings')) return;
     
     try {
-      const [listings, requests] = await Promise.all([
+      const [listings, unlocks] = await Promise.all([
         apiCall('/listings/landlord'),
-        apiCall('/requests/landlord')
+        apiCall('/unlocks/landlord')
       ]);
 
-      document.querySelector('#landlordStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${listings.length}</strong><small>Active listings</small></div></div><div class="stat-card"><span class="stat-icon">♙</span><div><strong>${requests.length}</strong><small>Student requests</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Verified</strong><small>Landlord account</small></div></div>`;
+      document.querySelector('#landlordStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${listings.length}</strong><small>Active listings</small></div></div><div class="stat-card"><span class="stat-icon">♙</span><div><strong>${unlocks.length}</strong><small>Paid students</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Verified</strong><small>Landlord account</small></div></div>`;
       renderListings('#landlordListings', listings, { owner: true });
       
-      const rows = requests.map(req => `<div class="request-row"><div><b>${esc(req.student?.name || 'Student')}</b><p>${esc(req.student?.email || '')} · ${esc(req.student?.phone || 'No phone provided')}<br>Interested in: ${esc(req.listing?.title || 'Property')}</p></div><span class="status-pill">${new Date(req.created).toLocaleDateString()}</span></div>`).join('');
-      document.querySelector('#landlordStudents').innerHTML = rows || '<div class="empty-state">No students have requested your rooms yet.</div>';
+      const rows = unlocks.map(req => `<div class="request-row"><div><b>${esc(req.student?.name || 'Student')}</b><p>${esc(req.student?.email || '')} · ${esc(req.student?.phone || 'No phone provided')}<br>Unlocked: ${esc(req.listing?.title || 'Property')} · ${esc(req.listing?.sector || '')}</p></div><span class="status-pill">Paid</span></div>`).join('');
+      document.querySelector('#landlordStudents').innerHTML = rows || '<div class="empty-state">No student has unlocked your rooms yet.</div>';
     } catch (error) {
       console.error('Error loading landlord data:', error);
     }
@@ -352,14 +354,16 @@
   async function refreshAdmin(search = '') {
     try {
       if (!adminCache) {
-        const [users, stats, listings] = await Promise.all([
+        const [users, stats, listings, unlocks, payment] = await Promise.all([
           apiCall('/admin/users'),
           apiCall('/admin/stats'),
-          apiCall('/listings')
+          apiCall('/listings'),
+          apiCall('/admin/unlocks'),
+          apiCall('/payment')
         ]);
-        adminCache = { users, stats, listings };
+        adminCache = { users, stats, listings, unlocks, payment };
       }
-      const { users, stats, listings } = adminCache;
+      const { users, stats, listings, unlocks, payment } = adminCache;
       const query = search.toLowerCase();
       const matches = item => `${item.name} ${item.email} ${item.role} ${item.city || ''} ${item.phone || ''} ${item.address || ''} ${item.company || ''}`.toLowerCase().includes(query);
       const filtered = users.filter(matches);
@@ -374,6 +378,45 @@
       fill('#landlordCards', 'landlord');
       fill('#brokerCards', 'broker');
       renderListings('#adminListings', listings);
+      const paymentForm = document.querySelector('#paymentForm');
+      if (paymentForm && payment && !paymentForm.dataset.ready) {
+        paymentForm.elements.amount.value = payment.amount || '';
+        paymentForm.elements.note.value = payment.note || '';
+        paymentForm.dataset.qr = payment.qrUrl || '';
+        paymentForm.dataset.ready = '1';
+        if (payment.qrUrl) document.querySelector('#qrPreview').innerHTML = `<img alt="Payment QR code" src="${esc(payment.qrUrl)}" style="width:160px;height:160px;object-fit:contain">`;
+      }
+      const receiptList = document.querySelector('#receiptList');
+      if (receiptList) {
+        receiptList.innerHTML = (unlocks || []).map(item => `<div class="request-row"><div><b>${esc(item.student?.name || 'Student')}</b><p>${esc(item.student?.phone || '')} · ${esc(item.student?.email || '')}<br>${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}</p><a href="${esc(item.receiptUrl)}" target="_blank" rel="noopener">View receipt</a></div><div class="listing-actions"><span class="status-pill">${esc(item.status)}</span>${item.status === 'pending' ? `<button class="small-button" data-unlock="${esc(item.id)}" data-status="approved">Approve</button><button class="small-button danger" data-unlock="${esc(item.id)}" data-status="rejected">Reject</button>` : ''}</div></div>`).join('') || '<div class="empty-state">No receipts yet.</div>';
+        receiptList.querySelectorAll('[data-unlock]').forEach(button => button.addEventListener('click', async () => {
+          try {
+            await apiCall(`/admin/unlocks/${button.dataset.unlock}`, { method: 'PUT', body: JSON.stringify({ status: button.dataset.status }) });
+            adminCache = null;
+            refreshAdmin(document.querySelector('#userSearch')?.value || '');
+          } catch (error) { alert(error.message); }
+        }));
+      }
+      if (paymentForm && !paymentForm.dataset.bound) {
+        paymentForm.dataset.bound = '1';
+        paymentForm.addEventListener('submit', async event => {
+          event.preventDefault();
+          const data = new FormData(paymentForm);
+          let qrUrl = paymentForm.dataset.qr || '';
+          const file = data.get('qr');
+          try {
+            if (file && file.size) {
+              const uploaded = await uploadImage(file);
+              qrUrl = uploaded.url;
+              paymentForm.dataset.qr = qrUrl;
+            }
+            await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ amount: Number(data.get('amount')), note: String(data.get('note') || ''), qrUrl }) });
+            adminCache = null;
+            alert('Payment details saved.');
+            refreshAdmin();
+          } catch (error) { alert(error.message); }
+        });
+      }
       const searchBox = document.querySelector('#userSearch');
       if (searchBox && searchBox.value !== search) searchBox.value = search;
       searchBox.oninput = event => refreshAdmin(event.target.value);
