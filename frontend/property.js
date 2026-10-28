@@ -26,7 +26,13 @@
     if (Number.isFinite(listed) && item.brokerFee != null && item.brokerFee !== '') return listed;
     return Math.floor(Number(item.rent || 0) / 2);
   };
-  const payCard = item => `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2><p class="pay-amount">${money(feeOf(item))}</p><p>Half of the ${money(item.rent)} monthly rent. The same QR is used for every house. After approval you get the exact address, the map, and both phone numbers.</p><button class="pay-now" type="button" id="openPay">Pay now</button></section>`;
+  const dealHtml = item => {
+    const rent = Number(item.rent || 0);
+    const fee = feeOf(item);
+    const saved = Math.max(rent - fee, 0);
+    return `<div class="deal"><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span><span class="deal-badge">50% OFF</span><div class="deal-prices"><span class="was">${money(rent)}</span><strong>${money(fee)}</strong></div><p class="deal-save">You save ${money(saved)} on the broker fee</p></div>`;
+  };
+  const payCard = item => `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2>${dealHtml(item)}<p>One QR for every house. After approval you get the exact address, the map, and both phone numbers.</p><button class="pay-now" type="button" id="openPay">Pay now</button></section>`;
 
   const openPay = (item, payment) => {
     document.querySelector('#payModal')?.remove();
@@ -34,7 +40,7 @@
     modal.id = 'payModal';
     modal.className = 'pay-modal';
     const fee = feeOf(item);
-    modal.innerHTML = `<div class="pay-sheet" role="dialog" aria-modal="true" aria-labelledby="payTitle"><button class="pay-close" type="button" aria-label="Close">×</button><small>STEP 1 · SCAN</small><h2 id="payTitle">Scan the QR code</h2><p class="pay-lead">Pay ${money(fee)} for this house. That is half the monthly rent. Scan this QR and enter that amount.</p><div class="qr-stage">${payment.qrUrl ? `<div class="qr-frame"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"><span class="qr-scan"></span></div>` : '<p class="pay-missing">The payment QR is not ready yet. Ask the admin to add it.</p>'}<b>${money(fee)}</b><span>Half of ${money(item.rent)} rent</span></div><div class="pay-step"><small>STEP 2 · UPLOAD</small><h3>Upload the payment receipt</h3><form id="receiptForm"><label class="receipt-drop"><input name="receipt" type="file" accept="image/*" required><span id="receiptLabel">Choose a photo of your receipt</span></label><button class="pay-now" type="submit" ${payment.qrUrl ? '' : 'disabled'}>Submit receipt</button></form><p class="pay-message" id="requestMessage"></p></div></div>`;
+    modal.innerHTML = `<div class="pay-sheet" role="dialog" aria-modal="true" aria-labelledby="payTitle"><button class="pay-close" type="button" aria-label="Close">×</button><small>STEP 1 · SCAN</small><h2 id="payTitle">Scan the QR code</h2><p class="pay-lead">Student offer on this house. Scan the QR and enter ${money(fee)}.</p>${dealHtml(item)}<div class="qr-stage">${payment.qrUrl ? `<div class="qr-frame"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"><span class="qr-scan"></span></div>` : '<p class="pay-missing">The payment QR is not ready yet. Ask the admin to add it.</p>'}</div><div class="pay-step"><small>STEP 2 · UPLOAD</small><h3>Upload the payment receipt</h3><form id="receiptForm"><label class="receipt-drop"><input name="receipt" type="file" accept="image/*" required><span id="receiptLabel">Choose a photo of your receipt</span></label><button class="pay-now" type="submit" ${payment.qrUrl ? '' : 'disabled'}>Submit receipt</button></form><p class="pay-message" id="requestMessage"></p></div></div>`;
     document.body.appendChild(modal);
     document.body.classList.add('pay-open');
     const close = () => { modal.remove(); document.body.classList.remove('pay-open'); };
@@ -89,7 +95,7 @@
     let aside = '';
     let payment = null;
     if (unlocked) aside = people(item);
-    else if (!user) aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2><p class="pay-amount">${money(feeOf(item))}</p><p>Half of the ${money(item.rent)} monthly rent. Sign in as a student, then scan the QR.</p><a class="pay-now" href="access.html#student">Sign in to pay</a></section>`;
+    else if (!user) aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2>${dealHtml(item)}<p>Sign in as a student, then scan the QR and pay the discounted fee.</p><a class="pay-now" href="access.html#student">Sign in to pay</a></section>`;
     else if (user.role !== 'student') aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Students pay this fee</h2><p>A student account is what unlocks the address and the phone numbers.</p></section>`;
     else if (item.unlockStatus === 'pending') aside = waitingCard();
     else {
