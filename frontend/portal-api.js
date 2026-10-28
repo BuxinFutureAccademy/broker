@@ -384,10 +384,6 @@
     }
   }
 
-  if (document.querySelector('#adminStats')) {
-    const session = guard('admin'); if (session) refreshAdmin();
-  }
-
   function personCard(item) {
     return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p><p>Address: ${esc(item.address || 'Not provided')}</p></div></article>`;
   }
@@ -486,6 +482,11 @@
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
+  }
+
+  if (document.querySelector('#adminStats')) {
+    const session = guard('admin');
+    if (session) refreshAdmin();
   }
 
   function showWorkspace() {
