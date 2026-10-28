@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin workspace · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="portal.css?v=6">
+  <link rel="stylesheet" href="portal.css?v=7">
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -53,14 +53,27 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Payment QR</h1>
-            <p>Upload one QR code. It appears on every house. The fee is always half the rent.</p>
+            <p>Upload one QR code. Add every name, phone number, and email that should appear on the Contact page. WhatsApp uses one number. The email button uses one address.</p>
           </div>
         </div>
         <section class="panel">
           <form id="paymentForm" class="form-grid">
-            <label>Your name<input name="contactName" placeholder="Name students will see"></label>
-            <label>Your phone<input name="contactPhone" placeholder="+91 98765 43210"></label>
-            <label class="wide">Your email<input name="contactEmail" type="email" placeholder="you@email.com"></label>
+            <label>WhatsApp number<input name="contactPhone" placeholder="+91 98765 43210"><small class="field-note">Only this number opens WhatsApp and Call.</small></label>
+            <label>Email button<input name="contactEmail" type="email" placeholder="you@email.com"><small class="field-note">Only this address opens the email.</small></label>
+            <div class="wide contact-editor">
+              <div class="editor-head"><b>Names</b><button type="button" data-add="names">Add name</button></div>
+              <div data-rows="names"></div>
+            </div>
+            <div class="wide contact-editor">
+              <div class="editor-head"><b>Phone numbers</b><button type="button" data-add="phones">Add phone</button></div>
+              <small class="field-note">These show on the Contact page. They do not open WhatsApp.</small>
+              <div data-rows="phones"></div>
+            </div>
+            <div class="wide contact-editor">
+              <div class="editor-head"><b>Emails</b><button type="button" data-add="emails">Add email</button></div>
+              <small class="field-note">These show on the Contact page. They do not open the email button.</small>
+              <div data-rows="emails"></div>
+            </div>
             <label class="wide">QR code image<input name="qr" type="file" accept="image/*"></label>
             <div class="wide" id="qrPreview"></div>
             <button class="pay-now" type="submit">Save QR code</button>
@@ -151,6 +164,6 @@
       </section>
     </section>
   </main>
-  <script src="portal-api.js?v=6"></script>
+  <script src="portal-api.js?v=7"></script>
 </body>
 </html>

@@ -36,3 +36,11 @@
   .report-filter,.person-facts{grid-template-columns:1fr}
   .reach{bottom:calc(86px + env(safe-area-inset-bottom))}
 }
+.field-note{display:block;margin-top:4px;color:#60758d;font-size:12px;font-weight:600}
+.contact-editor{display:grid;gap:8px}
+.contact-editor .editor-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.contact-editor .editor-head b{font-size:14px}
+.contact-editor .editor-head button{height:36px;padding:0 12px;border:0;border-radius:10px;background:#eaf2ff;color:#0759d6;font-weight:700;cursor:pointer}
+.editor-row{display:flex;gap:8px}
+.editor-row input{flex:1;height:44px;border:1px solid #d5e0ec;border-radius:10px;padding:0 12px;font:inherit}
+.editor-row .row-close{width:44px;height:44px;border:0;border-radius:10px;background:#fde8e8;color:#9b1c1c;font-size:22px;cursor:pointer}

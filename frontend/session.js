@@ -57,6 +57,28 @@
     const phone = payment.contactPhone || '';
     const email = payment.contactEmail || '';
     const name = payment.contactName || 'Admin';
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const uniq = list => {
+      const out = [];
+      list.forEach(item => {
+        const text = String(item || '').trim();
+        if (text && !out.includes(text)) out.push(text);
+      });
+      return out;
+    };
+    const saved = payment.contacts || {};
+    const names = uniq([...(saved.names || []), name === 'Admin' ? '' : name]);
+    const phones = uniq([phone, ...(saved.phones || [])]);
+    const emails = uniq([email, ...(saved.emails || [])]);
+    const directory = document.querySelector('#contactDirectory');
+    if (directory) {
+      const blocks = [];
+      if (names.length) blocks.push(`<h3>Names</h3><ul>${names.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`);
+      if (phones.length) blocks.push(`<h3>Phone numbers</h3><ul>${phones.map(item => `<li><a href="tel:${dial(item)}">${esc(item)}</a></li>`).join('')}</ul>`);
+      if (emails.length) blocks.push(`<h3>Emails</h3><ul>${emails.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`);
+      directory.innerHTML = blocks.join('');
+      directory.hidden = !blocks.length;
+    }
     const wa = dial(phone).replace(/^\+/, '');
     const intro = 'Hello StudentStay, my name is ______. I am an international student looking for a room in Greater Noida. How can you help me?';
     const mailBody = 'Hello StudentStay,\n\nMy name is ______.\n\nI am an international student looking for a room in Greater Noida.\n\nHow can you help me?';
@@ -84,7 +106,7 @@
       if (detail) detail.textContent = phone;
     }
     const who = document.querySelector('#contactWho');
-    if (who) who.textContent = name;
+    if (who) who.textContent = names[0] || name;
     const note = document.querySelector('#contactNote');
     if (!note) return;
     if (phone || email) note.textContent = 'Call, WhatsApp, or email. The message already says hello. Add your name, then send it.';

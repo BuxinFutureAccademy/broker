@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
 import cloudinary
 import cloudinary.uploader
+import json
 import os
 from dotenv import load_dotenv
 
@@ -117,6 +118,7 @@ class PaymentSetting(db.Model):
     contact_name = db.Column(db.String(80))
     contact_phone = db.Column(db.String(30))
     contact_email = db.Column(db.String(120))
+    contacts = db.Column(db.Text)
 
 class Unlock(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -289,7 +291,7 @@ def ensure_schema():
             db.session.commit()
     if 'payment_setting' in tables:
         columns = {column['name'] for column in inspector.get_columns('payment_setting')}
-        for name, kind in (('contact_name', 'VARCHAR(80)'), ('contact_phone', 'VARCHAR(30)'), ('contact_email', 'VARCHAR(120)')):
+        for name, kind in (('contact_name', 'VARCHAR(80)'), ('contact_phone', 'VARCHAR(30)'), ('contact_email', 'VARCHAR(120)'), ('contacts', 'TEXT')):
             if name not in columns:
                 db.session.execute(text(f'ALTER TABLE payment_setting ADD COLUMN {name} {kind}'))
                 db.session.commit()
@@ -1007,6 +1009,31 @@ def delete_broker_portfolio_item(portfolio_id):
     
     return jsonify({'message': 'Portfolio item deleted successfully'})
 
+def clean_contact_list(items, limit):
+    cleaned = []
+    for item in items or []:
+        text = str(item or '').strip()[:limit]
+        if text and text not in cleaned:
+            cleaned.append(text)
+        if len(cleaned) >= 30:
+            break
+    return cleaned
+
+def stored_contacts(setting):
+    raw = {}
+    if setting and setting.contacts:
+        try:
+            raw = json.loads(setting.contacts)
+        except (TypeError, ValueError):
+            raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    return {
+        'names': clean_contact_list(raw.get('names'), 80),
+        'phones': clean_contact_list(raw.get('phones'), 40),
+        'emails': clean_contact_list(raw.get('emails'), 120),
+    }
+
 def broker_contact():
     setting = PaymentSetting.query.first()
     admin = User.query.filter_by(role='admin').first()
@@ -1030,6 +1057,7 @@ def payment_payload():
         'contactName': contact['name'],
         'contactPhone': contact['phone'],
         'contactEmail': contact['email'],
+        'contacts': stored_contacts(setting),
     }
 
 @app.route('/api/payment', methods=['GET'])
@@ -1067,6 +1095,18 @@ def update_payment_settings():
         setting.contact_phone = (data.get('contactPhone') or '').strip()
     if 'contactEmail' in data:
         setting.contact_email = (data.get('contactEmail') or '').strip()
+    if 'contacts' in data:
+        incoming = data.get('contacts') or {}
+        if not isinstance(incoming, dict):
+            incoming = {}
+        lists = {
+            'names': clean_contact_list(incoming.get('names'), 80),
+            'phones': clean_contact_list(incoming.get('phones'), 40),
+            'emails': clean_contact_list(incoming.get('emails'), 120),
+        }
+        setting.contacts = json.dumps(lists)
+        if lists['names']:
+            setting.contact_name = lists['names'][0]
     db.session.commit()
     return jsonify(payment_payload())
 

@@ -441,6 +441,27 @@
   }
 
   let adminCache = null;
+  const contactRow = (kind, value) => `<div class="editor-row"><input data-kind="${kind}" value="${esc(value)}"><button class="row-close" type="button" aria-label="Remove">×</button></div>`;
+  const paintContactLists = (form, payment) => {
+    const saved = payment?.contacts;
+    const seed = {
+      names: saved ? (saved.names || []) : (payment?.contactName ? [payment.contactName] : []),
+      phones: saved ? (saved.phones || []) : [],
+      emails: saved ? (saved.emails || []) : [],
+    };
+    ['names', 'phones', 'emails'].forEach(kind => {
+      const box = form.querySelector(`[data-rows="${kind}"]`);
+      if (!box) return;
+      const values = seed[kind].length ? seed[kind] : [''];
+      box.innerHTML = values.map(value => contactRow(kind, value)).join('');
+    });
+  };
+  const readContactLists = form => ({
+    names: [...form.querySelectorAll('[data-kind="names"]')].map(input => input.value.trim()).filter(Boolean),
+    phones: [...form.querySelectorAll('[data-kind="phones"]')].map(input => input.value.trim()).filter(Boolean),
+    emails: [...form.querySelectorAll('[data-kind="emails"]')].map(input => input.value.trim()).filter(Boolean),
+  });
+
   async function refreshAdmin(search = '') {
     try {
       if (!adminCache) {
@@ -480,9 +501,16 @@
       const paymentForm = document.querySelector('#paymentForm');
       const qrPreview = document.querySelector('#qrPreview');
       if (paymentForm && payment) {
-        if (paymentForm.elements.contactName) paymentForm.elements.contactName.value = payment.contactName || '';
-        if (paymentForm.elements.contactPhone) paymentForm.elements.contactPhone.value = payment.contactPhone || '';
-        if (paymentForm.elements.contactEmail) paymentForm.elements.contactEmail.value = payment.contactEmail || '';
+        const setIdle = (name, value) => {
+          const input = paymentForm.elements[name];
+          if (input && document.activeElement !== input) input.value = value || '';
+        };
+        setIdle('contactPhone', payment.contactPhone);
+        setIdle('contactEmail', payment.contactEmail);
+        if (!paymentForm.dataset.listsReady) {
+          paintContactLists(paymentForm, payment);
+          paymentForm.dataset.listsReady = '1';
+        }
         paymentForm.dataset.qr = payment.qrUrl || '';
         if (qrPreview) {
           qrPreview.innerHTML = payment.qrUrl
@@ -509,6 +537,21 @@
           if (!file || !preview) return;
           preview.innerHTML = `<p class="form-hint">Selected. Save to show this QR to students.</p><div class="qr-frame admin-qr"><img alt="Selected QR code" src="${URL.createObjectURL(file)}"></div>`;
         });
+        paymentForm.addEventListener('click', event => {
+          const add = event.target.closest('[data-add]');
+          if (add) {
+            const box = paymentForm.querySelector(`[data-rows="${add.dataset.add}"]`);
+            box?.insertAdjacentHTML('beforeend', contactRow(add.dataset.add, ''));
+            box?.querySelector('.editor-row:last-child input')?.focus();
+            return;
+          }
+          const close = event.target.closest('.row-close');
+          if (!close) return;
+          const row = close.closest('.editor-row');
+          const box = row?.parentElement;
+          row?.remove();
+          if (box && !box.children.length) box.insertAdjacentHTML('beforeend', contactRow(box.dataset.rows, ''));
+        });
         paymentForm.addEventListener('submit', async event => {
           event.preventDefault();
           const data = new FormData(paymentForm);
@@ -524,7 +567,9 @@
               alert('Choose your QR code image, then save.');
               return;
             }
-            const saved = await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ qrUrl, contactName: String(data.get('contactName') || ''), contactPhone: String(data.get('contactPhone') || ''), contactEmail: String(data.get('contactEmail') || '') }) });
+            const lists = readContactLists(paymentForm);
+            const saved = await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ qrUrl, contactName: lists.names[0] || '', contactPhone: String(data.get('contactPhone') || ''), contactEmail: String(data.get('contactEmail') || ''), contacts: lists }) });
+            paintContactLists(paymentForm, saved || { contacts: lists, contactPhone: data.get('contactPhone'), contactEmail: data.get('contactEmail') });
             paymentForm.dataset.qr = saved?.qrUrl || qrUrl;
             adminCache = null;
             const preview = document.querySelector('#qrPreview');
