@@ -49,6 +49,19 @@
       link.href = `mailto:${email}`;
       link.textContent = email;
     }
+    const wa = dial(phone).replace(/^\+/, '');
+    document.querySelectorAll('[data-reach="wa"]').forEach(item => {
+      if (!wa) return;
+      item.hidden = false;
+      item.href = `https://wa.me/${wa}`;
+      item.target = '_blank';
+      item.rel = 'noopener';
+    });
+    document.querySelectorAll('[data-reach="mail"]').forEach(item => {
+      if (!email) return;
+      item.hidden = false;
+      item.href = `mailto:${email}`;
+    });
   }).catch(() => {});
   document.querySelector('.login')?.addEventListener('click', () => { location.href = 'access.html'; });
   document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=signup'; });

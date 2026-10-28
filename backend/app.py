@@ -1079,6 +1079,9 @@ def unlock_payload(row):
         'note': row.note or '',
         'receiptUrl': row.receipt_url,
         'created': row.created.isoformat() if row.created else None,
+        'studentId': row.student_id,
+        'ownerId': listing.owner_id if listing else '',
+        'ownerName': listing.owner_name if listing else '',
         'student': {
             'name': student.name if student else 'Student',
             'email': student.email if student else '',
@@ -1091,6 +1094,8 @@ def unlock_payload(row):
             'address': listing.address if listing else '',
             'rent': listing.rent if listing else 0,
             'brokerFee': int(listing.rent or 0) // 2 if listing else 0,
+            'photos': (listing.photos or []) if listing else [],
+            'ownerName': listing.owner_name if listing else '',
         },
     }
 

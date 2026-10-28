@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin workspace · StudentStay</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="portal.css">
+  <link rel="stylesheet" href="portal.css?v=5">
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -25,6 +25,7 @@
       <a class="selected" href="#overview">▦ &nbsp; Overview</a>
       <a href="#payments">₹ &nbsp; Payment QR</a>
       <a href="#receipts">▣ &nbsp; Receipts</a>
+      <a href="#reports">₹ &nbsp; Reports</a>
       <a href="#students">🎓 &nbsp; Students</a>
       <a href="#landlords">⌂ &nbsp; Landlords</a>
       <a href="#homes">▣ &nbsp; Homes</a>
@@ -80,12 +81,30 @@
         </section>
       </section>
 
+      <section class="workspace" id="reports" hidden>
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Reports</h1>
+            <p>Money received. A payment is counted only after you approve the receipt.</p>
+          </div>
+        </div>
+        <section class="panel">
+          <form id="reportFilter" class="report-filter">
+            <label>From<input id="reportFrom" type="date"></label>
+            <label>To<input id="reportTo" type="date"></label>
+          </form>
+          <div id="reportSummary" class="stat-row"></div>
+          <div id="reportRows" class="request-list"></div>
+        </section>
+      </section>
+
       <section class="workspace" id="students" hidden>
         <div class="page-heading">
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Students</h1>
-            <p>Student accounts only.</p>
+            <p>Open a student to see their details and the houses they have rented.</p>
           </div>
         </div>
         <section class="panel">
@@ -98,12 +117,24 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Landlords</h1>
-            <p>Landlord accounts only.</p>
+            <p>Open a landlord to see their houses, who rented them, and the rent those houses brought in.</p>
           </div>
         </div>
         <section class="panel">
           <div class="landlord-grid" id="landlordCards"></div>
         </section>
+      </section>
+
+      <section class="workspace" id="person" hidden>
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1 id="personTitle">Account</h1>
+            <p id="personLead"></p>
+          </div>
+          <a class="outline-button" id="personBack" href="#students">Back</a>
+        </div>
+        <section class="panel" id="personView"></section>
       </section>
 
       <section class="workspace" id="homes" hidden>
@@ -120,6 +151,6 @@
       </section>
     </section>
   </main>
-  <script src="portal-api.js?v=4"></script>
+  <script src="portal-api.js?v=5"></script>
 </body>
 </html>

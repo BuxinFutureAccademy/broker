@@ -384,8 +384,60 @@
     }
   }
 
+  let openPersonId = '';
   function personCard(item) {
-    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p><p>Address: ${esc(item.address || 'Not provided')}</p></div></article>`;
+    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p></div><button class="small-button person-open" type="button" data-person="${esc(item.id)}">View</button></article>`;
+  }
+  function houseShots(items) {
+    const photos = items.flatMap(item => item.photos || []).filter(Boolean).slice(0, 8);
+    if (!photos.length) return '';
+    return `<div class="person-photos">${photos.map(photo => `<img alt="" src="${esc(photo)}">`).join('')}</div>`;
+  }
+  function paintReports() {
+    const summary = document.querySelector('#reportSummary');
+    const rows = document.querySelector('#reportRows');
+    if (!summary || !rows || !adminCache) return;
+    const from = document.querySelector('#reportFrom')?.value || '';
+    const to = document.querySelector('#reportTo')?.value || '';
+    const approved = (adminCache.unlocks || []).filter(item => item.status === 'approved').filter(item => {
+      const day = String(item.created || '').slice(0, 10);
+      if (from && day < from) return false;
+      if (to && day > to) return false;
+      return true;
+    });
+    const total = approved.reduce((sum, item) => sum + Number(item.listing?.brokerFee || 0), 0);
+    summary.innerHTML = `<div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(total)}</strong><small>Approved broker fees</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved payments</small></div></div>`;
+    rows.innerHTML = approved.map(item => `<div class="request-row"><div><b>${money(item.listing?.brokerFee)}</b><p>${esc(item.student?.name || 'Student')} · ${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}<br>${esc(item.ownerName || item.listing?.ownerName || 'Landlord')} · ${item.created ? new Date(item.created).toLocaleDateString() : ''}</p></div><span class="status-pill">Approved</span></div>`).join('') || '<div class="empty-state">No approved payments in those dates.</div>';
+  }
+  function paintPerson() {
+    const view = document.querySelector('#personView');
+    if (!view || !adminCache || !openPersonId) return;
+    const person = (adminCache.users || []).find(item => item.id === openPersonId);
+    if (!person) { view.innerHTML = '<div class="empty-state">Choose a student or a landlord.</div>'; return; }
+    const title = document.querySelector('#personTitle');
+    const lead = document.querySelector('#personLead');
+    const back = document.querySelector('#personBack');
+    if (title) title.textContent = person.name;
+    if (back) { back.href = person.role === 'landlord' ? '#landlords' : '#students'; back.textContent = person.role === 'landlord' ? 'Back to landlords' : 'Back to students'; }
+    const listings = adminCache.listings || [];
+    const unlocks = (adminCache.unlocks || []).filter(item => item.status === 'approved');
+    if (person.role === 'student') {
+      const rented = unlocks.filter(item => item.studentId === person.id || (item.student?.email || '').toLowerCase() === (person.email || '').toLowerCase());
+      const homes = rented.map(item => listings.find(home => home.id === item.listing?.id) || item.listing || {});
+      if (lead) lead.textContent = `${rented.length} rented house${rented.length === 1 ? '' : 's'}.`;
+      view.innerHTML = `<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p></div><h3>Houses rented</h3>${houseShots(homes)}${rented.map(item => `<div class="request-row"><div><b>${esc(item.listing?.title || 'Home')}</b><p>${esc(item.listing?.sector || '')} · Rent ${money(item.listing?.rent)} a month</p></div><span class="status-pill">Rented</span></div>`).join('') || '<div class="empty-state">This student has not rented a house yet.</div>'}`;
+      return;
+    }
+    const homes = listings.filter(item => item.ownerId === person.id);
+    const rented = unlocks.filter(item => item.ownerId === person.id || homes.some(home => home.id === item.listing?.id));
+    const rentTotal = rented.reduce((sum, item) => sum + Number(item.listing?.rent || 0), 0);
+    if (lead) lead.textContent = `${homes.length} posted. ${rented.length} rented. Rent received ${money(rentTotal)}.`;
+    view.innerHTML = `<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p><p><b>Houses posted</b><br>${homes.length}</p><p><b>Rent from rented homes</b><br>${money(rentTotal)}</p></div><h3>Houses posted</h3>${houseShots(homes)}${homes.map(item => `<div class="request-row"><div><b>${esc(item.title)}</b><p>${esc(item.sector || item.city || '')} · ${money(item.rent)} / month</p></div></div>`).join('') || '<div class="empty-state">This landlord has not posted a house yet.</div>'}<h3>Who rented</h3>${rented.map(item => `<div class="request-row"><div><b>${esc(item.student?.name || 'Student')}</b><p>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.phone || 'No phone')} · ${money(item.listing?.rent)} / month</p></div></div>`).join('') || '<div class="empty-state">Nobody has rented a house from this landlord yet.</div>'}`;
+  }
+  function showPerson(id) {
+    openPersonId = id;
+    if (location.hash !== '#person') location.hash = 'person';
+    paintPerson();
   }
 
   let adminCache = null;
@@ -416,6 +468,14 @@
       };
       fill('#studentCards', 'student');
       fill('#landlordCards', 'landlord');
+      document.querySelectorAll('[data-person]').forEach(button => { button.onclick = () => showPerson(button.dataset.person); });
+      paintReports();
+      if (openPersonId) paintPerson();
+      const reportFilter = document.querySelector('#reportFilter');
+      if (reportFilter && !reportFilter.dataset.bound) {
+        reportFilter.dataset.bound = '1';
+        reportFilter.addEventListener('change', paintReports);
+      }
       renderListings('#adminListings', listings);
       const paymentForm = document.querySelector('#paymentForm');
       const qrPreview = document.querySelector('#qrPreview');
@@ -500,7 +560,7 @@
     });
   }
 
-  window.addEventListener('hashchange', showWorkspace);
+  window.addEventListener('hashchange', () => { showWorkspace(); if (location.hash === '#person') paintPerson(); if (location.hash === '#reports') paintReports(); });
   showWorkspace();
 
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
@@ -515,6 +575,19 @@
         link.href = `mailto:${email}`;
         link.textContent = email;
       }
+    });
+    const wa = dial(phone).replace(/^\+/, '');
+    document.querySelectorAll('[data-reach="wa"]').forEach(link => {
+      if (!wa) return;
+      link.hidden = false;
+      link.href = `https://wa.me/${wa}`;
+      link.target = '_blank';
+      link.rel = 'noopener';
+    });
+    document.querySelectorAll('[data-reach="mail"]').forEach(link => {
+      if (!email) return;
+      link.hidden = false;
+      link.href = `mailto:${email}`;
     });
   }).catch(() => {});
 
