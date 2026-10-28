@@ -48,17 +48,19 @@
       link.textContent = email;
     }
     const wa = dial(phone).replace(/^\+/, '');
+    const intro = 'Hello StudentStay, my name is ______. I am an international student looking for a room in Greater Noida. How can you help me?';
+    const mailBody = 'Hello StudentStay,\n\nMy name is ______.\n\nI am an international student looking for a room in Greater Noida.\n\nHow can you help me?';
     document.querySelectorAll('[data-reach="wa"]').forEach(item => {
       if (!wa) return;
       item.hidden = false;
-      item.href = `https://wa.me/${wa}`;
+      item.href = `https://wa.me/${wa}?text=${encodeURIComponent(intro)}`;
       item.target = '_blank';
       item.rel = 'noopener';
     });
     document.querySelectorAll('[data-reach="mail"]').forEach(item => {
       if (!email) return;
       item.hidden = false;
-      item.href = `mailto:${email}`;
+      item.href = `mailto:${email}?subject=${encodeURIComponent('How can you help me?')}&body=${encodeURIComponent(mailBody)}`;
     });
   }).catch(() => {});
   document.querySelector('.login')?.addEventListener('click', () => { location.href = 'access.html'; });

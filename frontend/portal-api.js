@@ -577,17 +577,19 @@
       }
     });
     const wa = dial(phone).replace(/^\+/, '');
+    const intro = 'Hello StudentStay, my name is ______. I am an international student looking for a room in Greater Noida. How can you help me?';
+    const mailBody = 'Hello StudentStay,\n\nMy name is ______.\n\nI am an international student looking for a room in Greater Noida.\n\nHow can you help me?';
     document.querySelectorAll('[data-reach="wa"]').forEach(link => {
       if (!wa) return;
       link.hidden = false;
-      link.href = `https://wa.me/${wa}`;
+      link.href = `https://wa.me/${wa}?text=${encodeURIComponent(intro)}`;
       link.target = '_blank';
       link.rel = 'noopener';
     });
     document.querySelectorAll('[data-reach="mail"]').forEach(link => {
       if (!email) return;
       link.hidden = false;
-      link.href = `mailto:${email}`;
+      link.href = `mailto:${email}?subject=${encodeURIComponent('How can you help me?')}&body=${encodeURIComponent(mailBody)}`;
     });
   }).catch(() => {});
 

@@ -58,29 +58,36 @@
     const email = payment.contactEmail || '';
     const name = payment.contactName || 'Admin';
     const wa = dial(phone).replace(/^\+/, '');
+    const intro = 'Hello StudentStay, my name is ______. I am an international student looking for a room in Greater Noida. How can you help me?';
+    const mailBody = 'Hello StudentStay,\n\nMy name is ______.\n\nI am an international student looking for a room in Greater Noida.\n\nHow can you help me?';
     document.querySelectorAll('[data-reach="wa"]').forEach(item => {
       if (!wa) return;
       item.hidden = false;
-      item.href = `https://wa.me/${wa}`;
+      item.href = `https://wa.me/${wa}?text=${encodeURIComponent(intro)}`;
       item.target = '_blank';
       item.rel = 'noopener';
+      const detail = item.querySelector('small');
+      if (detail && phone) detail.textContent = phone;
     });
     document.querySelectorAll('[data-reach="mail"]').forEach(item => {
       if (!email) return;
       item.hidden = false;
-      item.href = `mailto:${email}`;
+      item.href = `mailto:${email}?subject=${encodeURIComponent('How can you help me?')}&body=${encodeURIComponent(mailBody)}`;
+      const detail = item.querySelector('small');
+      if (detail) detail.textContent = email;
     });
     const call = document.querySelector('#contactCall');
     if (call && phone) {
       call.hidden = false;
       call.href = `tel:${dial(phone)}`;
-      call.textContent = `Call ${phone}`;
+      const detail = call.querySelector('small');
+      if (detail) detail.textContent = phone;
     }
     const who = document.querySelector('#contactWho');
     if (who) who.textContent = name;
     const note = document.querySelector('#contactNote');
     if (!note) return;
-    if (phone || email) note.textContent = 'Message the admin on WhatsApp, or send an email. This uses the number and email saved on the Payment QR page.';
+    if (phone || email) note.textContent = 'Call, WhatsApp, or email. The message already says hello. Add your name, then send it.';
     else if (!('contactPhone' in payment)) note.textContent = 'The number is saved. The server is still updating, so these buttons are off for a minute. Refresh this page and they will open WhatsApp and email.';
     else note.textContent = 'No WhatsApp number or email is saved yet. Add them on the admin Payment QR page.';
   }).catch(() => {});
