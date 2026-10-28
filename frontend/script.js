@@ -2,15 +2,6 @@
   const API_BASE = 'https://broker-961c.onrender.com/api';
   const read = key => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const sectors = window.GREATER_NOIDA_SECTORS || [];
-  const sectorGrid = document.querySelector('#homeSectors');
-  const paintSectors = items => {
-    if (!sectorGrid) return;
-    sectorGrid.innerHTML = sectors.map(name => {
-      const count = items.filter(item => (item.sector || '').toLowerCase() === name.toLowerCase()).length;
-      return `<a class="city-card sector-card" href="properties.html?city=${encodeURIComponent(name)}"><span class="sector-mark">${esc(name.split(' ')[0])}</span><b>${esc(name)}</b><small>${count ? `${count} home${count === 1 ? '' : 's'}` : 'No homes yet'}</small></a>`;
-    }).join('');
-  };
   let listings = [];
   let displayed = [];
   const grid = document.querySelector('#homeProperties') || document.querySelector('.property-grid');
@@ -21,19 +12,10 @@
     grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state">No homes posted in Greater Noida yet.</div>';
     bindHearts();
   };
-  const slideRow = row => row?.addEventListener('wheel', event => {
-    if (row.scrollWidth <= row.clientWidth) return;
-    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-    event.preventDefault();
-    row.scrollLeft += event.deltaY;
-  }, { passive: false });
-  slideRow(sectorGrid);
-  paintSectors([]);
   paint([]);
   fetch(`${API_BASE}/listings`).then(response => response.ok ? response.json() : []).then(items => {
     listings = Array.isArray(items) ? items : [];
     displayed = listings;
-    paintSectors(listings);
     paint(listings);
   }).catch(() => {});
   const filterCards = () => {
