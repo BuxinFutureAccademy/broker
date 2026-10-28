@@ -23,94 +23,100 @@
     <aside class="side-nav">
       <span class="side-label">SITE MANAGEMENT</span>
       <a class="selected" href="#overview">▦ &nbsp; Overview</a>
-      <a href="#payments">₹ &nbsp; Payments</a>
+      <a href="#payments">₹ &nbsp; Payment QR</a>
       <a href="#receipts">▣ &nbsp; Receipts</a>
-      <a href="#users">♙ &nbsp; All users</a>
       <a href="#students">🎓 &nbsp; Students</a>
       <a href="#landlords">⌂ &nbsp; Landlords</a>
-      <a href="#listings">▣ &nbsp; Listings</a>
+      <a href="#homes">▣ &nbsp; Homes</a>
       <a href="index.html">↗ &nbsp; View website</a>
       <div class="sidebar-help">
         <b>Admin access</b>
-        <p>Review students, landlords, payments, and the homes on the site.</p>
+        <p>Each item in this menu opens only that page.</p>
       </div>
     </aside>
-    <section class="dashboard-main" id="overview">
-      <div class="page-heading">
-        <div>
-          <span class="eyebrow">ADMIN CONSOLE</span>
-          <h1>Website overview</h1>
-          <p>Live accounts and room listings from the server.</p>
-        </div>
-        <span class="admin-status">● &nbsp; Live data</span>
-      </div>
-      <div class="stat-row" id="adminStats"></div>
-      <section class="panel" id="payments">
-        <div class="panel-heading">
+    <section class="dashboard-main">
+      <section class="workspace" id="overview">
+        <div class="page-heading">
           <div>
-            <h2>Payment QR</h2>
-            <p>Upload one QR code. It is used on every house. The fee is always half the rent, so a ₹12,000 room asks for ₹6,000.</p>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Overview</h1>
+            <p>A count of the site. Open Payment QR, Receipts, Students, Landlords, or Homes for the details.</p>
           </div>
+          <span class="admin-status">● &nbsp; Live data</span>
         </div>
-        <form id="paymentForm" class="form-grid">
-          <label>Your name<input name="contactName" placeholder="Name students will see"></label>
-          <label>Your phone<input name="contactPhone" placeholder="+91 98765 43210"></label>
-          <label class="wide">Your email<input name="contactEmail" type="email" placeholder="you@email.com"></label>
-          <label class="wide">QR code image<input name="qr" type="file" accept="image/*"></label>
-          <div class="wide" id="qrPreview"></div>
-          <button class="pay-now" type="submit">Save payment details</button>
-        </form>
+        <div class="stat-row" id="adminStats"></div>
       </section>
-      <section class="panel" id="receipts">
-        <div class="panel-heading">
+
+      <section class="workspace" id="payments" hidden>
+        <div class="page-heading">
           <div>
-            <h2>Payment receipts</h2>
-            <p>Approve a receipt so the student can open the house and contact you or the landlord.</p>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Payment QR</h1>
+            <p>Upload one QR code. It appears on every house. The fee is always half the rent.</p>
           </div>
         </div>
-        <div id="receiptList" class="request-list"></div>
+        <section class="panel">
+          <form id="paymentForm" class="form-grid">
+            <label>Your name<input name="contactName" placeholder="Name students will see"></label>
+            <label>Your phone<input name="contactPhone" placeholder="+91 98765 43210"></label>
+            <label class="wide">Your email<input name="contactEmail" type="email" placeholder="you@email.com"></label>
+            <label class="wide">QR code image<input name="qr" type="file" accept="image/*"></label>
+            <div class="wide" id="qrPreview"></div>
+            <button class="pay-now" type="submit">Save QR code</button>
+          </form>
+        </section>
       </section>
-      <section class="panel" id="users">
-        <div class="panel-heading">
+
+      <section class="workspace" id="receipts" hidden>
+        <div class="page-heading">
           <div>
-            <h2>All users</h2>
-            <p>Every student, landlord, and admin account.</p>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Receipts</h1>
+            <p>Approve a receipt so that student can open the house and call you or the landlord.</p>
           </div>
-          <input class="table-search" id="userSearch" placeholder="Search users…">
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>City</th><th>Address</th><th>Joined</th></tr></thead>
-            <tbody id="userRows"></tbody>
-          </table>
-        </div>
+        <section class="panel">
+          <div id="receiptList" class="request-list"></div>
+        </section>
       </section>
-      <section class="panel" id="students">
-        <div class="panel-heading">
+
+      <section class="workspace" id="students" hidden>
+        <div class="page-heading">
           <div>
-            <h2>Students</h2>
-            <p>Student accounts and the contact details they share.</p>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Students</h1>
+            <p>Student accounts only.</p>
           </div>
         </div>
-        <div class="landlord-grid" id="studentCards"></div>
+        <section class="panel">
+          <div class="landlord-grid" id="studentCards"></div>
+        </section>
       </section>
-      <section class="panel" id="landlords">
-        <div class="panel-heading">
+
+      <section class="workspace" id="landlords" hidden>
+        <div class="page-heading">
           <div>
-            <h2>Landlords</h2>
-            <p>Profiles and property addresses submitted by landlords.</p>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Landlords</h1>
+            <p>Landlord accounts only.</p>
           </div>
         </div>
-        <div class="landlord-grid" id="landlordCards"></div>
+        <section class="panel">
+          <div class="landlord-grid" id="landlordCards"></div>
+        </section>
       </section>
-      <section class="panel" id="listings">
-        <div class="panel-heading">
+
+      <section class="workspace" id="homes" hidden>
+        <div class="page-heading">
           <div>
-            <h2>All room listings</h2>
-            <p>Homes published by landlords.</p>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Homes</h1>
+            <p>Every room a landlord has posted on the site.</p>
           </div>
         </div>
-        <div class="listing-grid" id="adminListings"></div>
+        <section class="panel">
+          <div class="listing-grid" id="adminListings"></div>
+        </section>
       </section>
     </section>
   </main>

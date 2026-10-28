@@ -42,16 +42,15 @@
       if (!response.ok) {
         const text = await response.text();
         console.error('API Error Response:', text);
-        // Check if it's HTML (backend sleeping or error page)
-        if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html')) {
+        if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html') || text.trim().startsWith('<!DOCTYPE')) {
           throw new Error('Backend is waking up. Please wait 30 seconds and try again.');
         }
+        let message = 'Could not complete that. Please try again.';
         try {
           const error = JSON.parse(text);
-          throw new Error(error.error || 'API request failed');
-        } catch {
-          throw new Error('API request failed. Please try again.');
-        }
+          if (error.error) message = error.error;
+        } catch { /* the server did not return JSON */ }
+        throw new Error(message);
       }
 
       return response.json();
@@ -74,7 +73,13 @@
     });
 
     if (!response.ok) {
-      throw new Error('Image upload failed');
+      const text = await response.text();
+      let message = 'The image could not be uploaded.';
+      try {
+        const error = JSON.parse(text);
+        if (error.error) message = error.error;
+      } catch { /* keep the plain message */ }
+      throw new Error(message);
     }
 
     return response.json();
@@ -251,9 +256,27 @@
   function renderListings(selector, items, options = {}) {
     const target = document.querySelector(selector); if (!target) return;
     if (!items.length) { target.innerHTML = '<div class="empty-state">No room listings here yet. Add the first property to get started.</div>'; return; }
-    target.innerHTML = items.map(item => `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc(item.unlocked ? (item.address || item.sector || item.city) : (item.sector || item.city || 'Greater Noida'))}</p>${options.owner ? `<div class="listing-actions"><button class="small-button" data-delete-listing="${esc(item.id)}">Remove listing</button></div>` : `<div class="listing-actions"><a class="primary-button" href="property.html?id=${encodeURIComponent(item.id)}">View home</a></div>`}</div></article>`).join('');
+    target.innerHTML = items.map(item => `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc(item.unlocked ? (item.address || item.sector || item.city) : (item.sector || item.city || 'Greater Noida'))}</p>${options.owner ? `<div class="listing-actions"><button class="small-button" data-edit-listing="${esc(item.id)}">Edit</button><button class="small-button danger" data-delete-listing="${esc(item.id)}">Remove</button></div>` : `<div class="listing-actions"><a class="primary-button" href="property.html?id=${encodeURIComponent(item.id)}">View home</a></div>`}</div></article>`).join('');
     target.querySelectorAll('[data-property-id]').forEach(tile => { tile.addEventListener('click', event => { if (!event.target.closest('button')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }); tile.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } }); });
     target.querySelectorAll('[data-delete-listing]').forEach(button => button.addEventListener('click', async () => { if (!confirm('Remove this listing?')) return; try { await apiCall(`/listings/${button.dataset.deleteListing}`, { method: 'DELETE' }); refreshLandlord(); } catch (error) { alert(error.message); } }));
+    target.querySelectorAll('[data-edit-listing]').forEach(button => button.addEventListener('click', event => {
+      event.stopPropagation();
+      const item = (window.studentstayRooms || []).find(room => room.id === button.dataset.editListing);
+      const form = document.querySelector('#listingForm');
+      if (!item || !form) return;
+      form.dataset.editId = item.id;
+      form.elements.title.value = item.title || '';
+      form.elements.type.value = item.type || 'Private room';
+      form.elements.rent.value = item.rent || '';
+      form.elements.available.value = item.available || '';
+      form.elements.sector.value = item.sector || '';
+      form.elements.address.value = item.address || '';
+      form.elements.description.value = item.description || '';
+      document.querySelector('#photoPreview').innerHTML = (item.photos || []).map(photo => `<img alt="" src="${esc(photo)}">`).join('');
+      const submit = form.querySelector('button');
+      if (submit) submit.textContent = 'Save changes';
+      location.hash = '#overview';
+    }));
     target.querySelectorAll('[data-request-listing]').forEach(button => button.addEventListener('click', async () => { try { await apiCall('/requests', { method: 'POST', body: JSON.stringify({ listing_id: button.dataset.requestListing }) }); alert('Request sent. It is saved under My Requests.'); showStudentArea(); } catch (error) { alert(error.message); } }));
   }
 
@@ -302,27 +325,35 @@
         const data = new FormData(form);
         const files = [...data.getAll('photos')].filter(file => file.size && file.type.startsWith('image/'));
         if (files.length > 5) return alert('Choose up to 5 photos.');
+        const editingId = form.dataset.editId;
+        if (!editingId && !files.length) return alert('Add at least one photo of the room.');
         
         try {
-          const photos = await Promise.all(files.map(uploadImage));
-          const all = await apiCall('/listings', {
-            method: 'POST',
-            body: JSON.stringify({
-              title: String(data.get('title')).trim(),
-              type: String(data.get('type')),
-              rent: Number(data.get('rent')),
-              available: String(data.get('available')),
-              address: String(data.get('address')).trim(),
-              sector: String(data.get('sector') || '').trim(),
-              city: 'Greater Noida',
-              description: String(data.get('description')).trim(),
-              photos: photos.map(p => p.url)
-            })
-          });
+          const photos = files.length ? await Promise.all(files.map(uploadImage)) : [];
+          const payload = {
+            title: String(data.get('title')).trim(),
+            type: String(data.get('type')),
+            rent: Number(data.get('rent')),
+            available: String(data.get('available')),
+            address: String(data.get('address')).trim(),
+            sector: String(data.get('sector') || '').trim(),
+            city: 'Greater Noida',
+            description: String(data.get('description')).trim(),
+            photos: photos.map(photo => photo.url)
+          };
+          if (editingId) {
+            await apiCall(`/listings/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+          } else {
+            await apiCall('/listings', { method: 'POST', body: JSON.stringify(payload) });
+          }
+          delete form.dataset.editId;
           form.reset();
+          const submit = form.querySelector('button');
+          if (submit) submit.textContent = 'Publish room';
           document.querySelector('#photoPreview').innerHTML = '';
           refreshLandlord();
-          alert('Your room listing has been published.');
+          location.hash = '#rooms';
+          alert(editingId ? 'Room updated.' : 'Your room has been published.');
         } catch (error) {
           alert(error.message || 'The images could not be uploaded. Try fewer or smaller photos.');
         }
@@ -341,13 +372,15 @@
         apiCall('/unlocks/landlord')
       ]);
 
-      document.querySelector('#landlordStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${listings.length}</strong><small>Active listings</small></div></div><div class="stat-card"><span class="stat-icon">♙</span><div><strong>${unlocks.length}</strong><small>Paid students</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Verified</strong><small>Landlord account</small></div></div>`;
+      document.querySelector('#landlordStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${listings.length}</strong><small>Your rooms</small></div></div><div class="stat-card"><span class="stat-icon">♙</span><div><strong>${unlocks.length}</strong><small>Paid students</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Verified</strong><small>Landlord account</small></div></div>`;
+      window.studentstayRooms = listings;
       renderListings('#landlordListings', listings, { owner: true });
       
-      const rows = unlocks.map(req => `<div class="request-row"><div><b>${esc(req.student?.name || 'Student')}</b><p>${esc(req.student?.email || '')} · ${esc(req.student?.phone || 'No phone provided')}<br>Unlocked: ${esc(req.listing?.title || 'Property')} · ${esc(req.listing?.sector || '')}</p></div><span class="status-pill">Paid</span></div>`).join('');
-      document.querySelector('#landlordStudents').innerHTML = rows || '<div class="empty-state">No student has unlocked your rooms yet.</div>';
+      const rows = unlocks.map(req => `<div class="request-row"><div><b>${esc(req.student?.name || 'Student')}</b><p>${esc(req.student?.email || '')} · ${esc(req.student?.phone || 'No phone provided')}<br>${esc(req.listing?.title || 'Room')} · ${esc(req.listing?.sector || '')}</p></div><span class="status-pill">Paid</span></div>`).join('');
+      document.querySelector('#landlordStudents').innerHTML = rows || '<div class="empty-state">No student has paid the broker fee for your rooms yet.</div>';
     } catch (error) {
-      console.error('Error loading landlord data:', error);
+      const rooms = document.querySelector('#landlordListings');
+      if (rooms) rooms.innerHTML = `<div class="empty-state">${esc(error.message || 'Could not load your rooms.')}</div>`;
     }
   }
 
@@ -378,22 +411,28 @@
       const filtered = users.filter(item => item.role !== 'broker').filter(matches);
 
       document.querySelector('#adminStats').innerHTML = `<div class="stat-card"><span class="stat-icon">🎓</span><div><strong>${stats.students}</strong><small>Students</small></div></div><div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${stats.landlords}</strong><small>Landlords</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${stats.listings}</strong><small>Room listings</small></div></div>`;
-      document.querySelector('#userRows').innerHTML = filtered.map(item => `<tr><td><b>${esc(item.name)}</b></td><td><span class="role-badge">${esc(item.role)}</span></td><td>${esc(item.email)}</td><td>${esc(item.phone || '—')}</td><td>${esc(item.city || '—')}</td><td>${esc(item.address || '—')}</td><td>${item.joined ? new Date(item.joined).toLocaleDateString() : '—'}</td></tr>`).join('') || '<tr><td colspan="7">No matching users.</td></tr>';
+      document.querySelector('#userRows') && (document.querySelector('#userRows').innerHTML = filtered.map(item => `<tr><td><b>${esc(item.name)}</b></td><td><span class="role-badge">${esc(item.role)}</span></td><td>${esc(item.email)}</td><td>${esc(item.phone || '—')}</td><td>${esc(item.city || '—')}</td><td>${esc(item.address || '—')}</td><td>${item.joined ? new Date(item.joined).toLocaleDateString() : '—'}</td></tr>`).join('') || '<tr><td colspan="7">No matching users.</td></tr>');
       const fill = (selector, role) => {
+        const node = document.querySelector(selector);
+        if (!node) return;
         const people = filtered.filter(item => item.role === role);
-        document.querySelector(selector).innerHTML = people.map(personCard).join('') || '<div class="empty-state">No matching accounts.</div>';
+        node.innerHTML = people.map(personCard).join('') || '<div class="empty-state">No matching accounts.</div>';
       };
       fill('#studentCards', 'student');
       fill('#landlordCards', 'landlord');
       renderListings('#adminListings', listings);
       const paymentForm = document.querySelector('#paymentForm');
-      if (paymentForm && payment && !paymentForm.dataset.ready) {
+      const qrPreview = document.querySelector('#qrPreview');
+      if (paymentForm && payment) {
         if (paymentForm.elements.contactName) paymentForm.elements.contactName.value = payment.contactName || '';
         if (paymentForm.elements.contactPhone) paymentForm.elements.contactPhone.value = payment.contactPhone || '';
         if (paymentForm.elements.contactEmail) paymentForm.elements.contactEmail.value = payment.contactEmail || '';
         paymentForm.dataset.qr = payment.qrUrl || '';
-        paymentForm.dataset.ready = '1';
-        if (payment.qrUrl) document.querySelector('#qrPreview').innerHTML = `<div class="qr-frame admin-qr"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"></div>`;
+        if (qrPreview) {
+          qrPreview.innerHTML = payment.qrUrl
+            ? `<p class="form-hint">This is the QR students scan.</p><div class="qr-frame admin-qr"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"></div>`
+            : '<p class="form-hint">No QR code is saved yet. Choose an image, then save.</p>';
+        }
       }
       const receiptList = document.querySelector('#receiptList');
       if (receiptList) {
@@ -408,6 +447,12 @@
       }
       if (paymentForm && !paymentForm.dataset.bound) {
         paymentForm.dataset.bound = '1';
+        paymentForm.elements.qr?.addEventListener('change', () => {
+          const file = paymentForm.elements.qr.files[0];
+          const preview = document.querySelector('#qrPreview');
+          if (!file || !preview) return;
+          preview.innerHTML = `<p class="form-hint">Selected. Save to show this QR to students.</p><div class="qr-frame admin-qr"><img alt="Selected QR code" src="${URL.createObjectURL(file)}"></div>`;
+        });
         paymentForm.addEventListener('submit', async event => {
           event.preventDefault();
           const data = new FormData(paymentForm);
@@ -416,23 +461,46 @@
           try {
             if (file && file.size) {
               const uploaded = await uploadImage(file);
+              if (!uploaded.url) throw new Error('The QR image uploaded, but no link came back.');
               qrUrl = uploaded.url;
-              paymentForm.dataset.qr = qrUrl;
             }
-            await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ qrUrl, contactName: String(data.get('contactName') || ''), contactPhone: String(data.get('contactPhone') || ''), contactEmail: String(data.get('contactEmail') || '') }) });
+            if (!qrUrl) {
+              alert('Choose your QR code image, then save.');
+              return;
+            }
+            const saved = await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ qrUrl, contactName: String(data.get('contactName') || ''), contactPhone: String(data.get('contactPhone') || ''), contactEmail: String(data.get('contactEmail') || '') }) });
+            paymentForm.dataset.qr = saved?.qrUrl || qrUrl;
             adminCache = null;
-            alert('Payment details saved.');
+            const preview = document.querySelector('#qrPreview');
+            if (preview) preview.innerHTML = `<p class="form-hint">Saved. Students can scan this QR.</p><div class="qr-frame admin-qr"><img alt="Payment QR code" src="${esc(paymentForm.dataset.qr)}"></div>`;
+            alert('QR code saved. Students can scan it on every house.');
             refreshAdmin();
           } catch (error) { alert(error.message); }
         });
       }
       const searchBox = document.querySelector('#userSearch');
-      if (searchBox && searchBox.value !== search) searchBox.value = search;
-      searchBox.oninput = event => refreshAdmin(event.target.value);
+      if (searchBox) {
+        if (searchBox.value !== search) searchBox.value = search;
+        searchBox.oninput = event => refreshAdmin(event.target.value);
+      }
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
   }
+
+  function showWorkspace() {
+    const pages = [...document.querySelectorAll('.workspace')];
+    if (!pages.length) return;
+    const wanted = (location.hash || '#overview').slice(1);
+    const current = pages.some(page => page.id === wanted) ? wanted : 'overview';
+    pages.forEach(page => { page.hidden = page.id !== current; });
+    document.querySelectorAll('.side-nav a[href^="#"]').forEach(link => {
+      link.classList.toggle('selected', link.getAttribute('href') === `#${current}`);
+    });
+  }
+
+  window.addEventListener('hashchange', showWorkspace);
+  showWorkspace();
 
   document.querySelectorAll('.side-nav a[href^="#"]').forEach(link => {
     link.addEventListener('click', () => {

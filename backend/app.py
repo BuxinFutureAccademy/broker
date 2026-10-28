@@ -492,6 +492,29 @@ def create_listing():
     
     return jsonify({'message': 'Listing created successfully', 'id': new_listing.id}), 201
 
+@app.route('/api/listings/<listing_id>', methods=['PUT'])
+@jwt_required()
+def update_listing(listing_id):
+    user = User.query.get(get_jwt_identity())
+    listing = Listing.query.get(listing_id)
+    if not user or user.role != 'landlord':
+        return jsonify({'error': 'Only landlords can edit a room'}), 403
+    if not listing or listing.owner_id != user.id:
+        return jsonify({'error': 'That room was not found'}), 404
+    data = request.get_json() or {}
+    listing.title = data.get('title') or listing.title
+    listing.type = data.get('type') or listing.type
+    listing.rent = clean_int(data.get('rent'), listing.rent or 0)
+    listing.available = data.get('available', listing.available)
+    listing.address = data.get('address') or listing.address
+    listing.sector = data.get('sector') or listing.sector
+    listing.description = data.get('description') or listing.description
+    photos = data.get('photos') or []
+    if photos:
+        listing.photos = photos
+    db.session.commit()
+    return jsonify(serialize_listing(listing, user))
+
 @app.route('/api/listings/<listing_id>', methods=['DELETE'])
 @jwt_required()
 def delete_listing(listing_id):
@@ -513,8 +536,8 @@ def delete_listing(listing_id):
 @jwt_required()
 def get_landlord_listings():
     user_id = get_jwt_identity()
+    user = User.query.get(user_id)
     listings = Listing.query.filter_by(owner_id=user_id).all()
-    
     return jsonify([serialize_listing(listing, user) for listing in listings])
 
 # Image Upload Route
