@@ -727,6 +727,31 @@ def get_all_users():
         })
     return jsonify(result)
 
+@app.route('/api/admin/users/<user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user_account(user_id):
+    admin = User.query.get(get_jwt_identity())
+    if not admin or admin.role != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    person = User.query.get(user_id)
+    if not person:
+        return jsonify({'error': 'Account not found'}), 404
+    if person.role == 'admin' or person.id == admin.id:
+        return jsonify({'error': 'The admin account stays.'}), 400
+    if person.role == 'landlord':
+        for listing in Listing.query.filter_by(owner_id=person.id).all():
+            Unlock.query.filter_by(listing_id=listing.id).delete()
+            Request.query.filter_by(listing_id=listing.id).delete()
+            db.session.delete(listing)
+    Unlock.query.filter_by(student_id=person.id).delete()
+    Request.query.filter_by(student_id=person.id).delete()
+    BrokerProfile.query.filter_by(user_id=person.id).delete()
+    BrokerLocation.query.filter_by(user_id=person.id).delete()
+    BrokerPortfolio.query.filter_by(broker_id=person.id).delete()
+    db.session.delete(person)
+    db.session.commit()
+    return jsonify({'message': 'Deleted'})
+
 @app.route('/api/admin/stats', methods=['GET'])
 @jwt_required()
 def get_admin_stats():
@@ -1211,6 +1236,19 @@ def decide_unlock(unlock_id):
     row.note = data.get('note') or ''
     db.session.commit()
     return jsonify(unlock_payload(row))
+
+@app.route('/api/admin/unlocks/<unlock_id>', methods=['DELETE'])
+@jwt_required()
+def delete_unlock(unlock_id):
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    row = Unlock.query.get(unlock_id)
+    if not row:
+        return jsonify({'error': 'Payment not found'}), 404
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify({'message': 'Payment deleted'})
 
 @app.route('/api/broker/visits', methods=['GET'])
 @jwt_required()

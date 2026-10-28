@@ -386,7 +386,7 @@
 
   let openPersonId = '';
   function personCard(item) {
-    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p></div><button class="small-button person-open" type="button" data-person="${esc(item.id)}">View</button></article>`;
+    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p></div><div class="person-actions"><button class="small-button person-open" type="button" data-person="${esc(item.id)}">View</button><button class="small-button danger" type="button" data-delete-user="${esc(item.id)}" data-delete-role="${esc(item.role)}" data-delete-name="${esc(item.name)}">Delete</button></div></article>`;
   }
   function houseShots(items) {
     const photos = items.flatMap(item => item.photos || []).filter(Boolean).slice(0, 8);
@@ -407,7 +407,8 @@
     });
     const total = approved.reduce((sum, item) => sum + Number(item.listing?.brokerFee || 0), 0);
     summary.innerHTML = `<div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(total)}</strong><small>Approved broker fees</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved payments</small></div></div>`;
-    rows.innerHTML = approved.map(item => `<div class="request-row"><div><b>${money(item.listing?.brokerFee)}</b><p>${esc(item.student?.name || 'Student')} · ${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}<br>${esc(item.ownerName || item.listing?.ownerName || 'Landlord')} · ${item.created ? new Date(item.created).toLocaleDateString() : ''}</p></div><span class="status-pill">Approved</span></div>`).join('') || '<div class="empty-state">No approved payments in those dates.</div>';
+    rows.innerHTML = approved.map(item => `<div class="request-row report-line"><div><b>${money(item.listing?.brokerFee)}</b><p>${esc(item.student?.name || 'Student')} · ${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}<br>${esc(item.ownerName || item.listing?.ownerName || 'Landlord')} · ${item.created ? new Date(item.created).toLocaleDateString() : ''}</p></div><button class="small-button danger" type="button" data-delete-payment="${esc(item.id)}">Delete</button></div>`).join('') || '<div class="empty-state">No approved payments in those dates.</div>';
+    bindDeletes(rows);
   }
   function paintPerson() {
     const view = document.querySelector('#personView');
@@ -421,18 +422,49 @@
     if (back) { back.href = person.role === 'landlord' ? '#landlords' : '#students'; back.textContent = person.role === 'landlord' ? 'Back to landlords' : 'Back to students'; }
     const listings = adminCache.listings || [];
     const unlocks = (adminCache.unlocks || []).filter(item => item.status === 'approved');
+    const remove = `<p><button class="small-button danger" type="button" data-delete-user="${esc(person.id)}" data-delete-role="${esc(person.role)}" data-delete-name="${esc(person.name)}">Delete this ${person.role === 'landlord' ? 'landlord and their houses' : 'student'}</button></p>`;
     if (person.role === 'student') {
       const rented = unlocks.filter(item => item.studentId === person.id || (item.student?.email || '').toLowerCase() === (person.email || '').toLowerCase());
       const homes = rented.map(item => listings.find(home => home.id === item.listing?.id) || item.listing || {});
       if (lead) lead.textContent = `${rented.length} rented house${rented.length === 1 ? '' : 's'}.`;
-      view.innerHTML = `<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p></div><h3>Houses rented</h3>${houseShots(homes)}${rented.map(item => `<div class="request-row"><div><b>${esc(item.listing?.title || 'Home')}</b><p>${esc(item.listing?.sector || '')} · Rent ${money(item.listing?.rent)} a month</p></div><span class="status-pill">Rented</span></div>`).join('') || '<div class="empty-state">This student has not rented a house yet.</div>'}`;
+      view.innerHTML = `${remove}<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p></div><h3>Houses rented</h3>${houseShots(homes)}${rented.map(item => `<div class="request-row"><div><b>${esc(item.listing?.title || 'Home')}</b><p>${esc(item.listing?.sector || '')} · Rent ${money(item.listing?.rent)} a month</p></div><span class="status-pill">Rented</span></div>`).join('') || '<div class="empty-state">This student has not rented a house yet.</div>'}`;
+      bindDeletes(view);
       return;
     }
     const homes = listings.filter(item => item.ownerId === person.id);
     const rented = unlocks.filter(item => item.ownerId === person.id || homes.some(home => home.id === item.listing?.id));
     const rentTotal = rented.reduce((sum, item) => sum + Number(item.listing?.rent || 0), 0);
     if (lead) lead.textContent = `${homes.length} posted. ${rented.length} rented. Rent received ${money(rentTotal)}.`;
-    view.innerHTML = `<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p><p><b>Houses posted</b><br>${homes.length}</p><p><b>Rent from rented homes</b><br>${money(rentTotal)}</p></div><h3>Houses posted</h3>${houseShots(homes)}${homes.map(item => `<div class="request-row"><div><b>${esc(item.title)}</b><p>${esc(item.sector || item.city || '')} · ${money(item.rent)} / month</p></div></div>`).join('') || '<div class="empty-state">This landlord has not posted a house yet.</div>'}<h3>Who rented</h3>${rented.map(item => `<div class="request-row"><div><b>${esc(item.student?.name || 'Student')}</b><p>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.phone || 'No phone')} · ${money(item.listing?.rent)} / month</p></div></div>`).join('') || '<div class="empty-state">Nobody has rented a house from this landlord yet.</div>'}`;
+    view.innerHTML = `${remove}<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p><p><b>Houses posted</b><br>${homes.length}</p><p><b>Rent from rented homes</b><br>${money(rentTotal)}</p></div><h3>Houses posted</h3>${houseShots(homes)}${homes.map(item => `<div class="request-row"><div><b>${esc(item.title)}</b><p>${esc(item.sector || item.city || '')} · ${money(item.rent)} / month</p></div></div>`).join('') || '<div class="empty-state">This landlord has not posted a house yet.</div>'}<h3>Who rented</h3>${rented.map(item => `<div class="request-row"><div><b>${esc(item.student?.name || 'Student')}</b><p>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.phone || 'No phone')} · ${money(item.listing?.rent)} / month</p></div></div>`).join('') || '<div class="empty-state">Nobody has rented a house from this landlord yet.</div>'}`;
+    bindDeletes(view);
+  }
+  async function deleteAccount(id, role, name) {
+    const text = role === 'landlord' ? `Delete ${name}? Every house they posted will be deleted too.` : `Delete ${name}?`;
+    if (!window.confirm(text)) return;
+    try {
+      await apiCall(`/admin/users/${id}`, { method: 'DELETE' });
+      adminCache = null;
+      if (openPersonId === id) {
+        openPersonId = '';
+        location.hash = role === 'landlord' ? 'landlords' : 'students';
+      }
+      refreshAdmin(document.querySelector('#userSearch')?.value || '');
+    } catch (error) { alert(error.message); }
+  }
+  function bindDeletes(root) {
+    root.querySelectorAll('[data-delete-user]').forEach(button => {
+      button.onclick = () => deleteAccount(button.dataset.deleteUser, button.dataset.deleteRole, button.dataset.deleteName);
+    });
+    root.querySelectorAll('[data-delete-payment]').forEach(button => {
+      button.onclick = async () => {
+        if (!window.confirm('Delete this payment? It will leave the money report.')) return;
+        try {
+          await apiCall(`/admin/unlocks/${button.dataset.deletePayment}`, { method: 'DELETE' });
+          adminCache = null;
+          refreshAdmin(document.querySelector('#userSearch')?.value || '');
+        } catch (error) { alert(error.message); }
+      };
+    });
   }
   function showPerson(id) {
     openPersonId = id;
@@ -490,6 +522,7 @@
       fill('#studentCards', 'student');
       fill('#landlordCards', 'landlord');
       document.querySelectorAll('[data-person]').forEach(button => { button.onclick = () => showPerson(button.dataset.person); });
+      bindDeletes(document);
       paintReports();
       if (openPersonId) paintPerson();
       const reportFilter = document.querySelector('#reportFilter');
