@@ -127,7 +127,6 @@ class Unlock(db.Model):
 DEMO_USERS = [
     {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Delhi'},
     {'name': 'Test Landlord', 'email': 'landlord@test.com', 'password': 'landlord123', 'role': 'landlord', 'phone': '+91 98765 43211', 'city': 'Noida', 'address': 'Sector 62, Noida'},
-    {'name': 'Test Broker', 'email': 'broker@test.com', 'password': 'broker123', 'role': 'broker', 'phone': '+91 98765 43212', 'city': 'Bangalore'},
     {'name': 'Test Admin', 'email': 'admin@test.com', 'password': 'admin123', 'role': 'admin', 'phone': '+91 98765 43213', 'city': 'Mumbai'},
 ]
 
@@ -332,6 +331,9 @@ def send_email(to, subject, template):
 def signup():
     data = request.get_json()
     
+    if data.get('role') not in ('student', 'landlord'):
+        return jsonify({'error': 'Create a student or landlord account. The admin handles the broker fee.'}), 400
+
     # Check if user already exists
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email already registered'}), 400
@@ -361,12 +363,6 @@ def signup():
             data['email'],
             'Welcome to StudentStay - Landlord Account',
             f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your landlord account has been created successfully. You can now start listing your properties.</p><p>Best regards,<br>StudentStay Team</p>'
-        )
-    elif data['role'] == 'broker':
-        send_email(
-            data['email'],
-            'Welcome to StudentStay - Broker Account',
-            f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your broker account has been created successfully. You can now upload your portfolio and connect with students.</p><p>Best regards,<br>StudentStay Team</p>'
         )
     else:
         send_email(
@@ -402,6 +398,9 @@ def login():
     if not bcrypt.checkpw(data['password'].encode('utf-8'), user.password.encode('utf-8')):
         return jsonify({'error': 'Invalid credentials'}), 401
     
+    if user.role == 'broker' or data.get('role') == 'broker':
+        return jsonify({'error': 'Broker accounts are closed. Sign in as a student or a landlord. The admin handles the broker fee.'}), 403
+
     if user.role != data['role']:
         return jsonify({'error': 'Account type mismatch'}), 401
     

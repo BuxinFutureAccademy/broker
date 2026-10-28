@@ -8,7 +8,7 @@
   if (!user || !token) return;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-  const dashboards = { student: 'student.html', landlord: 'landlord.html', broker: 'broker.html', admin: 'admin.html' };
+  const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
   const dashboard = dashboards[user.role] || 'access.html';
   const initial = esc((user.name || 'U').slice(0, 1).toUpperCase());
 

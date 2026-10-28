@@ -80,7 +80,7 @@
     return response.json();
   }
 
-  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'broker' ? 'broker.html' : role === 'admin' ? 'admin.html' : 'student.html'; };
+  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'admin' ? 'admin.html' : 'student.html'; };
 
   document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', () => {
     localStorage.removeItem('studentstay_token');
@@ -105,21 +105,21 @@
       nameField.closest('label').classList.toggle('hidden', mode !== 'signup');
       nameField.required = mode === 'signup';
       signupFields.forEach(el => el.classList.toggle('hidden', mode !== 'signup'));
-      authForm.elements.phone.required = mode === 'signup' && (role === 'landlord' || role === 'broker');
-      authForm.elements.city.required = mode === 'signup' && (role === 'landlord' || role === 'broker');
+      authForm.elements.phone.required = mode === 'signup' && role === 'landlord';
+      authForm.elements.city.required = mode === 'signup' && role === 'landlord';
       authForm.elements.password.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
     };
 
     tabs.forEach(button => button.addEventListener('click', () => { mode = button.dataset.mode; tabs.forEach(tab => tab.classList.toggle('active', tab === button)); updateAuth(); }));
     roleButtons.forEach(button => button.addEventListener('click', () => { role = button.dataset.role; roleButtons.forEach(item => item.classList.toggle('active', item === button)); if (role === 'admin') mode = 'signin'; tabs.forEach(tab => { tab.classList.toggle('active', tab.dataset.mode === mode); tab.disabled = role === 'admin' && tab.dataset.mode === 'signup'; }); updateAuth(); }));
     const requestedRole = location.hash.slice(1);
-    if (['student','landlord','broker','admin'].includes(requestedRole)) roleButtons.find(button => button.dataset.role === requestedRole)?.click();
+    if (['student','landlord','admin'].includes(requestedRole)) roleButtons.find(button => button.dataset.role === requestedRole)?.click();
     if (new URLSearchParams(location.search).get('mode') === 'signup') document.querySelector('[data-mode="signup"]').click();
     if (location.hash === '#student') showStudentArea();
     updateAuth();
     const signedInNote = document.querySelector('#signedInNote');
     if (signedInNote && currentUser && token) {
-      const dashboards = { student: 'student.html', landlord: 'landlord.html', broker: 'broker.html', admin: 'admin.html' };
+      const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
       signedInNote.classList.remove('hidden');
       signedInNote.innerHTML = `<span>You are signed in as <b>${esc(currentUser.name)}</b> (${esc(currentUser.role)}).</span><a href="${dashboards[currentUser.role] || 'student.html'}">Go to dashboard</a>`;
     }
@@ -344,10 +344,7 @@
   }
 
   function personCard(item) {
-    const extra = item.role === 'broker'
-      ? `<p>${esc(item.company || 'No company')} · License ${esc(item.license || 'not added')}</p><p>${esc(item.specialization || 'No specialization')} · ${esc(item.experience ? `${item.experience} years` : 'Experience not added')}</p><p>${esc(item.area || item.city || 'Area not added')} · ${esc(item.hours || 'Hours not added')}</p><p>${esc(item.serviceAddress || item.address || 'Address not provided')}</p>`
-      : `<p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p><p>Address: ${esc(item.address || 'Not provided')}</p>`;
-    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p>${item.role === 'broker' ? `<p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p>` : ''}${extra}</div></article>`;
+    return `<article class="landlord-card"><span class="user-avatar">${esc((item.name || '?').slice(0, 1).toUpperCase())}</span><div><h3>${esc(item.name)}</h3><p>${esc(item.email)}</p><p>${esc(item.phone || 'No phone')} · ${esc(item.city || 'City not added')}</p><p>Address: ${esc(item.address || 'Not provided')}</p></div></article>`;
   }
 
   let adminCache = null;
@@ -366,9 +363,9 @@
       const { users, stats, listings, unlocks, payment } = adminCache;
       const query = search.toLowerCase();
       const matches = item => `${item.name} ${item.email} ${item.role} ${item.city || ''} ${item.phone || ''} ${item.address || ''} ${item.company || ''}`.toLowerCase().includes(query);
-      const filtered = users.filter(matches);
+      const filtered = users.filter(item => item.role !== 'broker').filter(matches);
 
-      document.querySelector('#adminStats').innerHTML = `<div class="stat-card"><span class="stat-icon">🎓</span><div><strong>${stats.students}</strong><small>Students</small></div></div><div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${stats.landlords}</strong><small>Landlords</small></div></div><div class="stat-card"><span class="stat-icon">🤝</span><div><strong>${stats.brokers}</strong><small>Brokers</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${stats.listings}</strong><small>Room listings</small></div></div>`;
+      document.querySelector('#adminStats').innerHTML = `<div class="stat-card"><span class="stat-icon">🎓</span><div><strong>${stats.students}</strong><small>Students</small></div></div><div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${stats.landlords}</strong><small>Landlords</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${stats.listings}</strong><small>Room listings</small></div></div>`;
       document.querySelector('#userRows').innerHTML = filtered.map(item => `<tr><td><b>${esc(item.name)}</b></td><td><span class="role-badge">${esc(item.role)}</span></td><td>${esc(item.email)}</td><td>${esc(item.phone || '—')}</td><td>${esc(item.city || '—')}</td><td>${esc(item.address || '—')}</td><td>${item.joined ? new Date(item.joined).toLocaleDateString() : '—'}</td></tr>`).join('') || '<tr><td colspan="7">No matching users.</td></tr>';
       const fill = (selector, role) => {
         const people = filtered.filter(item => item.role === role);
@@ -376,7 +373,6 @@
       };
       fill('#studentCards', 'student');
       fill('#landlordCards', 'landlord');
-      fill('#brokerCards', 'broker');
       renderListings('#adminListings', listings);
       const paymentForm = document.querySelector('#paymentForm');
       if (paymentForm && payment && !paymentForm.dataset.ready) {
