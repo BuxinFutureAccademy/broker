@@ -14,3 +14,6 @@
 .help-band a{color:#0759d6;font-weight:700;text-decoration:none}
 @media(max-width:780px){.account.signed-in{gap:6px}.account.signed-in .login{display:none}.account-copy small{display:none}.account-copy b{font-size:12px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.account.signed-in .signup{height:34px;padding:0 10px}}
 .sector-card{display:block;background:#fff;border:1px solid #e3ebf5;border-radius:12px;padding:8px;text-decoration:none;color:#09264c}.sector-mark{height:72px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(160deg,#0c3f86,#1a6ed0);color:#fff;font-weight:800;font-size:16px}.sector-card b{display:block;margin-top:8px}.sector-card small{display:block;color:#60758d;font-size:11px}
+.cities-panel,.catalog-page{min-width:0}
+.sector-row{display:flex;flex-wrap:nowrap;align-items:stretch;gap:12px;width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px;scrollbar-width:thin}
+.sector-row .sector-card{flex:0 0 148px;width:148px;scroll-snap-align:start}

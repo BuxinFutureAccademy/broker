@@ -21,6 +21,13 @@
     grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state">No homes posted in Greater Noida yet.</div>';
     bindHearts();
   };
+  const slideRow = row => row?.addEventListener('wheel', event => {
+    if (row.scrollWidth <= row.clientWidth) return;
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+    event.preventDefault();
+    row.scrollLeft += event.deltaY;
+  }, { passive: false });
+  slideRow(sectorGrid);
   paintSectors([]);
   paint([]);
   fetch(`${API_BASE}/listings`).then(response => response.ok ? response.json() : []).then(items => {

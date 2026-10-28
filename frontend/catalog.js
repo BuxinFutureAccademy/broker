@@ -9,6 +9,12 @@
       return `<a class="city-card sector-card" href="properties.html?city=${encodeURIComponent(name)}"><span class="sector-mark">${esc(name.split(' ')[0])}</span><b>${esc(name)}</b><small>${liveCount ? `${liveCount} home${liveCount === 1 ? '' : 's'}` : 'No homes yet'}</small></a>`;
     }).join('');
   };
+  cityGrid?.addEventListener('wheel', event => {
+    if (cityGrid.scrollWidth <= cityGrid.clientWidth) return;
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+    event.preventDefault();
+    cityGrid.scrollLeft += event.deltaY;
+  }, { passive: false });
   paintCities([]);
 
   let cards = [];
