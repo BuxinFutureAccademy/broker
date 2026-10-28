@@ -28,3 +28,19 @@
     location.href = 'access.html';
   });
 })();
+
+(() => {
+  if (!document.querySelector('.topbar') || document.querySelector('.phone-nav')) return;
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('studentstay_user') || 'null'); } catch { user = null; }
+  const token = localStorage.getItem('studentstay_token');
+  const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
+  const account = user && token ? (dashboards[user.role] || 'access.html') : 'access.html';
+  const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  const mark = name => page === name ? ' class="on"' : '';
+  const nav = document.createElement('nav');
+  nav.className = 'phone-nav';
+  nav.setAttribute('aria-label', 'Phone');
+  nav.innerHTML = `<a${mark('index.html')} href="index.html"><b>⌂</b><span>Home</span></a><a${page === 'properties.html' || page === 'property.html' ? ' class="on"' : ''} href="properties.html"><b>▣</b><span>Homes</span></a><a href="index.html#help"><b>✉</b><span>Contact</span></a><a${page === 'access.html' || account !== 'access.html' && page === account ? ' class="on"' : ''} href="${account}"><b>●</b><span>${user && token ? 'You' : 'Sign in'}</span></a>`;
+  document.body.appendChild(nav);
+})();
