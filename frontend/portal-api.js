@@ -213,10 +213,21 @@
 
       renderListings('#studentListings', listings, { request: true, studentId: currentUser.id });
 
-      const requestRows = unlocks.map(r => `<div class="request-row"><div><b>${esc(r.listing?.title || 'Home')}</b><p>${esc(r.listing?.sector || '')} · ${esc(r.status)}</p></div><span class="status-pill">${esc(r.status)}</span></div>`).join('');
+      const feeCard = item => {
+        const title = esc(item.listing?.title || 'Home');
+        const sector = esc(item.listing?.sector || 'Greater Noida');
+        const house = `property.html?id=${encodeURIComponent(item.listing?.id || '')}`;
+        if (item.status === 'approved') return `<article class="fee-card approved"><div><small>APPROVED</small><h3>${title}</h3><p>${sector}. The address and both contacts are open.</p></div><a class="pay-now" href="${house}">Go to the house</a></article>`;
+        if (item.status === 'rejected') return `<article class="fee-card rejected"><div><small>NOT ACCEPTED</small><h3>${title}</h3><p>${sector}. Upload a new receipt for this house.</p></div><a class="pay-now" href="${house}">Pay again</a></article>`;
+        return `<article class="fee-card waiting"><span class="fee-orb"></span><div><small>BROKER FEE</small><h3>Waiting for admin approval</h3><p>${title} · ${sector}</p></div></article>`;
+      };
       const requestsEl = document.querySelector('#studentRequests');
       if (requestsEl) {
-        requestsEl.innerHTML = requestRows || '<div class="empty-state">You have not paid a broker fee yet. Open a home to pay and upload your receipt.</div>';
+        requestsEl.innerHTML = unlocks.map(feeCard).join('') || '<div class="empty-state">You have not paid a broker fee yet. Open a home and tap Pay now.</div>';
+        if (location.hash === '#requests') {
+          requestsEl.closest('section')?.scrollIntoView({ block: 'start' });
+          document.querySelectorAll('.side-nav a').forEach(link => link.classList.toggle('selected', link.getAttribute('href') === '#requests'));
+        }
       }
     } catch (error) {
       console.error('Error loading student area:', error);
@@ -378,13 +389,16 @@
       if (paymentForm && payment && !paymentForm.dataset.ready) {
         paymentForm.elements.amount.value = payment.amount || '';
         paymentForm.elements.note.value = payment.note || '';
+        if (paymentForm.elements.contactName) paymentForm.elements.contactName.value = payment.contactName || '';
+        if (paymentForm.elements.contactPhone) paymentForm.elements.contactPhone.value = payment.contactPhone || '';
+        if (paymentForm.elements.contactEmail) paymentForm.elements.contactEmail.value = payment.contactEmail || '';
         paymentForm.dataset.qr = payment.qrUrl || '';
         paymentForm.dataset.ready = '1';
-        if (payment.qrUrl) document.querySelector('#qrPreview').innerHTML = `<img alt="Payment QR code" src="${esc(payment.qrUrl)}" style="width:160px;height:160px;object-fit:contain">`;
+        if (payment.qrUrl) document.querySelector('#qrPreview').innerHTML = `<div class="qr-frame admin-qr"><img alt="Payment QR code" src="${esc(payment.qrUrl)}"></div>`;
       }
       const receiptList = document.querySelector('#receiptList');
       if (receiptList) {
-        receiptList.innerHTML = (unlocks || []).map(item => `<div class="request-row"><div><b>${esc(item.student?.name || 'Student')}</b><p>${esc(item.student?.phone || '')} · ${esc(item.student?.email || '')}<br>${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}</p><a href="${esc(item.receiptUrl)}" target="_blank" rel="noopener">View receipt</a></div><div class="listing-actions"><span class="status-pill">${esc(item.status)}</span>${item.status === 'pending' ? `<button class="small-button" data-unlock="${esc(item.id)}" data-status="approved">Approve</button><button class="small-button danger" data-unlock="${esc(item.id)}" data-status="rejected">Reject</button>` : ''}</div></div>`).join('') || '<div class="empty-state">No receipts yet.</div>';
+        receiptList.innerHTML = (unlocks || []).map(item => `<article class="receipt-card ${esc(item.status)}"><a class="receipt-shot" href="${esc(item.receiptUrl)}" target="_blank" rel="noopener"><img alt="Payment receipt" src="${esc(item.receiptUrl)}"></a><div><small>${esc(item.status === 'pending' ? 'WAITING' : item.status.toUpperCase())}</small><h3>${esc(item.student?.name || 'Student')}</h3><p>${esc(item.student?.phone || 'No phone')} · ${esc(item.student?.email || '')}</p><p>${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}</p>${item.status === 'pending' ? `<div class="receipt-actions"><button class="pay-now" type="button" data-unlock="${esc(item.id)}" data-status="approved">Approve</button><button class="receipt-reject" type="button" data-unlock="${esc(item.id)}" data-status="rejected">Reject</button></div>` : ''}</div></article>`).join('') || '<div class="empty-state">No receipts yet.</div>';
         receiptList.querySelectorAll('[data-unlock]').forEach(button => button.addEventListener('click', async () => {
           try {
             await apiCall(`/admin/unlocks/${button.dataset.unlock}`, { method: 'PUT', body: JSON.stringify({ status: button.dataset.status }) });
@@ -406,7 +420,7 @@
               qrUrl = uploaded.url;
               paymentForm.dataset.qr = qrUrl;
             }
-            await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ amount: Number(data.get('amount')), note: String(data.get('note') || ''), qrUrl }) });
+            await apiCall('/admin/payment', { method: 'PUT', body: JSON.stringify({ amount: Number(data.get('amount')), note: String(data.get('note') || ''), qrUrl, contactName: String(data.get('contactName') || ''), contactPhone: String(data.get('contactPhone') || ''), contactEmail: String(data.get('contactEmail') || '') }) });
             adminCache = null;
             alert('Payment details saved.');
             refreshAdmin();

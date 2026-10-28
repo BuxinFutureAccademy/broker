@@ -55,16 +55,19 @@
         <form id="paymentForm" class="form-grid">
           <label>Fee amount (₹)<input name="amount" type="number" min="0" required></label>
           <label>Note for students<input name="note" placeholder="Pay by UPI and upload the receipt"></label>
+          <label>Your name<input name="contactName" placeholder="Name students will see"></label>
+          <label>Your phone<input name="contactPhone" placeholder="+91 98765 43210"></label>
+          <label class="wide">Your email<input name="contactEmail" type="email" placeholder="you@email.com"></label>
           <label class="wide">QR code image<input name="qr" type="file" accept="image/*"></label>
           <div class="wide" id="qrPreview"></div>
-          <button class="primary-button">Save payment details</button>
+          <button class="pay-now" type="submit">Save payment details</button>
         </form>
       </section>
       <section class="panel" id="receipts">
         <div class="panel-heading">
           <div>
             <h2>Payment receipts</h2>
-            <p>Approve a receipt to reveal the address and landlord number to that student.</p>
+            <p>Approve a receipt so the student can open the house and contact you or the landlord.</p>
           </div>
         </div>
         <div id="receiptList" class="request-list"></div>

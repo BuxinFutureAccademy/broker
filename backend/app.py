@@ -114,6 +114,9 @@ class PaymentSetting(db.Model):
     amount = db.Column(db.Integer, default=2000)
     qr_url = db.Column(db.Text)
     note = db.Column(db.Text, default='Pay the broker fee, then upload a clear photo of your receipt.')
+    contact_name = db.Column(db.String(80))
+    contact_phone = db.Column(db.String(30))
+    contact_email = db.Column(db.String(120))
 
 class Unlock(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -289,9 +292,13 @@ def serialize_listing(listing, viewer=None, approved=None, pending=None):
         'created': listing.created.isoformat() if listing.created else None,
     }
     if is_unlocked:
+        broker = broker_contact()
         data['address'] = listing.address
         data['ownerPhone'] = owner.phone if owner else ''
         data['ownerEmail'] = owner.email if owner else ''
+        data['brokerName'] = broker['name']
+        data['brokerPhone'] = broker['phone']
+        data['brokerEmail'] = broker['email']
     return data
 
 def ensure_schema():
@@ -303,6 +310,12 @@ def ensure_schema():
         if 'sector' not in columns:
             db.session.execute(text('ALTER TABLE listing ADD COLUMN sector VARCHAR(80)'))
             db.session.commit()
+    if 'payment_setting' in tables:
+        columns = {column['name'] for column in inspector.get_columns('payment_setting')}
+        for name, kind in (('contact_name', 'VARCHAR(80)'), ('contact_phone', 'VARCHAR(30)'), ('contact_email', 'VARCHAR(120)')):
+            if name not in columns:
+                db.session.execute(text(f'ALTER TABLE payment_setting ADD COLUMN {name} {kind}'))
+                db.session.commit()
 
 # Initialize database
 with app.app_context():
@@ -989,6 +1002,15 @@ def delete_broker_portfolio_item(portfolio_id):
     
     return jsonify({'message': 'Portfolio item deleted successfully'})
 
+def broker_contact():
+    setting = PaymentSetting.query.first()
+    admin = User.query.filter_by(role='admin').first()
+    return {
+        'name': ((setting.contact_name if setting else '') or (admin.name if admin else '') or 'StudentStay'),
+        'phone': ((setting.contact_phone if setting else '') or (admin.phone if admin else '') or ''),
+        'email': ((setting.contact_email if setting else '') or (admin.email if admin else '') or ''),
+    }
+
 def payment_payload():
     setting = PaymentSetting.query.first()
     if not setting:
@@ -1003,7 +1025,15 @@ def payment_payload():
 
 @app.route('/api/payment', methods=['GET'])
 def get_payment_settings():
-    return jsonify(payment_payload())
+    payload = payment_payload()
+    viewer = viewer_from_request()
+    if viewer and viewer.role == 'admin':
+        payload.update({
+            'contactName': broker_contact()['name'],
+            'contactPhone': broker_contact()['phone'],
+            'contactEmail': broker_contact()['email'],
+        })
+    return jsonify(payload)
 
 @app.route('/api/admin/payment', methods=['PUT'])
 @jwt_required()
@@ -1022,6 +1052,12 @@ def update_payment_settings():
         setting.qr_url = data.get('qrUrl') or ''
     if 'note' in data:
         setting.note = data.get('note') or ''
+    if 'contactName' in data:
+        setting.contact_name = (data.get('contactName') or '').strip()
+    if 'contactPhone' in data:
+        setting.contact_phone = (data.get('contactPhone') or '').strip()
+    if 'contactEmail' in data:
+        setting.contact_email = (data.get('contactEmail') or '').strip()
     db.session.commit()
     return jsonify(payment_payload())
 
