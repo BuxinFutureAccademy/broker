@@ -2,27 +2,41 @@
   const API_BASE = 'https://broker-961c.onrender.com/api';
   const read = key => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  let listings = read('studentstay.listings');
-  const grid = document.querySelector('.property-grid');
-  const card = item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75')}" alt="${esc(item.title)}"><span class="tag blue">${esc(item.type)}</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>⌖ ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div><div class="amenities"><span>${esc(item.ownerName || 'StudentStay')}</span><span>${esc(item.available || 'Available')}</span></div></div></article>`;
+  const sectors = window.GREATER_NOIDA_SECTORS || [];
+  const sectorGrid = document.querySelector('#homeSectors');
+  const paintSectors = items => {
+    if (!sectorGrid) return;
+    sectorGrid.innerHTML = sectors.map(name => {
+      const count = items.filter(item => (item.sector || '').toLowerCase() === name.toLowerCase()).length;
+      return `<a class="city-card sector-card" href="properties.html?city=${encodeURIComponent(name)}"><span class="sector-mark">${esc(name.split(' ')[0])}</span><b>${esc(name)}</b><small>${count ? `${count} home${count === 1 ? '' : 's'}` : 'No homes yet'}</small></a>`;
+    }).join('');
+  };
+  let listings = [];
+  let displayed = [];
+  const grid = document.querySelector('#homeProperties') || document.querySelector('.property-grid');
+  const card = item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75')}" alt="${esc(item.title)}"><span class="tag blue">${esc(item.type)}</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>⌖ ${esc(item.sector || 'Greater Noida')}</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div><div class="amenities"><span>${esc(item.type || 'Room')}</span><span>${esc(item.available || 'Available')}</span></div></div></article>`;
   const bindHearts = () => grid?.querySelectorAll('.heart').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const saved = button.classList.toggle('saved'); button.setAttribute('aria-pressed', String(saved)); }));
-  let displayed = listings;
-  const paint = items => { if (!grid) return; grid.innerHTML = items.map(card).join(''); bindHearts(); };
-  if (grid && listings.length) paint(listings);
+  const paint = items => {
+    if (!grid) return;
+    grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state">No homes posted in Greater Noida yet.</div>';
+    bindHearts();
+  };
+  paintSectors([]);
+  paint([]);
   fetch(`${API_BASE}/listings`).then(response => response.ok ? response.json() : []).then(items => {
-    if (!Array.isArray(items) || !items.length) return;
-    listings = items;
-    displayed = items;
-    paint(items);
+    listings = Array.isArray(items) ? items : [];
+    displayed = listings;
+    paintSectors(listings);
+    paint(listings);
   }).catch(() => {});
   const filterCards = () => {
-    if (!grid || !listings.length) return;
-    const cityInput = document.querySelector('.city-field select').value;
-    const typeInput = document.querySelectorAll('.search-field select')[1].value;
-    const cityQuery = /^(e\.g\.|any)/i.test(cityInput) ? '' : cityInput.toLowerCase();
+    if (!grid) return;
+    const sectorInput = document.querySelector('.city-field select')?.value || '';
+    const typeInput = document.querySelectorAll('.search-field select')[1]?.value || '';
+    const sectorQuery = /any sector/i.test(sectorInput) ? '' : sectorInput.toLowerCase();
     const typeQuery = typeInput === 'Any Type' ? '' : typeInput.toLowerCase();
-    displayed = listings.filter(item => (!cityQuery || `${item.city || ''} ${item.address || ''}`.toLowerCase().includes(cityQuery)) && (!typeQuery || item.type.toLowerCase().includes(typeQuery)));
-    grid.innerHTML = displayed.length ? displayed.map(card).join('') : '<div class="empty-state">No rooms match those filters yet. Try another city or property type.</div>';
+    displayed = listings.filter(item => (!sectorQuery || (item.sector || '').toLowerCase() === sectorQuery) && (!typeQuery || (item.type || '').toLowerCase().includes(typeQuery)));
+    grid.innerHTML = displayed.length ? displayed.map(card).join('') : '<div class="empty-state">No homes in that Greater Noida sector yet.</div>';
     bindHearts();
   };
   const form = document.querySelector('#searchForm');

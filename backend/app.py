@@ -128,9 +128,9 @@ class Unlock(db.Model):
     created = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 DEMO_USERS = [
-    {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Delhi'},
-    {'name': 'Test Landlord', 'email': 'landlord@test.com', 'password': 'landlord123', 'role': 'landlord', 'phone': '+91 98765 43211', 'city': 'Noida', 'address': 'Sector 62, Noida'},
-    {'name': 'Test Admin', 'email': 'admin@test.com', 'password': 'admin123', 'role': 'admin', 'phone': '+91 98765 43213', 'city': 'Mumbai'},
+    {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Greater Noida'},
+    {'name': 'Test Landlord', 'email': 'landlord@test.com', 'password': 'landlord123', 'role': 'landlord', 'phone': '+91 98765 43211', 'city': 'Greater Noida', 'address': 'Greater Noida'},
+    {'name': 'Test Admin', 'email': 'admin@test.com', 'password': 'admin123', 'role': 'admin', 'phone': '+91 98765 43213', 'city': 'Greater Noida'},
 ]
 
 def ensure_demo_users():
@@ -200,40 +200,16 @@ DEMO_LISTINGS = [
     },
 ]
 
-def ensure_demo_listings():
-    """Give the demo landlord real homes students can request."""
-    import uuid
-    landlord = User.query.filter_by(email='landlord@test.com').first()
-    if not landlord:
-        return
-    for item in DEMO_LISTINGS:
-        existing = Listing.query.filter_by(title=item['title'], owner_id=landlord.id).first()
-        if existing:
-            existing.type = item['type']
-            existing.rent = item['rent']
-            existing.available = item['available']
-            existing.address = item['address']
-            existing.sector = item.get('sector') or existing.sector
-            existing.city = item['city']
-            existing.description = item['description']
-            existing.photos = item['photos']
-            existing.owner_name = landlord.name
-            continue
-        db.session.add(Listing(
-            id=str(uuid.uuid4()),
-            owner_id=landlord.id,
-            owner_name=landlord.name,
-            title=item['title'],
-            type=item['type'],
-            rent=item['rent'],
-            available=item['available'],
-            address=item['address'],
-            sector=item.get('sector'),
-            city=item['city'],
-            description=item['description'],
-            photos=item['photos'],
-        ))
-    db.session.commit()
+def clear_demo_listings():
+    """Remove the sample rooms so only homes a landlord posts remain."""
+    titles = [item['title'] for item in DEMO_LISTINGS]
+    rows = Listing.query.filter(Listing.title.in_(titles)).all()
+    for listing in rows:
+        Unlock.query.filter_by(listing_id=listing.id).delete()
+        Request.query.filter_by(listing_id=listing.id).delete()
+        db.session.delete(listing)
+    if rows:
+        db.session.commit()
 
 def clean_int(value, fallback=0):
     if value is None or value == '':
@@ -323,7 +299,7 @@ with app.app_context():
     db.create_all()
     ensure_schema()
     ensure_demo_users()
-    ensure_demo_listings()
+    clear_demo_listings()
 
 # Helper function for sending emails. Signup and requests must still succeed
 # when SMTP is not configured on the server.
@@ -525,8 +501,12 @@ def delete_listing(listing_id):
         return jsonify({'error': 'Listing not found'}), 404
     
     if listing.owner_id != user_id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
+        user = User.query.get(user_id)
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+
+    Unlock.query.filter_by(listing_id=listing.id).delete()
+    Request.query.filter_by(listing_id=listing.id).delete()
     db.session.delete(listing)
     db.session.commit()
     

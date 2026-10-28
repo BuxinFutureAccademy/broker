@@ -13,8 +13,8 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#home" aria-label="StudentStay home"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Find Your Home in India</small></span></a>
-    <nav class="nav"><a class="active" href="#home">Home</a><a href="#properties">Properties</a><a href="#cities">Cities</a><a href="#about">About Us</a><a href="#help">Help</a></nav>
+    <a class="brand" href="#home" aria-label="StudentStay home"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Homes in Greater Noida</small></span></a>
+    <nav class="nav"><a class="active" href="#home">Home</a><a href="#properties">Properties</a><a href="#cities">Sectors</a><a href="#about">About Us</a><a href="#help">Help</a></nav>
     <div class="account"><button class="language">◎ &nbsp;English⌄</button><button class="login">Login</button><button class="signup">Sign Up</button></div>
     <button class="menu" aria-label="Open menu">☰</button>
   </header>
@@ -24,12 +24,12 @@
       <div class="hero-shade"></div>
       <div class="hero-copy">
         <div class="trust">✦ &nbsp;Trusted by 10,000+ International Students</div>
-        <h1>Find Your Perfect Home<br>in <em>India</em></h1>
+        <h1>Find Your Perfect Home<br>in <em>Greater Noida</em></h1>
         <h2>Safe. Affordable. Student Friendly.</h2>
-        <p>Discover the best rental rooms, PGs, hostels and apartments<br class="desktop"> across India — designed for international students.</p>
+        <p>Rooms, PGs and apartments for international students<br class="desktop"> in Alpha, Beta, Gamma, Delta and the Knowledge Parks.</p>
       </div>
       <form class="search" id="searchForm">
-        <label class="search-field city-field"><span class="field-icon">●</span><span><small>City</small><select aria-label="City"><option>e.g. Greater Noida, Delhi, Bangalore</option><option>Delhi</option><option>Noida</option><option>Bangalore</option><option>Mumbai</option></select></span></label>
+        <label class="search-field city-field"><span class="field-icon">●</span><span><small>Sector</small><select aria-label="Sector"><option>Any sector</option><option>Alpha 1</option><option>Alpha 2</option><option>Beta 1</option><option>Beta 2</option><option>Gamma 1</option><option>Gamma 2</option><option>Delta 1</option><option>Delta 2</option><option>Knowledge Park 1</option><option>Knowledge Park 2</option><option>Knowledge Park 3</option><option>Pari Chowk</option><option>Omega 1</option><option>Chi</option><option>Phi</option><option>Swarn Nagari</option></select></span></label>
         <label class="search-field"><span class="field-icon">◆</span><span><small>Property Type</small><select aria-label="Property type"><option>Any Type</option><option>Private Room</option><option>Shared Room</option><option>Apartment</option></select></span></label>
         <label class="search-field date-field"><span class="field-icon">▦</span><span><small>Move In Date</small><input aria-label="Move in date" type="date" /></span></label>
         <button class="search-btn" type="submit"><span>⌕</span> Search</button>
@@ -46,23 +46,13 @@
 
     <section class="discover">
       <div class="cities-panel" id="cities">
-        <div class="section-heading"><div><h2>Popular Cities</h2><p>Explore top student destinations in India</p></div><a href="cities.html">View All Cities →</a></div>
-        <div class="city-grid">
-          <a class="city-card" href="properties.html?city=Delhi"><img src="https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=480&q=80" alt="India Gate in Delhi"><b>Delhi</b><small>1,200+ properties</small></a>
-          <a class="city-card" href="properties.html?city=Noida"><img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=480&q=80" alt="Modern business district"><b>Noida</b><small>800+ properties</small></a>
-          <a class="city-card" href="properties.html?city=Bangalore"><img src="https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&w=480&q=80" alt="Bangalore skyline"><b>Bangalore</b><small>950+ properties</small></a>
-          <a class="city-card" href="properties.html?city=Mumbai"><img src="https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=480&q=80" alt="Gateway of India in Mumbai"><b>Mumbai</b><small>1,100+ properties</small></a>
-          <a class="city-card" href="properties.html?city=Hyderabad"><img src="https://images.unsplash.com/photo-1567157577867-05ccb1388e66?auto=format&fit=crop&w=480&q=80" alt="Historic Indian architecture"><b>Hyderabad</b><small>700+ properties</small></a>
-        </div>
+        <div class="section-heading"><div><h2>Greater Noida sectors</h2><p>Alpha, Beta, Gamma, Delta and the Knowledge Parks</p></div><a href="cities.html">View all sectors →</a></div>
+        <div class="city-grid" id="homeSectors"></div>
         <a href="#properties" class="journey"><span class="cap">♧</span><strong>Your Study Abroad Journey<br>Starts with a Safe Home</strong><span class="journey-script">Better Stays<br>Brighter Futures</span></a>
       </div>
       <div class="properties-panel" id="properties">
         <div class="section-heading"><div><h2>Featured Properties</h2></div><a href="properties.html">View All →</a></div>
-        <div class="property-grid">
-          <article class="property-card detail-link" data-property-id="sample-noida" tabindex="0" role="link"><div class="photo"><img src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=700&q=85" alt="Bright private student room"><span class="tag blue">For Students</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>Single Room in PG</h3><p>⌖ Sector 62, Noida</p><div class="price">₹8,000 <small>/ month</small></div><div class="amenities"><span>⌁ WiFi</span><span>▱ AC</span><span>♙ Food</span></div></div></article>
-          <article class="property-card detail-link" data-property-id="sample-delhi" tabindex="0" role="link"><div class="photo"><img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=700&q=85" alt="Comfortable shared student room"><span class="tag green">Popular</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>Shared Room (2 Students)</h3><p>⌖ Hauz Khas, Delhi</p><div class="price">₹6,500 <small>/ month</small></div><div class="amenities"><span>⌁ WiFi</span><span>▱ AC</span><span>♧ Laundry</span></div></div></article>
-          <article class="property-card detail-link" data-property-id="sample-bangalore" tabindex="0" role="link"><div class="photo"><img src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=700&q=85" alt="Modern one bedroom apartment"><span class="tag purple">Best Value</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>1 BHK Apartment</h3><p>⌖ Electronic City, Bangalore</p><div class="price">₹12,000 <small>/ month</small></div><div class="amenities"><span>⌁ WiFi</span><span>▱ AC</span><span>♧ Kitchen</span></div></div></article>
-        </div>
+        <div class="property-grid" id="homeProperties"></div>
       </div>
     </section>
     <section class="help-band" id="help">
