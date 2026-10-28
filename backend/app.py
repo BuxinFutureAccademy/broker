@@ -385,27 +385,52 @@ def random_password():
 
 def send_sms(phone, body):
     import base64
+    import json
+    import re
     import urllib.parse
     import urllib.request
+    import urllib.error
     sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip()
     token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip()
     sender = (os.getenv('TWILIO_FROM_NUMBER') or '').strip()
     if not sid or not token or not sender:
         return False, 'not-configured'
-    data = urllib.parse.urlencode({'To': phone, 'From': sender, 'Body': body}).encode()
-    request_sms = urllib.request.Request(
-        f'https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json',
-        data=data,
-        method='POST'
-    )
     basic = base64.b64encode(f'{sid}:{token}'.encode()).decode()
-    request_sms.add_header('Authorization', f'Basic {basic}')
-    try:
-        with urllib.request.urlopen(request_sms, timeout=20) as response:
-            return 200 <= response.status < 300, 'sent'
-    except Exception:
-        app.logger.exception('SMS could not be sent')
-        return False, 'failed'
+
+    def post(message):
+        data = urllib.parse.urlencode({'To': phone, 'From': sender, 'Body': message}).encode()
+        request_sms = urllib.request.Request(
+            f'https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json',
+            data=data,
+            method='POST'
+        )
+        request_sms.add_header('Authorization', f'Basic {basic}')
+        try:
+            with urllib.request.urlopen(request_sms, timeout=20) as response:
+                return response.status, json.loads(response.read().decode() or '{}')
+        except urllib.error.HTTPError as error:
+            try:
+                payload = json.loads(error.read().decode() or '{}')
+            except Exception:
+                payload = {}
+            return error.code, payload
+        except Exception:
+            app.logger.exception('SMS could not be sent')
+            return 0, {}
+
+    status, payload = post(body)
+    if status >= 400 and payload.get('code') == 572006:
+        status, payload = post('sms_2fa')
+        if status < 400:
+            found = re.search(r'\b(\d{6})\b', payload.get('body') or '')
+            if found:
+                return True, found.group(1)
+            return False, 'The text went out, but it did not include a code.'
+    if status >= 400 or status == 0:
+        if payload.get('code') == 21608:
+            return False, 'This free SMS account can only text a number you have verified in Twilio.'
+        return False, payload.get('message') or 'The text message could not be sent. Check the SMS account, then try again.'
+    return True, None
 
 # Auth Routes
 @app.route('/api/auth/providers', methods=['GET'])
@@ -491,11 +516,15 @@ def send_phone_code():
     )
     db.session.add(row)
     db.session.commit()
-    sent, reason = send_sms(phone, f'Your StudentStay code is {code}. It expires in 5 minutes.')
+    sent, detail = send_sms(phone, f'Your StudentStay code is {code}. It expires in 5 minutes.')
     if not sent:
         PhoneCode.query.filter_by(phone=phone).delete()
         db.session.commit()
-        return jsonify({'error': 'The text message could not be sent. Check the SMS account, then try again.'}), 502
+        message = 'Phone sign-in is not turned on yet. Add the SMS account on the server.' if detail == 'not-configured' else detail
+        return jsonify({'error': message}), 502
+    if detail:
+        row.code_hash = hmac.new(secret, detail.encode(), hashlib.sha256).hexdigest()
+        db.session.commit()
     return jsonify({'message': 'Code sent.', 'phone': phone})
 
 @app.route('/api/auth/phone/verify', methods=['POST'])
