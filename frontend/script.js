@@ -33,8 +33,6 @@
   document.querySelectorAll('.heart').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const saved = button.classList.toggle('saved'); button.setAttribute('aria-pressed', String(saved)); }));
   grid?.addEventListener('click', event => { const tile = event.target.closest('[data-property-id]'); if (tile && !event.target.closest('.heart')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; });
   grid?.addEventListener('keydown', event => { const tile = event.target.closest('[data-property-id]'); if (tile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } });
-  const menu = document.querySelector('.menu');
-  menu?.addEventListener('click', () => { const nav = document.querySelector('.nav'); const open = nav.classList.toggle('nav-open'); nav.setAttribute('aria-hidden', String(!open)); });
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
   fetch(`${API_BASE}/payment`).then(response => response.ok ? response.json() : null).then(payment => {
     const link = document.querySelector('#siteContact');

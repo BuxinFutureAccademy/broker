@@ -37,10 +37,51 @@
   const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
   const account = user && token ? (dashboards[user.role] || 'access.html') : 'access.html';
   const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-  const mark = name => page === name ? ' class="on"' : '';
+  const on = (...names) => names.includes(page) ? ' class="on"' : '';
+  const signed = user && token;
   const nav = document.createElement('nav');
   nav.className = 'phone-nav';
   nav.setAttribute('aria-label', 'Phone');
-  nav.innerHTML = `<a${mark('index.html')} href="index.html"><b>⌂</b><span>Home</span></a><a${page === 'properties.html' || page === 'property.html' ? ' class="on"' : ''} href="properties.html"><b>▣</b><span>Homes</span></a><a href="index.html#help"><b>✉</b><span>Contact</span></a><a${page === 'access.html' || account !== 'access.html' && page === account ? ' class="on"' : ''} href="${account}"><b>●</b><span>${user && token ? 'You' : 'Sign in'}</span></a>`;
+  const youOn = page === 'access.html' || (signed && page === account);
+  nav.innerHTML = `<a${on('index.html')} href="index.html"><b>⌂</b><span>Home</span></a><a${on('properties.html','property.html')} href="properties.html"><b>▣</b><span>Properties</span></a><a${on('about.html')} href="about.html"><b>✦</b><span>About</span></a><a${on('contact.html')} href="contact.html"><b>✉</b><span>Contact</span></a><a${youOn ? ' class="on"' : ''} href="${account}"><b>●</b><span>${signed ? 'You' : 'Sign in'}</span></a>`;
   document.body.appendChild(nav);
+  const menu = document.querySelector('.menu');
+  const links = document.querySelector('.nav');
+  menu?.addEventListener('click', () => links?.classList.toggle('nav-open'));
+})();
+
+(() => {
+  const dial = value => String(value || '').replace(/[^\d+]/g, '');
+  fetch('https://broker-961c.onrender.com/api/payment').then(response => response.ok ? response.json() : null).then(payment => {
+    if (!payment) return;
+    const phone = payment.contactPhone || '';
+    const email = payment.contactEmail || '';
+    const name = payment.contactName || 'Admin';
+    const wa = dial(phone).replace(/^\+/, '');
+    document.querySelectorAll('[data-reach="wa"]').forEach(item => {
+      if (!wa) return;
+      item.hidden = false;
+      item.href = `https://wa.me/${wa}`;
+      item.target = '_blank';
+      item.rel = 'noopener';
+    });
+    document.querySelectorAll('[data-reach="mail"]').forEach(item => {
+      if (!email) return;
+      item.hidden = false;
+      item.href = `mailto:${email}`;
+    });
+    const call = document.querySelector('#contactCall');
+    if (call && phone) {
+      call.hidden = false;
+      call.href = `tel:${dial(phone)}`;
+      call.textContent = `Call ${phone}`;
+    }
+    const who = document.querySelector('#contactWho');
+    if (who) who.textContent = name;
+    const note = document.querySelector('#contactNote');
+    if (!note) return;
+    if (phone || email) note.textContent = 'Message the admin on WhatsApp, or send an email. This uses the number and email saved on the Payment QR page.';
+    else if (!('contactPhone' in payment)) note.textContent = 'The number is saved. The server is still updating, so these buttons are off for a minute. Refresh this page and they will open WhatsApp and email.';
+    else note.textContent = 'No WhatsApp number or email is saved yet. Add them on the admin Payment QR page.';
+  }).catch(() => {});
 })();

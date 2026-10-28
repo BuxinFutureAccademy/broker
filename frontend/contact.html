@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact · StudentStay</title>
+  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="catalog.css?v=9">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Homes in Greater Noida</small></span></a>
+    <nav class="nav"><a href="index.html">Home</a><a href="properties.html">Properties</a><a href="about.html">About Us</a><a class="active" href="contact.html">Contact</a></nav>
+    <div class="account"><button class="login" onclick="location.href='access.html'">Login</button><button class="signup" onclick="location.href='access.html?mode=signup'">Sign Up</button></div>
+    <button class="menu" aria-label="Open menu">☰</button>
+  </header>
+  <main class="catalog-page">
+    <div class="catalog-hero">
+      <span class="eyebrow">CONTACT</span>
+      <h1 id="contactWho">The admin</h1>
+      <p id="contactNote">Loading the saved phone number and email…</p>
+    </div>
+    <section class="story">
+      <div class="reach-row">
+        <a id="contactCall" class="reach-mail" hidden>Call</a>
+        <a class="reach-wa" data-reach="wa" hidden>WhatsApp</a>
+        <a class="reach-mail" data-reach="mail" hidden>Email</a>
+      </div>
+    </section>
+  </main>
+  <script src="session.js?v=11"></script>
+</body>
+</html>
