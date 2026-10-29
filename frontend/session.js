@@ -8,7 +8,7 @@
   if (!user || !token) return;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-  const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
+  const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html', vendor: 'vendor.html' };
   const dashboard = dashboards[user.role] || 'access.html';
   const initial = esc((user.name || 'U').slice(0, 1).toUpperCase());
 
@@ -34,16 +34,17 @@
   let user = null;
   try { user = JSON.parse(localStorage.getItem('studentstay_user') || 'null'); } catch { user = null; }
   const token = localStorage.getItem('studentstay_token');
-  const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
+  const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html', vendor: 'vendor.html' };
   const account = user && token ? (dashboards[user.role] || 'access.html') : 'access.html';
   const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
   const on = (...names) => names.includes(page) ? ' class="on"' : '';
+  const marketOn = ['market.html', 'restaurants.html', 'shops.html', 'services.html', 'business.html', 'vendor.html', 'orders.html'].includes(page) ? ' class="on"' : '';
   const signed = user && token;
   const nav = document.createElement('nav');
   nav.className = 'phone-nav';
   nav.setAttribute('aria-label', 'Phone');
   const youOn = page === 'access.html' || (signed && page === account);
-  nav.innerHTML = `<a${on('index.html')} href="index.html"><b>⌂</b><span>Home</span></a><a${on('properties.html','property.html')} href="properties.html"><b>▣</b><span>Properties</span></a><a${on('about.html')} href="about.html"><b>✦</b><span>About</span></a><a${on('contact.html')} href="contact.html"><b>✉</b><span>Contact</span></a><a${youOn ? ' class="on"' : ''} href="${account}"><b>●</b><span>${signed ? 'You' : 'Sign in'}</span></a>`;
+  nav.innerHTML = `<a${on('index.html')} href="index.html"><b>⌂</b><span>Home</span></a><a${on('properties.html','property.html')} href="properties.html"><b>▣</b><span>Properties</span></a><a${marketOn} href="market.html"><b>◉</b><span>Market</span></a><a${on('about.html')} href="about.html"><b>✦</b><span>About</span></a><a${on('contact.html')} href="contact.html"><b>✉</b><span>Contact</span></a><a${youOn ? ' class="on"' : ''} href="${account}"><b>●</b><span>${signed ? 'You' : 'Sign in'}</span></a>`;
   document.body.appendChild(nav);
   const menu = document.querySelector('.menu');
   const links = document.querySelector('.nav');

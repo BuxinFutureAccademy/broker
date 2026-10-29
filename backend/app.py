@@ -137,6 +137,71 @@ class Unlock(db.Model):
     note = db.Column(db.Text)
     created = db.Column(db.DateTime, default=db.func.current_timestamp())
 
+class Business(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    owner_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
+    kind = db.Column(db.String(20), nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False)
+    category = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.Text, default='')
+    phone = db.Column(db.String(30), default='')
+    whatsapp = db.Column(db.String(30), default='')
+    address = db.Column(db.String(200), default='')
+    area = db.Column(db.String(80), default='')
+    hours = db.Column(db.String(120), default='')
+    logo_url = db.Column(db.Text, default='')
+    image_url = db.Column(db.Text, default='')
+    status = db.Column(db.String(20), default='active', index=True)
+    created = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class CatalogItem(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    business_id = db.Column(db.String(36), db.ForeignKey('business.id'), nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, default='')
+    price = db.Column(db.Integer, nullable=False, default=0)
+    price_note = db.Column(db.String(80), default='')
+    photo_url = db.Column(db.Text, default='')
+    category = db.Column(db.String(80), default='')
+    available = db.Column(db.Boolean, default=True)
+    stock = db.Column(db.Integer)
+    created = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class MarketOrder(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    reference = db.Column(db.String(16), unique=True, nullable=False, index=True)
+    customer_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
+    owner_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
+    business_id = db.Column(db.String(36), nullable=False, index=True)
+    item_id = db.Column(db.String(36), default='')
+    kind = db.Column(db.String(20), nullable=False, index=True)
+    item_name = db.Column(db.String(120), nullable=False)
+    item_description = db.Column(db.Text, default='')
+    listed_price = db.Column(db.Integer, nullable=False, default=0)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    listed_total = db.Column(db.Integer, nullable=False, default=0)
+    final_amount = db.Column(db.Integer)
+    status = db.Column(db.String(20), default='pending', index=True)
+    customer_confirm = db.Column(db.String(20), default='')
+    customer_amount = db.Column(db.Integer)
+    commission_rate = db.Column(db.Integer)
+    commission_amount = db.Column(db.Integer)
+    commission_status = db.Column(db.String(30), default='')
+    created = db.Column(db.DateTime, default=db.func.current_timestamp(), index=True)
+    updated = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+class MarketAudit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(36), nullable=False, index=True)
+    actor_id = db.Column(db.String(36), default='')
+    action = db.Column(db.String(40), nullable=False)
+    note = db.Column(db.String(200), default='')
+    created = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class MarketSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    commission_percent = db.Column(db.Integer, default=10)
+
 DEMO_USERS = [
     {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Greater Noida'},
     {'name': 'Test Landlord', 'email': 'landlord@test.com', 'password': 'landlord123', 'role': 'landlord', 'phone': '+91 98765 43211', 'city': 'Greater Noida', 'address': 'Greater Noida'},
@@ -1530,6 +1595,9 @@ def broker_visits():
         elif not covered.strip():
             continue
     return jsonify(visits)
+
+from market import init_market
+init_market()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
