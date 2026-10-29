@@ -495,7 +495,11 @@
       showOwnerPage();
       paintStats();
       const load = () => api('/market/mine').then(paint).catch(error => { businesses.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
-      const loadOrders = () => api('/market/vendor/orders').then(rows => { orders.dataset.rows = JSON.stringify(rows); paintOrders(rows); }).catch(error => { orders.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
+      const loadOrders = () => api('/market/vendor/orders').then(rows => {
+        const mine = (Array.isArray(rows) ? rows : []).filter(row => row.kind === session.role);
+        orders.dataset.rows = JSON.stringify(mine);
+        paintOrders(mine);
+      }).catch(error => { orders.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       document.querySelector('#orderFilter')?.addEventListener('input', () => { try { paintOrders(JSON.parse(orders.dataset.rows || '[]')); } catch { /* ignore */ } });
       const profilePhoto = document.querySelector('#profileForm [name="photo"]');
       const profilePreview = document.querySelector('#profilePreview');

@@ -427,7 +427,10 @@ def init_market():
         user = current_user()
         if not is_owner(user):
             return jsonify({'error': 'Sign in as a restaurant, shop, or service to manage this.'}), 403
-        rows = MarketOrder.query.filter_by(owner_id=user.id).order_by(MarketOrder.created.desc()).limit(100).all()
+        rows = MarketOrder.query.filter_by(owner_id=user.id)
+        if user.role in KINDS:
+            rows = rows.filter_by(kind=user.role)
+        rows = rows.order_by(MarketOrder.created.desc()).limit(100).all()
         result = []
         for row in rows:
             customer = User.query.get(row.customer_id)
@@ -445,7 +448,7 @@ def init_market():
     def market_update_order(order_id):
         user = current_user()
         order = MarketOrder.query.get(order_id)
-        if not order or not user or user.id != order.owner_id:
+        if not order or not user or user.id != order.owner_id or (user.role in KINDS and order.kind != user.role):
             return jsonify({'error': 'You cannot update that request.'}), 403
         data = request.get_json() or {}
         status = clean_text(data.get('status'), 20)

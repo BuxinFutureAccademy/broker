@@ -138,6 +138,18 @@ def main():
     assert housing.status_code == 400
     closed = client.post('/api/market/buyer/register', json={'name': 'Buyer', 'email': 'b@market.test', 'password': 'secret12'})
     assert closed.status_code == 404
+    with app_module.app.app_context():
+        owner = app_module.User.query.filter_by(email='ada@market.test').first()
+        owner.role = 'shop'
+        app_module.db.session.commit()
+    shop_view = client.get('/api/market/vendor/orders', headers=auth(vendor_token))
+    assert shop_view.status_code == 200
+    assert all(row['kind'] == 'shop' for row in shop_view.get_json())
+    with app_module.app.app_context():
+        owner = app_module.User.query.filter_by(email='ada@market.test').first()
+        owner.role = 'restaurant'
+        app_module.db.session.commit()
+
     print('market checks passed')
 
 
