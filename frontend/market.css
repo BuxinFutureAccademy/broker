@@ -26,10 +26,6 @@
 .hero.hero-shop { background-image: url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=2200&q=90'); }
 .hero.hero-service { background-image: url('https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=2200&q=90'); }
 .search.market-search-bar { grid-template-columns: 1.35fr 1.15fr 180px; }
-.sector-band { padding: 22px 4.55% 0; }
-.sector-band .section-heading { margin-bottom: 12px; }
-button.sector-card { border: 1px solid #e3ebf5; font: inherit; text-align: left; color: #09264c; cursor: pointer; }
-.sector-card.on { box-shadow: 0 0 0 2px #0759d6; }
 .property-grid > .empty-state { grid-column: 1 / -1; padding: 28px; text-align: center; background: #f7f9fc; border-radius: 12px; color: #657a93; }
 .market-search select { height: 46px; border: 1px solid #d5e0ec; border-radius: 12px; padding: 0 12px; font: 16px inherit; background: #fff; color: #0d2b52; }
 .pool-food .catalog-hero { background: linear-gradient(115deg, #3a2412, #c56a12); }
@@ -49,7 +45,6 @@ button.sector-card { border: 1px solid #e3ebf5; font: inherit; text-align: left;
 .owner-item-form { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e6eef6; }
 @media (max-width: 780px) {
   .search.market-search-bar { grid-template-columns: 1fr; }
-  .sector-band { padding: 12px 14px 0; }
 }
 @media (max-width: 760px) {
   .market-grid { grid-template-columns: 1fr; }

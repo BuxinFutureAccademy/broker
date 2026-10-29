@@ -130,7 +130,6 @@
     const kind = homeRoot.getAttribute('data-market-home');
     const box = document.querySelector('#homePlaces');
     const form = document.querySelector('#searchForm');
-    const row = document.querySelector('#sectorRow');
     const more = document.querySelector('#placeMore');
     const heading = document.querySelector('#placeHeading');
     const caption = document.querySelector('#placeCaption');
@@ -139,9 +138,6 @@
     const titles = { restaurant: 'Restaurants', shop: 'Shops', service: 'Services' };
     const empty = { restaurant: 'No restaurants in that Greater Noida sector yet.', shop: 'No shops in that Greater Noida sector yet.', service: 'No services in that Greater Noida sector yet.' };
     fillSectors(form?.elements.area);
-    if (row) {
-      row.innerHTML = sectors.map(name => `<button class="sector-card" type="button" data-sector="${esc(name)}"><span class="sector-mark">${esc(name.split(' ')[0])}</span><b>${esc(name)}</b><small>Greater Noida</small></button>`).join('');
-    }
     let rows = [];
     const paint = () => {
       if (!box) return;
@@ -153,7 +149,6 @@
       if (heading) heading.textContent = area ? `${titles[kind] || 'Places'} in ${area}` : (titles[kind] || 'Places');
       if (caption) caption.textContent = area ? `Showing ${area}.` : 'Every sector in Greater Noida.';
       if (more) more.href = area ? `${listPage}?area=${encodeURIComponent(area)}` : listPage;
-      row?.querySelectorAll('[data-sector]').forEach(card => card.classList.toggle('on', card.dataset.sector === area));
     };
     form?.addEventListener('submit', event => {
       event.preventDefault();
@@ -161,13 +156,6 @@
       document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
     });
     form?.elements.area?.addEventListener('change', paint);
-    row?.addEventListener('click', event => {
-      const card = event.target.closest('[data-sector]');
-      if (!card || !form?.elements.area) return;
-      form.elements.area.value = form.elements.area.value === card.dataset.sector ? '' : card.dataset.sector;
-      paint();
-      document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
-    });
     if (!token()) {
       document.querySelector('.login')?.addEventListener('click', () => { location.href = interest ? `access.html?interest=${encodeURIComponent(interest)}` : 'access.html'; });
       document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=owners'; });
