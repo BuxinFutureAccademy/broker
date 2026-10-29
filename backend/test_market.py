@@ -83,6 +83,11 @@ def main():
     changed = client.put('/api/market/admin/commission', json={'percent': 25}, headers=auth(vendor_token))
     assert changed.status_code == 403
 
+    extra = client.post(f'/api/market/businesses/{business_id}/items', json={'name': 'Fried rice', 'price': 250}, headers=auth(vendor_token))
+    assert extra.status_code == 201, extra.get_json()
+    blocked_meal = client.post('/api/market/orders', json={'itemId': extra.get_json()['id']}, headers=auth(student_token))
+    assert blocked_meal.status_code == 400
+
     confirmed = client.post(f'/api/market/orders/{order_id}/confirm', json={'result': 'completed', 'amount': 300}, headers=auth(student_token))
     assert confirmed.status_code == 200, confirmed.get_json()
     assert confirmed.get_json()['commissionRate'] == 10

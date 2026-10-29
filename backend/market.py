@@ -379,16 +379,16 @@ def init_market():
             return jsonify({'error': 'Choose a quantity from 1 to 20.'}), 400
         if item.stock is not None and item.stock < quantity:
             return jsonify({'error': 'There is not enough stock for that quantity.'}), 400
-        if business.kind == 'service':
+        if business.kind in KINDS:
             blocker = None
-            for existing in MarketOrder.query.filter_by(customer_id=user.id, kind='service').all():
+            for existing in MarketOrder.query.filter_by(customer_id=user.id, kind=business.kind).all():
                 if existing.status in ('pending', 'accepted') or (existing.status == 'completed' and not existing.customer_confirm):
                     blocker = existing
                     break
             if blocker:
                 if blocker.item_id == item.id and blocker.status == 'pending':
                     return jsonify(order_payload(blocker, include_contact=True))
-                return jsonify({'error': 'Finish your current service request before you request another. Open your requests and confirm whether you received it.'}), 400
+                return jsonify({'error': f'Finish your current {business.kind} request before you request another. Open your requests and confirm whether you received it.'}), 400
         recent = MarketOrder.query.filter_by(customer_id=user.id, item_id=item.id, status='pending').order_by(MarketOrder.created.desc()).first()
         if recent and recent.created and recent.created > datetime.utcnow() - timedelta(seconds=60):
             return jsonify(order_payload(recent, include_contact=True))
