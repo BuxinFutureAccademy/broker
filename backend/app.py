@@ -614,25 +614,37 @@ def google_login():
         return jsonify({'error': error}), 403
     return jsonify(auth_payload(user))
 
-def open_google_account(user, role, sub, display_name, email):
-    """Open whichever owner type was clicked.
+def apply_sign_in_role(user, role):
+    """The same account follows the form that was used.
 
-    The same Google account can be a landlord, a restaurant, a shop, or a service.
-    The click chooses the type for this sign-in.
+    Sign in opens the user choices. Owners opens the owner type that was clicked.
     """
     import uuid
     owner_roles = ('landlord', 'restaurant', 'shop', 'service')
     labels = {'restaurant': 'Restaurant', 'shop': 'Shop', 'service': 'Service'}
-    called = {'student': 'user', 'landlord': 'landlord', 'restaurant': 'restaurant owner', 'shop': 'shop owner', 'service': 'service owner'}
+    if role not in ('student',) + owner_roles or user.role in ('admin', 'broker'):
+        return
+    if user.role != role:
+        user.role = role
+    if role in labels and not Business.query.filter_by(owner_id=user.id, kind=role).first():
+        db.session.add(Business(
+            id=str(uuid.uuid4()),
+            owner_id=user.id,
+            kind=role,
+            name=(user.name or 'Business')[:120],
+            category=labels[role],
+            phone=user.phone or '',
+            area=user.city or 'Greater Noida',
+            status='active'
+        ))
+
+def open_google_account(user, role, sub, display_name, email):
+    """Sign in with Google from the tab that is open."""
+    import uuid
     if user and user.role == 'admin':
         return None, 'Use your admin email and password on this form.'
     if user and user.role == 'broker':
         return None, 'Broker accounts are closed. Sign in as a student or a landlord.'
-    if user and user.role != role:
-        if role in owner_roles:
-            user.role = role
-        else:
-            return None, f'This Google account is a {called.get(user.role, user.role)}. Choose that type to open the page.'
     if not user:
         user = User(
             id=str(uuid.uuid4()),
@@ -647,17 +659,7 @@ def open_google_account(user, role, sub, display_name, email):
         db.session.add(user)
     elif not user.google_sub:
         user.google_sub = sub
-    if role in labels and not Business.query.filter_by(owner_id=user.id, kind=role).first():
-        db.session.add(Business(
-            id=str(uuid.uuid4()),
-            owner_id=user.id,
-            kind=role,
-            name=(user.name or display_name)[:120],
-            category=labels[role],
-            phone=user.phone or '',
-            area=user.city or 'Greater Noida',
-            status='active'
-        ))
+    apply_sign_in_role(user, role)
     db.session.commit()
     return user, None
 
@@ -853,9 +855,10 @@ def login():
         return jsonify({'error': 'Broker accounts are closed. Sign in as a student or a landlord. The admin handles the broker fee.'}), 403
 
     # The admin can sign in from the student or landlord form. There is no admin button.
-    if user.role != data.get('role') and user.role != 'admin':
-        called = {'student': 'user', 'landlord': 'landlord', 'restaurant': 'restaurant owner', 'shop': 'shop owner', 'service': 'service owner'}
-        return jsonify({'error': f'This email is a {called.get(user.role, user.role)}. Choose that type to open the page.'}), 401
+    # Everyone else follows the tab: Sign in opens the choices, Owners opens the type clicked.
+    if user.role != 'admin':
+        apply_sign_in_role(user, data.get('role'))
+        db.session.commit()
     
     access_token = create_access_token(identity=user.id)
     
