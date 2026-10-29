@@ -607,16 +607,33 @@ def google_login():
     sub = (profile.get('sub') or '').strip()
     if not email or not sub:
         return jsonify({'error': 'Google did not share an email for this account.'}), 400
-    user = User.query.filter_by(google_sub=sub).first() or User.query.filter_by(email=email).first()
+    user = User.query.filter_by(google_sub=sub).first() or User.query.filter(db.func.lower(User.email) == email).first()
+    display_name = (profile.get('name') or email.split('@')[0] or 'Owner')[:100]
+    user, error = open_google_account(user, role, sub, display_name, email)
+    if error:
+        return jsonify({'error': error}), 403
+    return jsonify(auth_payload(user))
+
+def open_google_account(user, role, sub, display_name, email):
+    """Open the owner page the person picked.
+
+    A user account becomes that owner. An account that is already a landlord,
+    restaurant, shop, or service stays that one type.
+    """
+    import uuid
+    owner_roles = ('landlord', 'restaurant', 'shop', 'service')
+    labels = {'restaurant': 'Restaurant', 'shop': 'Shop', 'service': 'Service'}
+    called = {'student': 'user', 'landlord': 'landlord', 'restaurant': 'restaurant owner', 'shop': 'shop owner', 'service': 'service owner'}
     if user and user.role == 'admin':
-        return jsonify({'error': 'Use your admin email and password on this form.'}), 403
+        return None, 'Use your admin email and password on this form.'
     if user and user.role == 'broker':
-        return jsonify({'error': 'Broker accounts are closed. Sign in as a student or a landlord.'}), 403
+        return None, 'Broker accounts are closed. Sign in as a student or a landlord.'
     if user and user.role != role:
-        return jsonify({'error': 'This Google account does not match that choice. Pick the same type as the account.'}), 403
+        if user.role == 'student' and role in owner_roles:
+            user.role = role
+        else:
+            return None, f'This Google account is a {called.get(user.role, user.role)}. Choose that type to open the page.'
     if not user:
-        import uuid
-        display_name = (profile.get('name') or email.split('@')[0] or 'Owner')[:100]
         user = User(
             id=str(uuid.uuid4()),
             name=display_name,
@@ -628,22 +645,21 @@ def google_login():
             google_sub=sub
         )
         db.session.add(user)
-        labels = {'restaurant': 'Restaurant', 'shop': 'Shop', 'service': 'Service'}
-        if role in labels:
-            db.session.add(Business(
-                id=str(uuid.uuid4()),
-                owner_id=user.id,
-                kind=role,
-                name=display_name[:120],
-                category=labels[role],
-                phone='',
-                area='Greater Noida',
-                status='active'
-            ))
     elif not user.google_sub:
         user.google_sub = sub
+    if role in labels and not Business.query.filter_by(owner_id=user.id, kind=role).first():
+        db.session.add(Business(
+            id=str(uuid.uuid4()),
+            owner_id=user.id,
+            kind=role,
+            name=(user.name or display_name)[:120],
+            category=labels[role],
+            phone=user.phone or '',
+            area=user.city or 'Greater Noida',
+            status='active'
+        ))
     db.session.commit()
-    return jsonify(auth_payload(user))
+    return user, None
 
 @app.route('/api/auth/phone/send', methods=['POST'])
 def send_phone_code():
@@ -838,7 +854,8 @@ def login():
 
     # The admin can sign in from the student or landlord form. There is no admin button.
     if user.role != data.get('role') and user.role != 'admin':
-        return jsonify({'error': 'Account type mismatch'}), 401
+        called = {'student': 'user', 'landlord': 'landlord', 'restaurant': 'restaurant owner', 'shop': 'shop owner', 'service': 'service owner'}
+        return jsonify({'error': f'This email is a {called.get(user.role, user.role)}. Choose that type to open the page.'}), 401
     
     access_token = create_access_token(identity=user.id)
     

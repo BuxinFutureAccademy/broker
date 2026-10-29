@@ -231,7 +231,8 @@
           client_id: providers.googleClientId,
           callback: async response => {
             try {
-              const googleRole = mode === 'owners' ? role : 'student';
+              const picked = document.querySelector('#ownerPicker .role-choice.active')?.dataset.role;
+              const googleRole = mode === 'owners' ? (picked || role) : 'student';
               finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: googleRole }) }));
             } catch (error) { say(error.message); }
           }
