@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shops · StudentStay</title>
+  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="catalog.css?v=9">
+  <link rel="stylesheet" href="market.css?v=2">
+</head>
+<body data-market-list="shop" data-market-limit="6">
+  <header class="topbar">
+    <a class="brand" href="shop.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Shops in Greater Noida</small></span></a>
+    <nav class="nav"><a class="active" href="shop.html">Home</a><a href="shops.html">Shops</a></nav>
+    <div class="account"><button class="login" onclick="location.href='access.html?interest=shops'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
+    <button class="menu" aria-label="Open menu">☰</button>
+  </header>
+  <main class="catalog-page">
+    <div class="catalog-hero property-hero">
+      <span class="eyebrow">LOOKING FOR A SHOP</span>
+      <h1>Shops in Greater Noida</h1>
+      <p>This home is shops only. Open a shop, see the price, then contact them.</p>
+      <form id="marketSearch" class="market-search"><input name="q" placeholder="Search a shop or product" aria-label="Search shops"><button class="primary-button" type="submit">Search</button></form>
+    </div>
+    <div class="catalog-title"><div><h2>Shops</h2><p>A few shops. The shops page has the full list.</p></div><a data-market-more href="shops.html">View all →</a></div>
+    <div id="marketList" class="market-grid"></div>
+  </main>
+  <script src="session.js?v=19"></script>
+  <script src="market.js?v=5"></script>
+</body>
+</html>

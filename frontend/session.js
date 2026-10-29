@@ -43,19 +43,32 @@
   nav.setAttribute('aria-label', 'Phone');
   const youOn = page === 'access.html' || (signed && page === account);
   const you = `<a${youOn ? ' class="on"' : ''} href="${account}"><b>●</b><span>${signed ? 'You' : 'Sign in'}</span></a>`;
-  const alone = {
-    'properties.html': ['Houses', 'properties.html'],
-    'property.html': ['Houses', 'properties.html'],
-    'restaurants.html': ['Restaurants', 'restaurants.html'],
-    'shops.html': ['Shops', 'shops.html'],
-    'services.html': ['Services', 'services.html']
+  const pools = {
+    'index.html': ['index.html', 'Houses', 'properties.html'],
+    'properties.html': ['index.html', 'Houses', 'properties.html'],
+    'property.html': ['index.html', 'Houses', 'properties.html'],
+    'food.html': ['food.html', 'Restaurants', 'restaurants.html'],
+    'restaurants.html': ['food.html', 'Restaurants', 'restaurants.html'],
+    'shop.html': ['shop.html', 'Shops', 'shops.html'],
+    'shops.html': ['shop.html', 'Shops', 'shops.html'],
+    'service.html': ['service.html', 'Services', 'services.html'],
+    'services.html': ['service.html', 'Services', 'services.html']
   };
-  if (alone[page]) {
-    nav.innerHTML = `<a href="index.html"><b>⌂</b><span>Home</span></a><a class="on" href="${alone[page][1]}"><b>●</b><span>${alone[page][0]}</span></a>${you}`;
-  } else if (page === 'index.html' || page === '') {
-    nav.innerHTML = `<a href="properties.html"><b>⌂</b><span>Houses</span></a><a href="restaurants.html"><b>🍴</b><span>Restaurants</span></a><a href="shops.html"><b>▣</b><span>Shops</span></a><a href="services.html"><b>✂</b><span>Services</span></a>${you}`;
-  } else {
+  const interestHomes = { houses: 'index.html', restaurants: 'food.html', shops: 'shop.html', services: 'service.html' };
+  if (page === 'access.html') {
+    const back = interestHomes[new URLSearchParams(location.search).get('interest') || ''];
+    if (back) document.querySelectorAll('.brand, .back-home').forEach(link => link.setAttribute('href', back));
+  }
+  const pool = pools[page];
+  if (pool) {
+    try { localStorage.setItem('studentstay_pool', pool[0]); } catch { /* keep going */ }
+    const homeOn = page === pool[0] ? ' class="on"' : '';
+    const listOn = page === pool[2] || (pool[2] === 'properties.html' && page === 'property.html') ? ' class="on"' : '';
+    nav.innerHTML = `<a${homeOn} href="${pool[0]}"><b>⌂</b><span>Home</span></a><a${listOn} href="${pool[2]}"><b>●</b><span>${pool[1]}</span></a>${you}`;
+  } else if (page === 'about.html' || page === 'contact.html' || page === 'student.html' || page === 'landlord.html' || page === 'admin.html') {
     nav.innerHTML = `<a href="index.html"><b>⌂</b><span>Home</span></a>${you}`;
+  } else {
+    nav.innerHTML = you;
   }
   document.body.appendChild(nav);
   const menu = document.querySelector('.menu');

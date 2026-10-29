@@ -5,6 +5,34 @@
   const token = () => localStorage.getItem('studentstay_token');
   const user = () => { try { return JSON.parse(localStorage.getItem('studentstay_user') || 'null'); } catch { return null; } };
   const photo = value => value || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80';
+  const pools = {
+    restaurant: { home: 'food.html', list: 'restaurants.html', name: 'Restaurants', tag: 'Food in Greater Noida' },
+    shop: { home: 'shop.html', list: 'shops.html', name: 'Shops', tag: 'Shops in Greater Noida' },
+    service: { home: 'service.html', list: 'services.html', name: 'Services', tag: 'Services in Greater Noida' }
+  };
+  const stayIn = kind => {
+    const pool = pools[kind];
+    if (!pool) return;
+    try { localStorage.setItem('studentstay_pool', pool.home); } catch { /* ignore */ }
+    const brand = document.querySelector('.brand');
+    if (brand) {
+      brand.setAttribute('href', pool.home);
+      const small = brand.querySelector('small');
+      if (small) small.textContent = pool.tag;
+    }
+    if (document.body.hasAttribute('data-market-business')) {
+      const nav = document.querySelector('.nav');
+      if (nav) nav.innerHTML = `<a href="${pool.home}">Home</a><a href="${pool.list}">${pool.name}</a>`;
+    }
+    const phone = document.querySelector('.phone-nav');
+    if (phone) {
+      const you = phone.lastElementChild;
+      const page = (location.pathname.split('/').pop() || '').toLowerCase();
+      const homeOn = page === pool.home ? ' class="on"' : '';
+      const listOn = page === pool.list ? ' class="on"' : '';
+      phone.innerHTML = `<a${homeOn} href="${pool.home}"><b>⌂</b><span>Home</span></a><a${listOn} href="${pool.list}"><b>●</b><span>${pool.name}</span></a>${you ? you.outerHTML : ''}`;
+    }
+  };
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
 
   async function api(path, options = {}) {
@@ -40,12 +68,18 @@
     const kind = listRoot.getAttribute('data-market-list');
     const box = document.querySelector('#marketList');
     const form = document.querySelector('#marketSearch');
+    const limit = Number(listRoot.getAttribute('data-market-limit') || 0);
+    const more = document.querySelector('[data-market-more]');
     const paint = rows => {
-      box.innerHTML = rows.length ? rows.map(row => `<a class="market-card" href="business.html?id=${encodeURIComponent(row.id)}"><img alt="" src="${esc(photo(row.imageUrl || row.logoUrl))}"><div><b>${esc(row.name)}</b><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${row.fromPrice == null ? 'No items yet' : `From ${money(row.fromPrice)}`} · ${row.itemCount || 0} listed</p></div></a>`).join('') : '<p>Nothing is listed here yet.</p>';
+      const shown = limit > 0 ? rows.slice(0, limit) : rows;
+      box.innerHTML = shown.length ? shown.map(row => `<a class="market-card" href="business.html?id=${encodeURIComponent(row.id)}"><img alt="" src="${esc(photo(row.imageUrl || row.logoUrl))}"><div><b>${esc(row.name)}</b><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${row.fromPrice == null ? 'No items yet' : `From ${money(row.fromPrice)}`} · ${row.itemCount || 0} listed</p></div></a>`).join('') : '<p>Nothing is listed here yet.</p>';
+      if (more) more.hidden = shown.length === 0;
     };
     const load = query => api(`/market/businesses?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(query || '')}`).then(paint).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
     form?.addEventListener('submit', event => { event.preventDefault(); load(new FormData(form).get('q')); });
-    load('');
+    const initial = new URLSearchParams(location.search).get('q') || '';
+    if (initial && form?.elements.q) form.elements.q.value = initial;
+    load(initial);
   }
 
   const businessRoot = document.querySelector('[data-market-business]');
@@ -57,7 +91,8 @@
     };
     api(`/market/businesses/${encodeURIComponent(id || '')}`).then(row => {
       const action = row.kind === 'service' ? 'Request service' : 'Buy';
-      box.innerHTML = `<p><a href="${esc(row.kind)}s.html">← Back</a></p><h1>${esc(row.name)}</h1><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${esc(row.description || '')}</p>${row.hours ? `<p>Hours: ${esc(row.hours)}</p>` : ''}<div id="itemList"></div>`;
+      stayIn(row.kind);
+      box.innerHTML = `<p><a href="${esc((pools[row.kind] || {}).list || '#')}">← Back</a></p><h1>${esc(row.name)}</h1><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${esc(row.description || '')}</p>${row.hours ? `<p>Hours: ${esc(row.hours)}</p>` : ''}<div id="itemList"></div>`;
       const list = document.querySelector('#itemList');
       const items = row.items || [];
       list.innerHTML = items.length ? items.map(item => {
@@ -100,8 +135,8 @@
         }));
       };
       const kind = new URLSearchParams(location.search).get('kind');
-      const back = { restaurant: 'restaurants.html', shop: 'shops.html', service: 'services.html' }[kind] || 'index.html';
-      document.querySelector('[data-orders-home]')?.setAttribute('href', back);
+      const back = pools[kind]?.home;
+      if (back) document.querySelectorAll('[data-orders-home]').forEach(link => link.setAttribute('href', back));
       api('/market/my-orders').then(rows => paint(kind ? rows.filter(row => row.kind === kind) : rows)).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
     }
   }
@@ -150,13 +185,12 @@
         }));
       };
       const ownerNames = { restaurant: 'restaurant', shop: 'shop', service: 'service' };
-      const ownerHome = { restaurant: 'restaurants.html', shop: 'shops.html', service: 'services.html' };
       if (ownerNames[session.role]) {
         const title = document.querySelector('#ownerDesk h1');
         const blurb = document.querySelector('#ownerDesk p');
         if (title) title.textContent = `Your ${ownerNames[session.role]}`;
         if (blurb) blurb.textContent = `This page is only your ${ownerNames[session.role]}.`;
-        document.querySelector('.brand')?.setAttribute('href', ownerHome[session.role]);
+        stayIn(session.role);
       }
       const kindField = document.querySelector('#newBusiness [name="kind"]');
       if (kindField && ['restaurant', 'shop', 'service'].includes(session.role)) {
