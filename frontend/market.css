@@ -21,6 +21,7 @@
 .menu-offer b { display: block; color: #0d2b52; font-size: 15px; }
 .menu-offer .detail-price { font-size: 18px; margin: 6px 0 0; }
 .menu-offer .pay-now { width: auto; min-width: 132px; height: 42px; padding: 0 16px; }
+.menu-offer.offer-focus { border-radius: 12px; outline: 2px solid #0759d6; outline-offset: 4px; }
 .item-row img { width: 92px; height: 72px; object-fit: cover; border-radius: 10px; background: #eaf2ff; }
 .buy-result { margin-top: 10px; padding: 12px; border-radius: 12px; background: #f4f7fb; }
 .buy-result a { display: inline-block; margin: 6px 8px 0 0; font-weight: 700; color: #0759d6; }

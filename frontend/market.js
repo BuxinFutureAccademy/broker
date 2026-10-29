@@ -52,7 +52,10 @@
   const bindPlaces = box => {
     if (!box || box.dataset.bound === '1') return;
     box.dataset.bound = '1';
-    const open = tile => { location.href = `business.html?id=${encodeURIComponent(tile.dataset.businessId)}`; };
+    const open = tile => {
+      const item = tile.dataset.itemId ? `&item=${encodeURIComponent(tile.dataset.itemId)}` : '';
+      location.href = `business.html?id=${encodeURIComponent(tile.dataset.businessId)}${item}`;
+    };
     box.addEventListener('click', event => {
       const heart = event.target.closest('.heart');
       if (heart) { event.preventDefault(); event.stopPropagation(); heart.classList.toggle('saved'); return; }
@@ -63,6 +66,30 @@
       const tile = event.target.closest('[data-business-id]');
       if (tile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(tile); }
     });
+  };
+  const offerCard = (row, item) => {
+    const image = item.photoUrl || row.imageUrl || row.logoUrl || covers.service;
+    return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" data-item-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(item.name)}"><span class="tag blue">${esc(row.name)}</span></div><div class="property-info"><h3>${esc(item.name)}</h3><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${money(item.price)}</div><div class="amenities"><span>${esc(row.category || 'Service')}</span><span>Open</span></div></div></article>`;
+  };
+  const cardsFor = (rows, kind, area, query) => {
+    if (kind !== 'service') return rows.filter(row => matchesPlace(row, area, query)).map(row => placeCard(row, kind));
+    const cards = [];
+    const needle = String(query || '').trim().toLowerCase();
+    rows.forEach(row => {
+      const offers = Array.isArray(row.offers) ? row.offers : null;
+      if (!offers) {
+        if (matchesPlace(row, area, query)) cards.push(placeCard(row, kind));
+        return;
+      }
+      const place = String(row.area || '').toLowerCase();
+      if (area && !place.includes(area.toLowerCase())) return;
+      offers.forEach(item => {
+        const blob = `${item.name || ''} ${item.description || ''} ${row.name || ''} ${row.category || ''} ${row.area || ''}`.toLowerCase();
+        if (needle && !blob.includes(needle)) return;
+        cards.push(offerCard(row, item));
+      });
+    });
+    return cards;
   };
   const matchesPlace = (row, area, query) => {
     const place = String(row.area || '').toLowerCase();
@@ -84,6 +111,20 @@
     if (!response.ok) throw new Error(payload.error || 'Could not complete that. Please try again.');
     return payload;
   }
+
+  const withServiceOffers = async (kind, rows) => {
+    if (kind !== 'service' || rows.every(row => Array.isArray(row.offers))) return rows;
+    return Promise.all(rows.map(async row => {
+      if (Array.isArray(row.offers)) return row;
+      try {
+        const full = await api(`/market/businesses/${encodeURIComponent(row.id)}`);
+        const offers = (full.items || []).filter(item => item.available !== false).map(item => ({
+          id: item.id, name: item.name, description: item.description || '', price: item.price || 0, photoUrl: item.photoUrl || ''
+        }));
+        return { ...row, offers };
+      } catch { return { ...row, offers: [] }; }
+    }));
+  };
 
   async function uploadFile(file) {
     const body = new FormData();
@@ -127,13 +168,13 @@
       if (!box) return;
       const area = form?.elements.area?.value || '';
       const query = form?.elements.q?.value || '';
-      const shown = rows.filter(row => matchesPlace(row, area, query));
-      box.innerHTML = shown.length ? shown.map(row => placeCard(row, kind)).join('') : `<div class="empty-state">${empty}</div>`;
+      const shown = cardsFor(rows, kind, area, query);
+      box.innerHTML = shown.length ? shown.join('') : `<div class="empty-state">${empty}</div>`;
       bindPlaces(box);
     };
     form?.addEventListener('submit', event => { event.preventDefault(); paint(); });
     form?.elements.area?.addEventListener('change', paint);
-    api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => { rows = Array.isArray(items) ? items : []; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
+    api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => withServiceOffers(kind, Array.isArray(items) ? items : [])).then(items => { rows = items; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
   }
 
   const homeRoot = document.querySelector('[data-market-home]');
@@ -154,8 +195,8 @@
       if (!box) return;
       const area = form?.elements.area?.value || '';
       const query = String(form?.elements.q?.value || '').trim();
-      const shown = rows.filter(item => matchesPlace(item, area, query));
-      box.innerHTML = shown.length ? shown.map(item => placeCard(item, kind)).join('') : `<div class="empty-state">${empty[kind] || 'Nothing in that sector yet.'}</div>`;
+      const shown = cardsFor(rows, kind, area, query);
+      box.innerHTML = shown.length ? shown.join('') : `<div class="empty-state">${empty[kind] || 'Nothing in that sector yet.'}</div>`;
       bindPlaces(box);
       if (heading) heading.textContent = area ? `${titles[kind] || 'Places'} in ${area}` : (titles[kind] || 'Places');
       if (caption) caption.textContent = area ? `Showing ${area}.` : 'Every sector in Greater Noida.';
@@ -171,7 +212,7 @@
       document.querySelector('.login')?.addEventListener('click', () => { location.href = interest ? `access.html?interest=${encodeURIComponent(interest)}` : 'access.html'; });
       document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=owners'; });
     }
-    api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => { rows = Array.isArray(items) ? items : []; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
+    api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => withServiceOffers(kind, Array.isArray(items) ? items : [])).then(items => { rows = items; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
   }
 
   const businessRoot = document.querySelector('[data-market-business]');
@@ -202,10 +243,17 @@
       const lines = items.length ? items.map(item => {
         const blocked = !item.available || item.stock === 0;
         const note = [item.stock == null ? '' : `${item.stock} in stock`, item.available ? '' : 'Unavailable'].filter(Boolean).join(' · ');
-        return `<article class="menu-offer"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
+        return `<article class="menu-offer" data-offer="${esc(item.id)}"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
       }).join('') : '<p class="detail-notice">Nothing is listed yet.</p>';
       box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something beside the photo. Sign in, then pay this place directly. The phone number stays hidden until you send a request.</p></section></aside></div>`;
       const mainPhoto = document.querySelector('#mainPhoto');
+      const focusId = new URLSearchParams(location.search).get('item');
+      const safeId = focusId ? (window.CSS?.escape ? CSS.escape(focusId) : focusId.replace(/[^a-zA-Z0-9-]/g, '')) : '';
+      const focus = safeId ? box.querySelector(`[data-offer="${safeId}"]`) : null;
+      if (focus) {
+        focus.classList.add('offer-focus');
+        focus.scrollIntoView({ block: 'center' });
+      }
       box.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
         const src = photos[Number(button.dataset.photoIndex)];
         if (src && mainPhoto) mainPhoto.src = src;
@@ -359,7 +407,7 @@
       const ownerCopy = {
         restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'Keep the restaurant profile, the menu, and the meal requests in one place.', items: 'Menu', item: 'dish', hint: 'Add as many dishes as you want. Each one needs a name, a price, and a photo.', request: 'Accept a meal request, then mark it completed after the student pays you.', profile: 'Restaurant profile', profileHint: 'This is the restaurant people see. Set the sector and the photo here.', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace', category: 'Meals' },
         shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'Keep the shop profile, the products, and the purchase requests in one place.', items: 'Products', item: 'product', hint: 'Add as many products as you want. Each one needs a name, a price, a stock count, and a photo.', request: 'Accept a purchase, then mark it completed after the student pays you.', profile: 'Shop profile', profileHint: 'This is the shop people see. Set the sector and the photo here.', stock: true, publicPage: 'shop.html', brand: 'Shop workspace', category: 'Grocery' },
-        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'Keep the service profile, what you offer, and the requests in one place.', items: 'Services', item: 'service', hint: 'Add as many services as you want. Each one needs a name, a price, and a photo.', request: 'Accept a request, then mark it completed after the student pays you.', profile: 'Service profile', profileHint: 'This is the service people see. Set the sector and the photo here.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
+        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'Your profile and your requests are here. Services you add are listed under Services, and on the services homepage.', items: 'Services', item: 'service', hint: 'Each service you save is listed here, and on the services homepage. A name, a price, and a photo are enough.', request: 'Accept a request, then mark it completed after the student pays you.', profile: 'Service profile', profileHint: 'Edit the company here: the name, the sector, and the photo. Services are added separately.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
       };
       const copy = ownerCopy[session.role] || ownerCopy.restaurant;
       const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };
@@ -392,7 +440,8 @@
         const items = placeRows.reduce((sum, row) => sum + (row.items || []).length, 0);
         const open = orderRows.filter(row => row.status === 'pending' || row.status === 'accepted').length;
         const done = orderRows.filter(row => row.status === 'completed').length;
-        const cards = [[String(items), copy.items], [String(open), 'Open requests'], [String(done), 'Completed']];
+        const cards = [[String(open), 'Open requests'], [String(done), 'Completed']];
+        if (session.role !== 'service') cards.unshift([String(items), copy.items]);
         box.innerHTML = cards.map(([value, label]) => `<article class="stat-card"><span class="stat-icon">●</span><div><strong>${esc(value)}</strong><small>${esc(label)}</small></div></article>`).join('');
       };
       const showOwnerPage = () => {

@@ -184,7 +184,7 @@ def init_market():
         for row in rows.order_by(Business.created.desc()).all():
             if area and area not in (row.area or '').lower() and area not in (row.address or '').lower():
                 continue
-            items = CatalogItem.query.filter_by(business_id=row.id, available=True).all()
+            items = CatalogItem.query.filter_by(business_id=row.id, available=True).order_by(CatalogItem.created.desc()).all()
             blob = ' '.join([row.name, row.category, row.description or '', row.area or ''] + [item.name for item in items]).lower()
             if query and query not in blob:
                 continue
@@ -192,6 +192,13 @@ def init_market():
             card['itemCount'] = len(items)
             card['itemNames'] = [item.name for item in items]
             card['fromPrice'] = min((item.price or 0 for item in items), default=None)
+            card['offers'] = [{
+                'id': item.id,
+                'name': item.name,
+                'description': item.description or '',
+                'price': item.price or 0,
+                'photoUrl': item.photo_url or '',
+            } for item in items]
             result.append(card)
         return jsonify(result)
 
