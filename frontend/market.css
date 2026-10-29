@@ -21,6 +21,22 @@
 .buy-result { margin-top: 10px; padding: 12px; border-radius: 12px; background: #f4f7fb; }
 .buy-result a { display: inline-block; margin: 6px 8px 0 0; font-weight: 700; color: #0759d6; }
 .market-note { color: #9b1c1c; font-weight: 700; }
+.catalog-page .empty-state { padding: 28px; text-align: center; background: #f7f9fc; border-radius: 12px; color: #657a93; }
+.pool-food .catalog-hero { background: linear-gradient(115deg, #3a2412, #c56a12); }
+.pool-shop .catalog-hero { background: linear-gradient(115deg, #10281c, #1f7a45); }
+.pool-service .catalog-hero { background: linear-gradient(115deg, #1c2144, #3d4cb5); }
+.catalog-hero .eyebrow { color: #ffe7b0; }
+#ownerStats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.owner-request { margin-bottom: 12px; }
+.owner-request .request-row { border-top: 0; padding-top: 0; }
+.owner-request form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.owner-request input { flex: 1 1 160px; height: 40px; border: 1px solid #d5e0ec; border-radius: 10px; padding: 0 12px; font: 16px inherit; }
+.owner-items { display: grid; gap: 0; }
+.owner-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid #e6eef6; }
+.owner-item p { margin: 4px 0 0; color: #60758d; font-size: 13px; }
+.owner-item-actions { display: flex; gap: 8px; flex: none; }
+.owner-item-form { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e6eef6; }
 @media (max-width: 760px) {
   .market-grid { grid-template-columns: 1fr; }
+  .owner-item { align-items: flex-start; flex-direction: column; }
 }

@@ -6,9 +6,9 @@
   <title>Shops · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=12">
   <link rel="stylesheet" href="catalog.css?v=9">
-  <link rel="stylesheet" href="market.css?v=2">
+  <link rel="stylesheet" href="market.css?v=3">
 </head>
-<body data-market-list="shop" data-market-limit="6">
+<body class="pool-shop" data-market-list="shop" data-market-limit="6">
   <header class="topbar">
     <a class="brand" href="shop.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Shops in Greater Noida</small></span></a>
     <nav class="nav"><a class="active" href="shop.html">Home</a><a href="shops.html">Shops</a></nav>
@@ -17,15 +17,15 @@
   </header>
   <main class="catalog-page">
     <div class="catalog-hero property-hero">
-      <span class="eyebrow">LOOKING FOR A SHOP</span>
-      <h1>Shops in Greater Noida</h1>
-      <p>This home is shops only. Open a shop, see the price, then contact them.</p>
+      <span class="eyebrow">SHOPS</span>
+      <h1>Find something you need</h1>
+      <p>Shops in Greater Noida. Open one to see products and prices.</p>
       <form id="marketSearch" class="market-search"><input name="q" placeholder="Search a shop or product" aria-label="Search shops"><button class="primary-button" type="submit">Search</button></form>
     </div>
-    <div class="catalog-title"><div><h2>Shops</h2><p>A few shops. The shops page has the full list.</p></div><a data-market-more href="shops.html">View all →</a></div>
+    <div class="catalog-title"><div><h2>Shops nearby</h2><p>A short list. Open shops for every product.</p></div><a data-market-more href="shops.html">View all →</a></div>
     <div id="marketList" class="market-grid"></div>
   </main>
   <script src="session.js?v=19"></script>
-  <script src="market.js?v=5"></script>
+  <script src="market.js?v=6"></script>
 </body>
 </html>

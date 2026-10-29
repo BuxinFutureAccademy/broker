@@ -70,9 +70,14 @@
     const form = document.querySelector('#marketSearch');
     const limit = Number(listRoot.getAttribute('data-market-limit') || 0);
     const more = document.querySelector('[data-market-more]');
+    const words = { restaurant: ['dish', 'dishes', 'No restaurants are listed yet.'], shop: ['product', 'products', 'No shops are listed yet.'], service: ['service', 'services', 'No services are listed yet.'] }[kind] || ['item', 'items', 'Nothing is listed here yet.'];
     const paint = rows => {
       const shown = limit > 0 ? rows.slice(0, limit) : rows;
-      box.innerHTML = shown.length ? shown.map(row => `<a class="market-card" href="business.html?id=${encodeURIComponent(row.id)}"><img alt="" src="${esc(photo(row.imageUrl || row.logoUrl))}"><div><b>${esc(row.name)}</b><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${row.fromPrice == null ? 'No items yet' : `From ${money(row.fromPrice)}`} · ${row.itemCount || 0} listed</p></div></a>`).join('') : '<p>Nothing is listed here yet.</p>';
+      box.innerHTML = shown.length ? shown.map(row => {
+        const count = Number(row.itemCount || 0);
+        const listed = count === 1 ? `1 ${words[0]}` : `${count} ${words[1]}`;
+        return `<a class="market-card" href="business.html?id=${encodeURIComponent(row.id)}"><img alt="" src="${esc(photo(row.imageUrl || row.logoUrl))}"><div><b>${esc(row.name)}</b><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${row.fromPrice == null ? 'Price on request' : `From ${money(row.fromPrice)}`} · ${listed}</p></div></a>`;
+      }).join('') : `<p class="empty-state">${words[2]}</p>`;
       if (more) more.hidden = shown.length === 0;
     };
     const load = query => api(`/market/businesses?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(query || '')}`).then(paint).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
@@ -152,7 +157,10 @@
       const businesses = document.querySelector('#vendorBusinesses');
       const orders = document.querySelector('#vendorOrders');
       const paint = rows => {
-        businesses.innerHTML = rows.map(row => `<article class="panel"><h3>${esc(row.name)}</h3><p>${esc(row.kind)} · ${esc(row.category)} · ${esc(row.status)}</p><p>${esc(row.phone)} · ${esc(row.area)}</p><form data-item="${esc(row.id)}"><h4>Add an item</h4><input name="name" placeholder="Name" required><input name="price" inputmode="numeric" placeholder="Price in ₹" required><input name="category" placeholder="Category"><textarea name="description" placeholder="Description"></textarea><input name="photoUrl" placeholder="Photo link"><input name="stock" inputmode="numeric" placeholder="Stock, shops only"><button class="primary-button" type="submit">Save item</button></form><div>${(row.items || []).map(item => `<p><b>${esc(item.name)}</b> · ${money(item.price)} · ${item.available ? 'Available' : 'Hidden'}${item.stock == null ? '' : ` · Stock ${item.stock}`} <button type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Mark unavailable' : 'Mark available'}</button> <button type="button" data-remove="${esc(item.id)}">Remove</button></p>`).join('')}</div></article>`).join('') || '<p>Add your first business below.</p>';
+        placeRows = rows;
+        paintStats();
+        const stockField = copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" placeholder="How many you have"></label>` : '';
+        businesses.innerHTML = rows.map(row => `<article class="panel owner-place"><div class="panel-heading"><div><span class="eyebrow">${esc(row.category || copy.eyebrow)}</span><h2>${esc(row.name)}</h2><p>${esc(row.phone || 'No phone yet')} · ${esc(row.area || 'Greater Noida')}</p></div></div><div class="owner-items">${(row.items || []).map(item => `<div class="owner-item"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div>`).join('') || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div><form class="form-grid owner-item-form" data-item="${esc(row.id)}"><label>${esc(copy.item[0].toUpperCase() + copy.item.slice(1))} name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label><label>Category<input name="category" placeholder="Optional"></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide">Photo link<input name="photoUrl" placeholder="https://"></label><button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form></article>`).join('') || `<p class="empty-state">Add your first ${esc(copy.item === 'dish' ? 'restaurant' : copy.item === 'product' ? 'shop' : 'service')} from Add a place.</p>`;
         businesses.querySelectorAll('[data-item]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
           const data = Object.fromEntries(new FormData(form));
@@ -173,9 +181,11 @@
         }));
       };
       const paintOrders = rows => {
+        orderRows = rows;
+        paintStats();
         const query = (document.querySelector('#orderFilter')?.value || '').trim().toLowerCase();
-        const shown = rows.filter(row => !query || `${row.reference} ${row.status} ${row.itemName}`.toLowerCase().includes(query));
-        orders.innerHTML = shown.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.status)}</h3><p>${esc(row.itemName)} · Qty ${row.quantity} · Listed ${money(row.listedTotal)}</p><p>${esc(row.customer?.name || 'Customer')} · ${esc(row.customer?.phone || 'No phone')}</p>${row.finalAmount == null ? '' : `<p>Final ${money(row.finalAmount)} · Commission ${row.commissionAmount == null ? '—' : money(row.commissionAmount)} (${esc(row.commissionStatus || 'unconfirmed')})</p>`}<form data-status="${esc(row.id)}"><input name="finalAmount" inputmode="numeric" placeholder="Final amount ₹"><button class="small-button" name="status" value="accepted" type="submit">Accept</button> <button class="small-button" name="status" value="completed" type="submit">Completed</button> <button class="small-button" name="status" value="cancelled" type="submit">Cancel</button></form></article>`).join('') || '<p>No requests yet.</p>';
+        const shown = rows.filter(row => !query || `${row.reference} ${row.status} ${row.itemName} ${row.customer?.name || ''}`.toLowerCase().includes(query));
+        orders.innerHTML = shown.map(row => `<article class="panel owner-request"><div class="request-row"><div><b>${esc(row.itemName)}</b><p>${esc(row.reference)} · ${esc(row.customer?.name || 'Student')} · ${esc(row.customer?.phone || 'No phone')}</p><p>Qty ${esc(row.quantity)} · ${money(row.listedTotal)}${row.finalAmount == null ? '' : ` · Paid ${money(row.finalAmount)}`}</p></div><span class="status-pill">${esc(row.status)}</span></div><form data-status="${esc(row.id)}"><input name="finalAmount" inputmode="numeric" placeholder="Amount received ₹"><button class="small-button" name="status" value="accepted" type="submit">Accept</button><button class="small-button" name="status" value="completed" type="submit">Completed</button><button class="small-button danger" name="status" value="cancelled" type="submit">Cancel</button></form></article>`).join('') || '<p class="empty-state">No requests yet.</p>';
         orders.querySelectorAll('[data-status]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
           try {
@@ -184,19 +194,56 @@
           } catch (error) { alert(error.message); }
         }));
       };
-      const ownerNames = { restaurant: 'restaurant', shop: 'shop', service: 'service' };
-      if (ownerNames[session.role]) {
-        const title = document.querySelector('#ownerDesk h1');
-        const blurb = document.querySelector('#ownerDesk p');
-        if (title) title.textContent = `Your ${ownerNames[session.role]}`;
-        if (blurb) blurb.textContent = `This page is only your ${ownerNames[session.role]}.`;
-        stayIn(session.role);
-      }
+      const ownerCopy = {
+        restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'Put dishes on the menu and answer meal requests.', items: 'Menu', item: 'dish', hint: 'Each dish needs a name and a price in rupees.', request: 'Accept a meal request, then mark it completed after the student pays you.', add: 'Add another restaurant', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace' },
+        shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'List products, keep the stock count, and answer purchase requests.', items: 'Products', item: 'product', hint: 'Each product needs a name, a price, and how many you have.', request: 'Accept a purchase, then mark it completed after the student pays you.', add: 'Add another shop', stock: true, publicPage: 'shop.html', brand: 'Shop workspace' },
+        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'List what you offer and answer requests for help.', items: 'Services', item: 'service', hint: 'Each service needs a name and a price in rupees.', request: 'Accept a request, then mark it completed after the student pays you.', add: 'Add another service', stock: false, publicPage: 'service.html', brand: 'Service workspace' }
+      };
+      const copy = ownerCopy[session.role] || ownerCopy.restaurant;
+      const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };
+      setText('#ownerEyebrow', copy.eyebrow);
+      setText('#ownerTitle', copy.title);
+      setText('#ownerBlurb', copy.blurb);
+      setText('#ownerItemsNav', `☰  ${copy.items}`);
+      setText('#ownerItemsEyebrow', copy.eyebrow);
+      setText('#ownerItemsTitle', copy.items);
+      setText('#ownerItemsHint', copy.hint);
+      setText('#ownerRequestHint', copy.request);
+      setText('#ownerAddTitle', copy.add);
+      setText('#ownerBrand', copy.brand);
+      setText('#ownerName', session.name || 'Owner');
+      setText('#ownerAvatar', (session.name || 'O').slice(0, 1).toUpperCase());
+      const publicLink = document.querySelector('#ownerPublic');
+      if (publicLink) publicLink.href = copy.publicPage;
+      document.title = `${copy.title} · StudentStay`;
+      stayIn(session.role);
+      setText('#ownerBrand', copy.brand);
       const kindField = document.querySelector('#newBusiness [name="kind"]');
       if (kindField && ['restaurant', 'shop', 'service'].includes(session.role)) {
         [...kindField.options].forEach(option => { if (option.value !== session.role) option.remove(); });
         kindField.value = session.role;
       }
+      let placeRows = [];
+      let orderRows = [];
+      const paintStats = () => {
+        const box = document.querySelector('#ownerStats');
+        if (!box) return;
+        const items = placeRows.reduce((sum, row) => sum + (row.items || []).length, 0);
+        const open = orderRows.filter(row => row.status === 'pending' || row.status === 'accepted').length;
+        const done = orderRows.filter(row => row.status === 'completed').length;
+        const cards = [[String(placeRows.length), 'Places'], [String(items), copy.items], [String(open), 'Open requests'], [String(done), 'Completed']];
+        box.innerHTML = cards.map(([value, label]) => `<article class="stat-card"><span class="stat-icon">●</span><div><strong>${esc(value)}</strong><small>${esc(label)}</small></div></article>`).join('');
+      };
+      const showOwnerPage = () => {
+        const pages = [...document.querySelectorAll('#ownerDesk .workspace')];
+        const wanted = (location.hash || '#overview').slice(1);
+        const current = pages.some(page => page.id === wanted) ? wanted : 'overview';
+        pages.forEach(page => { page.hidden = page.id !== current; });
+        document.querySelectorAll('.side-nav a[href^="#"]').forEach(link => link.classList.toggle('selected', link.getAttribute('href') === `#${current}`));
+      };
+      window.addEventListener('hashchange', showOwnerPage);
+      showOwnerPage();
+      paintStats();
       const load = () => api('/market/mine').then(paint).catch(error => { businesses.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       const loadOrders = () => api('/market/vendor/orders').then(rows => { orders.dataset.rows = JSON.stringify(rows); paintOrders(rows); }).catch(error => { orders.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       document.querySelector('#orderFilter')?.addEventListener('input', () => { try { paintOrders(JSON.parse(orders.dataset.rows || '[]')); } catch { /* ignore */ } });

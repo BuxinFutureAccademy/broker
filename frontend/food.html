@@ -6,9 +6,9 @@
   <title>Food · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=12">
   <link rel="stylesheet" href="catalog.css?v=9">
-  <link rel="stylesheet" href="market.css?v=2">
+  <link rel="stylesheet" href="market.css?v=3">
 </head>
-<body data-market-list="restaurant" data-market-limit="6">
+<body class="pool-food" data-market-list="restaurant" data-market-limit="6">
   <header class="topbar">
     <a class="brand" href="food.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Food in Greater Noida</small></span></a>
     <nav class="nav"><a class="active" href="food.html">Home</a><a href="restaurants.html">Restaurants</a></nav>
@@ -17,15 +17,15 @@
   </header>
   <main class="catalog-page">
     <div class="catalog-hero property-hero">
-      <span class="eyebrow">LOOKING FOR FOOD</span>
-      <h1>Food in Greater Noida</h1>
-      <p>This home is restaurants only. Open a place, see the menu, then contact them.</p>
+      <span class="eyebrow">RESTAURANTS</span>
+      <h1>Find a meal nearby</h1>
+      <p>Restaurants in Greater Noida. Open one to see the menu and the price.</p>
       <form id="marketSearch" class="market-search"><input name="q" placeholder="Search a restaurant or dish" aria-label="Search restaurants"><button class="primary-button" type="submit">Search</button></form>
     </div>
-    <div class="catalog-title"><div><h2>Restaurants</h2><p>A few places to eat. The restaurants page has the full list.</p></div><a data-market-more href="restaurants.html">View all →</a></div>
+    <div class="catalog-title"><div><h2>Places to eat</h2><p>A short list. Open restaurants for every menu.</p></div><a data-market-more href="restaurants.html">View all →</a></div>
     <div id="marketList" class="market-grid"></div>
   </main>
   <script src="session.js?v=19"></script>
-  <script src="market.js?v=5"></script>
+  <script src="market.js?v=6"></script>
 </body>
 </html>
