@@ -64,5 +64,5 @@
     });
   }).catch(() => {});
   document.querySelector('.login')?.addEventListener('click', () => { location.href = 'access.html'; });
-  document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=signup'; });
+  document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=owners'; });
 })();

@@ -53,7 +53,7 @@
     const id = new URLSearchParams(location.search).get('id');
     const box = document.querySelector('#businessDetails');
     const showContact = (node, order) => {
-      node.innerHTML = `<b>Request ${esc(order.reference)}</b><p>Status: ${esc(order.status)}. Pay the business directly. This request is saved.</p><div>${contactLinks(order.contact, order.reference, order.itemName)}</div><p><a href="orders.html">See your requests</a></p>`;
+      node.innerHTML = `<b>Request ${esc(order.reference)}</b><p>Status: ${esc(order.status)}. Pay the business directly. This request is saved.</p><div>${contactLinks(order.contact, order.reference, order.itemName)}</div><p><a href="orders.html?kind=${esc(order.kind)}">See your requests</a></p>`;
     };
     api(`/market/businesses/${encodeURIComponent(id || '')}`).then(row => {
       const action = row.kind === 'service' ? 'Request service' : 'Buy';
@@ -67,7 +67,7 @@
       list.querySelectorAll('[data-buy]').forEach(button => button.addEventListener('click', async () => {
         const result = list.querySelector(`[data-result="${button.dataset.buy}"]`);
         if (!token()) {
-          result.innerHTML = '<p class="market-note">Sign in as a buyer, then come back and tap this button. A student account can also do this from the housing sign-in.</p><a href="buyer.html">Buyer sign in</a>';
+          result.innerHTML = `<p class="market-note">Sign in, then come back and tap this button.</p><a href="access.html?interest=${esc(row.kind === 'restaurant' ? 'restaurants' : row.kind === 'shop' ? 'shops' : 'services')}">Sign in</a>`;
           return;
         }
         button.disabled = true;
@@ -86,10 +86,10 @@
   if (ordersRoot) {
     const box = document.querySelector('#orderList');
     if (!token()) {
-      box.innerHTML = '<p>Sign in as a buyer to see your requests. A student who is already signed in can open this page again.</p><a href="buyer.html">Buyer sign in</a>';
+      box.innerHTML = '<p>Sign in to see your requests.</p><a href="access.html">Sign in</a>';
     } else {
       const paint = rows => {
-        box.innerHTML = rows.length ? rows.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.itemName)}</h3><p>${esc(row.businessName)} · ${esc(row.status)} · Listed ${money(row.listedTotal)}${row.finalAmount == null ? '' : ` · Final ${money(row.finalAmount)}`}</p><div>${contactLinks(row.contact, row.reference, row.itemName)}</div>${row.status === 'completed' && !row.customerConfirm ? `<form data-confirm="${esc(row.id)}"><label>Amount you paid<input name="amount" inputmode="numeric" placeholder="Optional"></label><button class="primary-button" name="result" value="completed" type="submit">Completed</button> <button class="small-button" name="result" value="not_completed" type="submit">Not completed</button> <button class="small-button" name="result" value="disputed" type="submit">Report a problem</button></form>` : `<p>${row.customerConfirm ? `Your answer: ${esc(row.customerConfirm)}` : 'Waiting for the vendor. Your silence is not a confirmation.'}</p>`}</article>`).join('') : '<p>You have no requests yet.</p>';
+        box.innerHTML = rows.length ? rows.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.itemName)}</h3><p>${esc(row.businessName)} · ${esc(row.status)} · Listed ${money(row.listedTotal)}${row.finalAmount == null ? '' : ` · Final ${money(row.finalAmount)}`}</p><div>${contactLinks(row.contact, row.reference, row.itemName)}</div>${row.status === 'completed' && !row.customerConfirm ? `<form data-confirm="${esc(row.id)}"><label>Amount you paid<input name="amount" inputmode="numeric" placeholder="Optional"></label><button class="primary-button" name="result" value="completed" type="submit">Completed</button> <button class="small-button" name="result" value="not_completed" type="submit">Not completed</button> <button class="small-button" name="result" value="disputed" type="submit">Report a problem</button></form>` : `<p>${row.customerConfirm ? `Your answer: ${esc(row.customerConfirm)}` : 'Waiting for the business. No answer is not a confirmation.'}</p>`}</article>`).join('') : '<p>You have no requests yet.</p>';
         box.querySelectorAll('[data-confirm]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
           const result = event.submitter?.value || 'completed';
@@ -99,21 +99,21 @@
           } catch (error) { alert(error.message); }
         }));
       };
-      api('/market/my-orders').then(paint).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
+      const kind = new URLSearchParams(location.search).get('kind');
+      const back = { restaurant: 'restaurants.html', shop: 'shops.html', service: 'services.html' }[kind] || 'index.html';
+      document.querySelector('[data-orders-home]')?.setAttribute('href', back);
+      api('/market/my-orders').then(rows => paint(kind ? rows.filter(row => row.kind === kind) : rows)).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
     }
   }
 
-  const vendorRoot = document.querySelector('[data-market-vendor]');
-  if (vendorRoot) {
-    const gate = document.querySelector('#vendorGate');
-    const desk = document.querySelector('#vendorDesk');
+  const ownerRoot = document.querySelector('[data-market-owner]');
+  if (ownerRoot) {
+    const desk = document.querySelector('#ownerDesk');
     const session = user();
-    if (!token() || session?.role !== 'vendor') {
-      desk.hidden = true;
-      gate.hidden = false;
+    const ownerRoles = ['restaurant', 'shop', 'service', 'vendor'];
+    if (!token() || !ownerRoles.includes(session?.role)) {
+      if (desk) desk.innerHTML = '<p>Sign in as a restaurant owner, shop owner, or service owner.</p><a href="access.html?mode=owners">Owners</a>';
     } else {
-      gate.hidden = true;
-      desk.hidden = false;
       const businesses = document.querySelector('#vendorBusinesses');
       const orders = document.querySelector('#vendorOrders');
       const paint = rows => {
@@ -149,35 +149,35 @@
           } catch (error) { alert(error.message); }
         }));
       };
+      const ownerNames = { restaurant: 'restaurant', shop: 'shop', service: 'service' };
+      const ownerHome = { restaurant: 'restaurants.html', shop: 'shops.html', service: 'services.html' };
+      if (ownerNames[session.role]) {
+        const title = document.querySelector('#ownerDesk h1');
+        const blurb = document.querySelector('#ownerDesk p');
+        if (title) title.textContent = `Your ${ownerNames[session.role]}`;
+        if (blurb) blurb.textContent = `This page is only your ${ownerNames[session.role]}.`;
+        document.querySelector('.brand')?.setAttribute('href', ownerHome[session.role]);
+      }
+      const kindField = document.querySelector('#newBusiness [name="kind"]');
+      if (kindField && ['restaurant', 'shop', 'service'].includes(session.role)) {
+        [...kindField.options].forEach(option => { if (option.value !== session.role) option.remove(); });
+        kindField.value = session.role;
+      }
       const load = () => api('/market/mine').then(paint).catch(error => { businesses.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       const loadOrders = () => api('/market/vendor/orders').then(rows => { orders.dataset.rows = JSON.stringify(rows); paintOrders(rows); }).catch(error => { orders.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       document.querySelector('#orderFilter')?.addEventListener('input', () => { try { paintOrders(JSON.parse(orders.dataset.rows || '[]')); } catch { /* ignore */ } });
       document.querySelector('#newBusiness')?.addEventListener('submit', async event => {
         event.preventDefault();
         const data = Object.fromEntries(new FormData(event.currentTarget));
-        try { await api('/market/businesses', { method: 'POST', body: JSON.stringify(data) }); event.currentTarget.reset(); load(); } catch (error) { alert(error.message); }
+        try { await api('/market/businesses', { method: 'POST', body: JSON.stringify(data) }); event.currentTarget.reset(); if (kindField && ['restaurant', 'shop', 'service'].includes(session.role)) kindField.value = session.role; load(); } catch (error) { alert(error.message); }
       });
       load();
       loadOrders();
     }
-    document.querySelector('#vendorRegister')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try {
-        saveSession(await api('/market/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) }));
-        location.reload();
-      } catch (error) { alert(error.message); }
-    });
-    document.querySelector('#vendorLogin')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try {
-        saveSession(await api('/market/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) }));
-        location.reload();
-      } catch (error) { alert(error.message); }
-    });
-    document.querySelector('[data-vendor-out]')?.addEventListener('click', () => {
+    document.querySelector('[data-owner-out]')?.addEventListener('click', () => {
       localStorage.removeItem('studentstay_token');
       localStorage.removeItem('studentstay_user');
-      location.href = 'vendor.html';
+      location.href = 'access.html';
     });
   }
 
@@ -200,98 +200,6 @@
         }));
       };
       const load = () => api('/market/admin/orders').then(paint).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
-      load();
-    }
-  }
-
-  const homes = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html', vendor: 'vendor.html', buyer: 'buyer.html', donor: 'donor.html' };
-  const buyerRoot = document.querySelector('[data-market-buyer]');
-  if (buyerRoot) {
-    const gate = document.querySelector('#buyerGate');
-    const desk = document.querySelector('#buyerDesk');
-    const session = user();
-    const open = token() && session?.role === 'buyer';
-    if (gate) gate.hidden = open;
-    if (desk) desk.hidden = !open;
-    if (open) {
-      const box = document.querySelector('#orderList');
-      api('/market/my-orders').then(rows => {
-        box.innerHTML = rows.length ? rows.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.itemName)}</h3><p>${esc(row.businessName)} · ${esc(row.status)} · Listed ${money(row.listedTotal)}</p><p><a href="orders.html">Confirm or report a problem</a></p></article>`).join('') : '<p>You have no requests yet. Browse the market and tap Buy or Request service.</p>';
-      }).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
-    }
-    document.querySelector('#buyerRegister')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try { saveSession(await api('/market/buyer/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) })); location.reload(); } catch (error) { alert(error.message); }
-    });
-    document.querySelector('#buyerLogin')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try { saveSession(await api('/market/buyer/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) })); location.reload(); } catch (error) { alert(error.message); }
-    });
-    fetch(`${API_BASE}/auth/providers`).then(response => response.ok ? response.json() : null).then(providers => {
-      if (!providers?.googleClientId || !document.querySelector('#buyerGoogle')) return;
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.onload = () => {
-        const slot = document.querySelector('#buyerGoogle');
-        if (!slot || !window.google?.accounts?.id) return;
-        google.accounts.id.initialize({
-          client_id: providers.googleClientId,
-          callback: async response => {
-            try {
-              const payload = await api('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: 'buyer' }) });
-              saveSession(payload);
-              location.href = homes[payload.user.role] || 'buyer.html';
-            } catch (error) { alert(error.message); }
-          }
-        });
-        google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', width: 320, text: 'continue_with', shape: 'pill' });
-      };
-      document.head.appendChild(script);
-    }).catch(() => {});
-  }
-
-  const donorRoot = document.querySelector('[data-market-donor]');
-  if (donorRoot) {
-    const gate = document.querySelector('#donorGate');
-    const desk = document.querySelector('#donorDesk');
-    const session = user();
-    const open = token() && session?.role === 'donor';
-    if (gate) gate.hidden = open;
-    if (desk) desk.hidden = !open;
-    const paint = payload => {
-      document.querySelector('#donorKind').textContent = `${payload.donorType} donor${payload.organization ? ` · ${payload.organization}` : ''}`;
-      const box = document.querySelector('#donationList');
-      box.innerHTML = (payload.donations || []).map(row => `<article class="panel"><h3>${esc(row.reference)} · ${money(row.amount)}</h3><p>${esc(row.purpose)} · ${esc(row.status)}</p><p>Pledged is not the same as money received.</p></article>`).join('') || '<p>No donations recorded yet.</p>';
-    };
-    const load = () => api('/market/donations/mine').then(paint).catch(error => { document.querySelector('#donationList').innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
-    if (open) load();
-    document.querySelector('#donorRegister')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try { saveSession(await api('/market/donor/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) })); location.reload(); } catch (error) { alert(error.message); }
-    });
-    document.querySelector('#donorLogin')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try { saveSession(await api('/market/donor/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) })); location.reload(); } catch (error) { alert(error.message); }
-    });
-    document.querySelector('#donationForm')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      try { await api('/market/donations', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) }); event.currentTarget.reset(); load(); } catch (error) { alert(error.message); }
-    });
-  }
-
-  const donationAdmin = document.querySelector('[data-donation-admin]');
-  if (donationAdmin) {
-    const box = document.querySelector('#donationAdmin');
-    if (user()?.role !== 'admin') box.innerHTML = '<p>Admin sign-in is required.</p>';
-    else {
-      const paint = rows => {
-        box.innerHTML = rows.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.donorType)} · ${money(row.amount)}</h3><p>${esc(row.donorName)} · ${esc(row.donorEmail)}</p><p>${esc(row.purpose)} · ${esc(row.status)}</p>${row.status === 'pledged' ? `<button class="primary-button" type="button" data-receive="${esc(row.id)}">Mark received</button>` : ''}</article>`).join('') || '<p>No donations yet.</p>';
-        box.querySelectorAll('[data-receive]').forEach(button => button.addEventListener('click', async () => {
-          try { await api(`/market/admin/donations/${button.dataset.receive}`, { method: 'PUT', body: JSON.stringify({ status: 'received' }) }); load(); } catch (error) { alert(error.message); }
-        }));
-      };
-      const load = () => api('/market/admin/donations').then(paint).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       load();
     }
   }

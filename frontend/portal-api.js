@@ -85,7 +85,7 @@
     return response.json();
   }
 
-  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'admin' ? 'admin.html' : role === 'vendor' ? 'vendor.html' : role === 'buyer' ? 'buyer.html' : role === 'donor' ? 'donor.html' : 'student.html'; };
+  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'admin' ? 'admin.html' : ['restaurant', 'shop', 'service'].includes(role) ? 'owner.html' : 'student.html'; };
 
   document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', () => {
     localStorage.removeItem('studentstay_token');
@@ -96,37 +96,109 @@
   const authForm = document.querySelector('#authForm');
   if (authForm) {
     let mode = 'signin';
-    let role = 'student';
+    let role = 'landlord';
     const tabs = [...document.querySelectorAll('.tab')];
-    const roleButtons = [...document.querySelectorAll('.role-choice')];
-    const nameField = authForm.elements.name;
-    const signupFields = [...document.querySelectorAll('.signup-only')];
-
+    const roleButtons = [...document.querySelectorAll('#ownerPicker .role-choice')];
+    const ownerLabels = { student: 'User', landlord: 'Landlord', restaurant: 'Restaurant owner', shop: 'Shop owner', service: 'Service owner' };
+    const businessRole = () => ['restaurant', 'shop', 'service'].includes(role);
     const updateAuth = () => {
-      document.querySelector('#authTitle').textContent = mode === 'signup' ? `Join as a ${role}` : 'Welcome back';
-      document.querySelector('#authSubtitle').textContent = role === 'admin' ? 'Administrator sign in.' : 'Choose how you use StudentStay.';
-      document.querySelector('#authSubmit').textContent = mode === 'signup' ? `Create ${role} account` : `Sign in as ${role[0].toUpperCase()}${role.slice(1)}`;
-      document.querySelector('#authNote').textContent = role === 'admin' ? 'Admin access is reserved for the website manager.' : mode === 'signup' ? 'Your account will be created on the server.' : 'New here? Choose Create account to get started.';
-      nameField.closest('label').classList.toggle('hidden', mode !== 'signup');
-      nameField.required = mode === 'signup';
-      signupFields.forEach(el => el.classList.toggle('hidden', mode !== 'signup'));
-      authForm.elements.phone.required = mode === 'signup' && role === 'landlord';
-      authForm.elements.city.required = mode === 'signup' && role === 'landlord';
-      authForm.elements.password.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+      const creating = mode === 'signup';
+      const owner = mode === 'owners' || creating;
+      const label = ownerLabels[role] || 'Landlord';
+      document.querySelector('#authTitle').textContent = creating ? 'Create an account' : owner ? 'Owners' : 'Sign in';
+      document.querySelector('#authSubtitle').textContent = creating ? (role === 'student' ? 'This user signs in on the Sign in tab, then chooses a house, food, a shop, or a service.' : 'Select one. Then add your name. This account stays that one type.') : owner ? 'Sign in as a landlord, restaurant owner, shop owner, or service owner.' : 'Sign in with one account. Then choose where to enter.';
+      document.querySelector('#authSubmit').textContent = creating ? `Create ${label} account` : owner ? `Sign in as ${label}` : 'Sign in';
+      document.querySelector('#authNote').textContent = creating ? (role === 'student' ? 'After this, the user signs in on the Sign in tab.' : 'Select one type, then your name.') : owner ? 'Owners sign in here. New people use Create account.' : 'This sign-in is for a user. Owners use the Owners tab.';
+      document.querySelector('#ownerPicker')?.classList.toggle('hidden', !owner);
+      document.querySelector('.user-only')?.classList.toggle('hidden', !creating);
+      document.querySelector('#forgotPassword')?.classList.toggle('hidden', creating);
+      if (creating) document.querySelector('#resetPanel')?.classList.add('hidden');
+      document.querySelector('.auth-split')?.classList.toggle('hidden', creating);
+      document.querySelector('.alt-signin')?.classList.toggle('hidden', creating);
+      document.querySelectorAll('.signup-only').forEach(el => el.classList.toggle('hidden', !creating));
+      document.querySelectorAll('.business-only').forEach(el => el.classList.toggle('hidden', !creating || !businessRole()));
+      if (authForm.elements.name) authForm.elements.name.required = creating;
+      if (authForm.elements.phone) authForm.elements.phone.required = creating && (role === 'landlord' || businessRole());
+      if (authForm.elements.city) authForm.elements.city.required = creating && role === 'landlord';
+      if (authForm.elements.businessName) authForm.elements.businessName.required = creating && businessRole();
+      if (authForm.elements.category) authForm.elements.category.required = creating && businessRole();
+      const googleNote = document.querySelector('#altNote');
+      if (googleNote) googleNote.textContent = owner ? 'Pick your owner type, then continue with Google.' : 'You can also sign in with Google. Then choose where to enter.';
+      authForm.elements.password.autocomplete = creating ? 'new-password' : 'current-password';
+      tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === mode));
+      roleButtons.forEach(button => button.classList.toggle('active', button.dataset.role === role));
     };
 
-    tabs.forEach(button => button.addEventListener('click', () => { mode = button.dataset.mode; tabs.forEach(tab => tab.classList.toggle('active', tab === button)); updateAuth(); }));
-    roleButtons.forEach(button => button.addEventListener('click', () => { role = button.dataset.role; roleButtons.forEach(item => item.classList.toggle('active', item === button)); if (role === 'admin') mode = 'signin'; tabs.forEach(tab => { tab.classList.toggle('active', tab.dataset.mode === mode); tab.disabled = role === 'admin' && tab.dataset.mode === 'signup'; }); updateAuth(); }));
-    const requestedRole = location.hash.slice(1);
-    if (['student','landlord'].includes(requestedRole)) roleButtons.find(button => button.dataset.role === requestedRole)?.click();
-    if (new URLSearchParams(location.search).get('mode') === 'signup') document.querySelector('[data-mode="signup"]').click();
+    tabs.forEach(button => button.addEventListener('click', () => {
+      mode = button.dataset.mode;
+      if (mode !== 'signup' && role === 'student') role = 'landlord';
+      updateAuth();
+      if (mode === 'signin' && currentUser && token && currentUser.role === 'student') document.querySelector('#enterChoice')?.classList.remove('hidden');
+      else document.querySelector('#enterChoice')?.classList.add('hidden');
+    }));
+    roleButtons.forEach(button => button.addEventListener('click', () => { role = button.dataset.role; updateAuth(); }));
+    const params = new URLSearchParams(location.search);
+    const requestedRole = (params.get('role') || '').toLowerCase();
+    if (params.get('mode') === 'signup') mode = 'signup';
+    else if (params.get('mode') === 'owners' || ['landlord', 'restaurant', 'shop', 'service'].includes(requestedRole)) mode = 'owners';
+    if (['student', 'landlord', 'restaurant', 'shop', 'service'].includes(requestedRole)) role = requestedRole;
+    if (mode === 'signup' && !requestedRole) role = 'student';
     if (location.hash === '#student') showStudentArea();
     updateAuth();
+    const resetPanel = document.querySelector('#resetPanel');
+    const resetEmailForm = document.querySelector('#resetEmailForm');
+    const resetCodeForm = document.querySelector('#resetCodeForm');
+    const resetNote = document.querySelector('#resetNote');
+    const resetCopy = document.querySelector('#resetCopy');
+    let resetEmail = '';
+    document.querySelector('#forgotPassword')?.addEventListener('click', () => {
+      resetPanel?.classList.remove('hidden');
+      const current = String(authForm.elements.email?.value || '').trim();
+      if (resetEmailForm?.elements.email && current) resetEmailForm.elements.email.value = current;
+    });
+    resetEmailForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      resetEmail = String(new FormData(resetEmailForm).get('email') || '').trim().toLowerCase();
+      if (resetNote) resetNote.textContent = 'Sending the code…';
+      try {
+        const result = await apiCall('/auth/password/forgot', { method: 'POST', body: JSON.stringify({ email: resetEmail }) });
+        if (resetNote) resetNote.textContent = result.message || 'A code is on the way to that email.';
+        if (resetCopy) resetCopy.textContent = `Enter the code sent to ${resetEmail}, then choose a new password.`;
+        resetEmailForm.classList.add('hidden');
+        resetCodeForm?.classList.remove('hidden');
+      } catch (error) {
+        if (resetNote) resetNote.textContent = error.message;
+      }
+    });
+    resetCodeForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const data = new FormData(resetCodeForm);
+      const password = String(data.get('password') || '');
+      if (password !== String(data.get('confirm') || '')) {
+        if (resetNote) resetNote.textContent = 'The two passwords do not match.';
+        return;
+      }
+      try {
+        const result = await apiCall('/auth/password/reset', { method: 'POST', body: JSON.stringify({ email: resetEmail, code: data.get('code'), password }) });
+        if (resetNote) resetNote.textContent = result.message || 'Password saved. Sign in with the new one.';
+        resetCodeForm.classList.add('hidden');
+        if (authForm.elements.email) authForm.elements.email.value = resetEmail;
+        authForm.elements.password.value = '';
+      } catch (error) {
+        if (resetNote) resetNote.textContent = error.message;
+      }
+    });
     const signedInNote = document.querySelector('#signedInNote');
     if (signedInNote && currentUser && token) {
-      const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html' };
+      const dashboards = { student: 'student.html', landlord: 'landlord.html', admin: 'admin.html', restaurant: 'owner.html', shop: 'owner.html', service: 'owner.html' };
       signedInNote.classList.remove('hidden');
-      signedInNote.innerHTML = `<span>You are signed in as <b>${esc(currentUser.name)}</b> (${esc(currentUser.role)}).</span><a href="${dashboards[currentUser.role] || 'student.html'}">Go to dashboard</a>`;
+      if (currentUser.role === 'student') {
+        signedInNote.innerHTML = `<span>You are signed in as <b>${esc(currentUser.name)}</b>.</span>`;
+        if (mode === 'signin') document.querySelector('#enterChoice')?.classList.remove('hidden');
+        else document.querySelector('#enterChoice')?.classList.add('hidden');
+      } else {
+        signedInNote.innerHTML = `<span>You are signed in as <b>${esc(currentUser.name)}</b> (${esc(currentUser.role)}).</span><a href="${dashboards[currentUser.role] || 'student.html'}">Go to dashboard</a>`;
+      }
     }
 
     const finish = response => {
@@ -135,6 +207,10 @@
       currentUser = response.user;
       localStorage.setItem('studentstay_token', token);
       localStorage.setItem('studentstay_user', JSON.stringify(currentUser));
+      if (currentUser.role === 'student') {
+        document.querySelector('#enterChoice')?.classList.remove('hidden');
+        return;
+      }
       go(currentUser.role);
     };
     const altNote = document.querySelector('#altNote');
@@ -152,7 +228,8 @@
           client_id: providers.googleClientId,
           callback: async response => {
             try {
-              finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role }) }));
+              const googleRole = mode === 'owners' ? role : 'student';
+              finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: googleRole }) }));
             } catch (error) { say(error.message); }
           }
         });
@@ -188,34 +265,27 @@
       }
 
       try {
-        let response;
-        if (mode === 'signup') {
-          response = await apiCall('/auth/signup', {
-            method: 'POST',
-            body: JSON.stringify({
-              name: String(form.get('name')).trim(),
-              email,
-              password,
-              role,
-              phone: String(form.get('phone') || '').trim(),
-              city: String(form.get('city') || '').trim(),
-              address: String(form.get('address') || '').trim()
+        const response = mode === 'signup'
+          ? await apiCall('/auth/signup', {
+              method: 'POST',
+              body: JSON.stringify({
+                name: String(form.get('name') || '').trim(),
+                email,
+                password,
+                role,
+                phone: String(form.get('phone') || '').trim(),
+                city: String(form.get('city') || '').trim(),
+                address: String(form.get('address') || '').trim(),
+                businessName: String(form.get('businessName') || '').trim(),
+                category: String(form.get('category') || '').trim()
+              })
             })
-          });
-        } else {
-          response = await apiCall('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password, role })
-          });
-        }
+          : await apiCall('/auth/login', {
+              method: 'POST',
+              body: JSON.stringify({ email, password, role: mode === 'owners' ? role : 'student' })
+            });
 
-        if (response) {
-          token = response.access_token;
-          currentUser = response.user;
-          localStorage.setItem('studentstay_token', token);
-          localStorage.setItem('studentstay_user', JSON.stringify(currentUser));
-          go(currentUser.role);
-        }
+        finish(response);
       } catch (error) {
         alert(error.message);
       }

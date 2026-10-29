@@ -65,6 +65,13 @@ class PhoneCode(db.Model):
     expires = db.Column(db.DateTime, nullable=False)
     attempts = db.Column(db.Integer, default=0)
 
+class PasswordReset(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    code_hash = db.Column(db.String(64), nullable=False)
+    expires = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, default=0)
+
 class BrokerProfile(db.Model):
     id = db.Column(db.String(36), primary_key=True)
     user_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False)
@@ -410,7 +417,7 @@ with app.app_context():
 # when SMTP is not configured on the server.
 def send_email(to, subject, template):
     if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
-        return
+        return False
     try:
         msg = Message(
             subject,
@@ -418,8 +425,10 @@ def send_email(to, subject, template):
             html=template
         )
         mail.send(msg)
+        return True
     except Exception:
         app.logger.exception('Email could not be sent to %s', to)
+        return False
 
 PHONE_EMAIL_DOMAIN = '@phone.studentstay.local'
 
@@ -531,8 +540,9 @@ def google_login():
     import urllib.request
     data = request.get_json() or {}
     role = data.get('role')
-    if role not in ('student', 'landlord', 'buyer'):
-        return jsonify({'error': 'Choose Student, Landlord, or Buyer first.'}), 400
+    owner_roles = ('landlord', 'restaurant', 'shop', 'service')
+    if role not in ('student',) + owner_roles:
+        return jsonify({'error': 'Choose houses, restaurants, shops, services, or an owner type first.'}), 400
     credential = (data.get('credential') or '').strip()
     client_id = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
     if not client_id:
@@ -555,11 +565,14 @@ def google_login():
         return jsonify({'error': 'Use your admin email and password on this form.'}), 403
     if user and user.role == 'broker':
         return jsonify({'error': 'Broker accounts are closed. Sign in as a student or a landlord.'}), 403
+    if user and user.role != role:
+        return jsonify({'error': 'This Google account does not match that choice. Pick the same type as the account.'}), 403
     if not user:
         import uuid
+        display_name = (profile.get('name') or email.split('@')[0] or 'Owner')[:100]
         user = User(
             id=str(uuid.uuid4()),
-            name=(profile.get('name') or email.split('@')[0] or 'Student')[:100],
+            name=display_name,
             email=email,
             password=random_password(),
             role=role,
@@ -568,6 +581,18 @@ def google_login():
             google_sub=sub
         )
         db.session.add(user)
+        labels = {'restaurant': 'Restaurant', 'shop': 'Shop', 'service': 'Service'}
+        if role in labels:
+            db.session.add(Business(
+                id=str(uuid.uuid4()),
+                owner_id=user.id,
+                kind=role,
+                name=display_name[:120],
+                category=labels[role],
+                phone='',
+                area='Greater Noida',
+                status='active'
+            ))
     elif not user.google_sub:
         user.google_sub = sub
     db.session.commit()
@@ -668,8 +693,14 @@ def verify_phone_code():
 def signup():
     data = request.get_json()
     
-    if data.get('role') not in ('student', 'landlord'):
-        return jsonify({'error': 'Create a student or landlord account. The admin handles the broker fee.'}), 400
+    role = data.get('role')
+    business_roles = ('restaurant', 'shop', 'service')
+    if role not in ('student', 'landlord') + business_roles:
+        return jsonify({'error': 'Choose student, landlord, restaurant, shop, or service.'}), 400
+    business_name = str(data.get('businessName') or data.get('business_name') or '').strip()[:120]
+    category = str(data.get('category') or '').strip()[:80]
+    if role in business_roles and (not business_name or not category or not str(data.get('phone') or '').strip()):
+        return jsonify({'error': 'Add the business name, category, and phone number.'}), 400
 
     # Check if user already exists
     if User.query.filter_by(email=data['email']).first():
@@ -685,21 +716,41 @@ def signup():
         name=data['name'],
         email=data['email'],
         password=hashed_password,
-        role=data['role'],
+        role=role,
         phone=data.get('phone', ''),
         city=data.get('city', ''),
         address=data.get('address', '')
     )
     
     db.session.add(new_user)
+    if role in business_roles:
+        db.session.add(Business(
+            id=str(uuid.uuid4()),
+            owner_id=new_user.id,
+            kind=role,
+            name=business_name,
+            category=category,
+            description=str(data.get('description') or '').strip()[:2000],
+            phone=str(data.get('phone') or '').strip()[:30],
+            whatsapp=str(data.get('whatsapp') or '').strip()[:30],
+            address=str(data.get('address') or '').strip()[:200],
+            area=str(data.get('city') or '').strip()[:80] or 'Greater Noida',
+            status='active'
+        ))
     db.session.commit()
     
     # Send welcome email
-    if data['role'] == 'landlord':
+    if role == 'landlord':
         send_email(
             data['email'],
             'Welcome to StudentStay - Landlord Account',
             f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your landlord account has been created successfully. You can now start listing your properties.</p><p>Best regards,<br>StudentStay Team</p>'
+        )
+    elif role in business_roles:
+        send_email(
+            data['email'],
+            'Welcome to StudentStay',
+            f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your {role} account is ready. Add your menu or services from your dashboard.</p><p>Best regards,<br>StudentStay Team</p>'
         )
     else:
         send_email(
@@ -756,6 +807,81 @@ def login():
             'address': user.address
         }
     })
+
+def password_code_hash(code):
+    import hashlib
+    import hmac
+    secret = (os.getenv('JWT_SECRET_KEY') or 'studentstay').encode()
+    return hmac.new(secret, str(code).encode(), hashlib.sha256).hexdigest()
+
+@app.route('/api/auth/password/forgot', methods=['POST'])
+def forgot_password():
+    import secrets
+    from datetime import datetime, timedelta
+    data = request.get_json() or {}
+    email = str(data.get('email') or '').strip().lower()
+    if not email or '@' not in email:
+        return jsonify({'error': 'Enter the email on the account.'}), 400
+    user = User.query.filter(db.func.lower(User.email) == email).first()
+    if not user or email.endswith(PHONE_EMAIL_DOMAIN):
+        return jsonify({'error': 'No account uses that email.'}), 404
+    recent = PasswordReset.query.filter_by(email=email).order_by(PasswordReset.id.desc()).first()
+    if recent and recent.expires and recent.expires > datetime.utcnow() + timedelta(minutes=9):
+        return jsonify({'error': 'A code was just sent. Wait a minute, then try again.'}), 429
+    if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+        return jsonify({'error': 'Email is not set up yet, so the code could not be sent.'}), 503
+    code = f'{secrets.randbelow(1000000):06d}'
+    PasswordReset.query.filter_by(email=email).delete()
+    row = PasswordReset(
+        email=email,
+        code_hash=password_code_hash(code),
+        expires=datetime.utcnow() + timedelta(minutes=10),
+        attempts=0
+    )
+    db.session.add(row)
+    db.session.commit()
+    sent = send_email(
+        user.email,
+        'Your StudentStay password code',
+        f'<p>Your StudentStay code is <b>{code}</b>.</p><p>It expires in 10 minutes. If you did not ask for this, ignore this email.</p>'
+    )
+    if not sent:
+        PasswordReset.query.filter_by(email=email).delete()
+        db.session.commit()
+        return jsonify({'error': 'The code could not be sent. Check the email setup, then try again.'}), 502
+    return jsonify({'message': 'A code is on the way to that email.'})
+
+@app.route('/api/auth/password/reset', methods=['POST'])
+def reset_password():
+    import hmac
+    from datetime import datetime
+    data = request.get_json() or {}
+    email = str(data.get('email') or '').strip().lower()
+    code = ''.join(ch for ch in str(data.get('code') or '') if ch.isdigit())
+    password = str(data.get('password') or '')
+    if not email or len(code) != 6:
+        return jsonify({'error': 'Enter the email and the 6 digit code.'}), 400
+    if len(password) < 6:
+        return jsonify({'error': 'Use a password of at least 6 characters.'}), 400
+    row = PasswordReset.query.filter_by(email=email).order_by(PasswordReset.id.desc()).first()
+    if not row or not row.expires or row.expires < datetime.utcnow():
+        return jsonify({'error': 'That code has expired. Send a new one.'}), 400
+    if (row.attempts or 0) >= 5:
+        db.session.delete(row)
+        db.session.commit()
+        return jsonify({'error': 'Too many tries. Send a new code.'}), 400
+    if not hmac.compare_digest(password_code_hash(code), row.code_hash):
+        row.attempts = (row.attempts or 0) + 1
+        db.session.commit()
+        return jsonify({'error': 'That code is not correct.'}), 401
+    user = User.query.filter(db.func.lower(User.email) == email).first()
+    if not user:
+        return jsonify({'error': 'No account uses that email.'}), 404
+    import bcrypt
+    user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    PasswordReset.query.filter_by(email=email).delete()
+    db.session.commit()
+    return jsonify({'message': 'Password saved. Sign in with the new one.'})
 
 @app.route('/api/auth/me', methods=['GET'])
 @jwt_required()

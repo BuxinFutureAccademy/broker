@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your business · StudentStay</title>
+  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="portal.css?v=6">
+  <link rel="stylesheet" href="market.css?v=2">
+</head>
+<body class="portal-body" data-market-owner>
+  <header class="portal-header">
+    <a class="brand" href="index.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Your place</small></span></a>
+    <button class="outline-button" type="button" data-owner-out>Sign out</button>
+  </header>
+  <main class="dashboard-main" id="ownerDesk" style="padding:24px">
+    <h1>Your place</h1>
+    <p>This page stays on the one type you selected.</p>
+    <input id="orderFilter" placeholder="Filter by reference or status">
+    <div id="vendorOrders"></div>
+    <div id="vendorBusinesses"></div>
+    <form id="newBusiness" class="market-form panel">
+      <h2>Add another place of the same type</h2>
+      <select name="kind" required>
+        <option value="restaurant">Restaurant</option>
+        <option value="shop">Shop</option>
+        <option value="service">Service</option>
+      </select>
+      <input name="name" placeholder="Business name" required>
+      <input name="category" placeholder="Category" required>
+      <input name="phone" placeholder="Phone" required>
+      <input name="whatsapp" placeholder="WhatsApp">
+      <input name="area" placeholder="Area">
+      <input name="address" placeholder="Street address">
+      <input name="hours" placeholder="Hours">
+      <textarea name="description" placeholder="Description"></textarea>
+      <button class="primary-button" type="submit">Save</button>
+    </form>
+  </main>
+  <script src="market.js?v=4"></script>
+</body>
+</html>

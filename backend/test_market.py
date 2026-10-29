@@ -17,21 +17,23 @@ def auth(token):
 
 
 def main():
-    registered = client.post('/api/market/register', json={
-        'ownerName': 'Ada Vendor',
+    registered = client.post('/api/auth/signup', json={
+        'name': 'Ada Owner',
         'email': 'ada@market.test',
         'password': 'secret12',
-        'kind': 'restaurant',
-        'name': 'Ada Kitchen',
+        'role': 'restaurant',
+        'businessName': 'Ada Kitchen',
         'category': 'Meals',
         'phone': '+91 90000 00001',
-        'whatsapp': '+91 90000 00001',
-        'area': 'Gamma 1',
+        'city': 'Gamma 1',
         'address': 'Shop 4, Gamma 1',
     })
     assert registered.status_code == 201, registered.get_json()
+    assert registered.get_json()['user']['role'] == 'restaurant'
     vendor_token = registered.get_json()['access_token']
-    business_id = registered.get_json()['business']['id']
+    mine = client.get('/api/market/mine', headers=auth(vendor_token))
+    assert mine.status_code == 200, mine.get_json()
+    business_id = mine.get_json()[0]['id']
 
     listed = client.get('/api/market/businesses?kind=restaurant')
     assert listed.status_code == 200
@@ -94,30 +96,8 @@ def main():
         'name': 'No Vendor', 'email': 'nope@market.test', 'password': 'secret12', 'role': 'vendor'
     })
     assert housing.status_code == 400
-
-    buyer = client.post('/api/market/buyer/register', json={
-        'name': 'Buyer Ada', 'email': 'buyer@market.test', 'password': 'secret12', 'phone': '+91 90000 00009'
-    })
-    assert buyer.status_code == 201, buyer.get_json()
-    assert buyer.get_json()['user']['role'] == 'buyer'
-    buyer_order = client.post('/api/market/orders', json={'itemId': item_id, 'quantity': 1}, headers=auth(buyer.get_json()['access_token']))
-    assert buyer_order.status_code == 201, buyer_order.get_json()
-    assert buyer_order.get_json()['reference'].startswith('M-')
-
-    blocked_gift = client.post('/api/market/donations', json={'amount': 500}, headers=auth(buyer.get_json()['access_token']))
-    assert blocked_gift.status_code == 403
-
-    donor = client.post('/api/market/donor/register', json={
-        'donorType': 'corporate', 'name': 'Ada Contact', 'organization': 'Ada Ltd',
-        'email': 'donor@market.test', 'password': 'secret12'
-    })
-    assert donor.status_code == 201, donor.get_json()
-    assert donor.get_json()['user']['role'] == 'donor'
-    assert donor.get_json()['user']['donorType'] == 'corporate'
-    gift = client.post('/api/market/donations', json={'amount': 500, 'purpose': 'Rent support'}, headers=auth(donor.get_json()['access_token']))
-    assert gift.status_code == 201, gift.get_json()
-    assert gift.get_json()['reference'].startswith('D-')
-    assert gift.get_json()['status'] == 'pledged'
+    closed = client.post('/api/market/buyer/register', json={'name': 'Buyer', 'email': 'b@market.test', 'password': 'secret12'})
+    assert closed.status_code == 404
     print('market checks passed')
 
 

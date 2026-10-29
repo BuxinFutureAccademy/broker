@@ -4,24 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Restaurants · StudentStay</title>
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
   <link rel="stylesheet" href="catalog.css?v=9">
   <link rel="stylesheet" href="market.css?v=1">
 </head>
 <body data-market-list="restaurant">
   <header class="topbar">
     <a class="brand" href="index.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Homes in Greater Noida</small></span></a>
-    <nav class="nav"><a href="index.html">Home</a><a href="properties.html">Housing</a><a class="active" href="market.html">Market</a><a href="donations.html">Donate</a><a href="about.html">About Us</a><a href="contact.html">Contact</a></nav>
-    <div class="account"><button class="login" onclick="location.href='access.html'">Login</button><button class="signup" onclick="location.href='vendor.html'">List a business</button></div>
+    <nav class="nav"><a href="index.html">Home</a><a class="active" href="restaurants.html">Restaurants</a></nav>
+    <div class="account"><button class="login" onclick="location.href='access.html?interest=restaurants'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
     <button class="menu" aria-label="Open menu">☰</button>
   </header>
   <main class="catalog-page">
-    <nav class="market-sub"><a href="restaurants.html">Restaurants</a><a href="shops.html">Shops</a><a href="services.html">Services</a><a href="buyer.html">Buyer</a><a href="orders.html">Requests</a></nav>
-    <div class="catalog-hero property-hero"><span class="eyebrow">RESTAURANTS</span><h1>Food near campus</h1><p>See the menu and price. Buy creates a reference, then you contact the restaurant.</p></div>
+    <div class="catalog-hero property-hero"><span class="eyebrow">RESTAURANTS</span><h1>Food near campus</h1><p>This page is restaurants only. See the menu and price, then contact the restaurant.</p></div>
     <form id="marketSearch" class="market-search"><input name="q" placeholder="Search a restaurant or dish" aria-label="Search restaurants"><button class="primary-button" type="submit">Search</button></form>
     <div id="marketList" class="market-grid"></div>
   </main>
-  <script src="session.js?v=15"></script>
-  <script src="market.js?v=2"></script>
+  <script src="session.js?v=18"></script>
+  <script src="market.js?v=4"></script>
 </body>
 </html>

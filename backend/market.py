@@ -12,7 +12,6 @@ COMMISSION_STATUSES = {'pending_verification', 'confirmed', 'due', 'paid', 'disp
 def init_market():
     import uuid
     from datetime import datetime, timedelta
-    import bcrypt
     from flask import jsonify, request
     from flask_jwt_extended import get_jwt_identity, jwt_required
     import app as app_module
@@ -25,9 +24,10 @@ def init_market():
     MarketOrder = app_module.MarketOrder
     MarketAudit = app_module.MarketAudit
     MarketSetting = app_module.MarketSetting
-    DonorProfile = app_module.DonorProfile
-    Donation = app_module.Donation
-    DONOR_TYPES = ('personal', 'corporate', 'business')
+    OWNER_ROLES = ('restaurant', 'shop', 'service', 'vendor')
+
+    def is_owner(user):
+        return bool(user and user.role in OWNER_ROLES)
 
     def clean_text(value, limit):
         return str(value or '').strip()[:limit]
@@ -211,56 +211,12 @@ def init_market():
                 return jsonify({'error': 'That business is not listed.'}), 404
         return jsonify(business_payload(row, include_contact=False))
 
-    @app.route('/api/market/register', methods=['POST'])
-    def market_register():
-        data = request.get_json() or {}
-        name = clean_text(data.get('ownerName') or data.get('name'), 100)
-        email = clean_text(data.get('email'), 120).lower()
-        password = str(data.get('password') or '')
-        if not name or not email or len(password) < 6:
-            return jsonify({'error': 'Add your name, email, and a password of at least 6 characters.'}), 400
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already registered'}), 400
-        fields, error = read_business(data)
-        if error:
-            return jsonify({'error': error}), 400
-        user = User(
-            id=str(uuid.uuid4()),
-            name=name,
-            email=email,
-            password=bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            role='vendor',
-            phone=fields['phone'],
-            city=fields['area'],
-            address=fields['address']
-        )
-        business = Business(id=str(uuid.uuid4()), owner_id=user.id, status='active')
-        apply_business(business, fields)
-        db.session.add(user)
-        db.session.add(business)
-        db.session.commit()
-        from flask_jwt_extended import create_access_token
-        token = create_access_token(identity=user.id)
-        return jsonify({'access_token': token, 'user': {'id': user.id, 'name': user.name, 'email': user.email, 'role': user.role, 'phone': user.phone}, 'business': business_payload(business, include_contact=True)}), 201
-
-    @app.route('/api/market/login', methods=['POST'])
-    def market_login():
-        data = request.get_json() or {}
-        email = clean_text(data.get('email'), 120).lower()
-        password = str(data.get('password') or '')
-        user = User.query.filter_by(email=email).first()
-        if not user or user.role != 'vendor' or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-            return jsonify({'error': 'Use the vendor email and password for this market.'}), 401
-        from flask_jwt_extended import create_access_token
-        token = create_access_token(identity=user.id)
-        return jsonify({'access_token': token, 'user': {'id': user.id, 'name': user.name, 'email': user.email, 'role': user.role, 'phone': user.phone}})
-
     @app.route('/api/market/mine', methods=['GET'])
     @jwt_required()
     def market_mine():
         user = current_user()
-        if not user or user.role != 'vendor':
-            return jsonify({'error': 'Vendor access required'}), 403
+        if not is_owner(user):
+            return jsonify({'error': 'Sign in as a restaurant, shop, or service to manage this.'}), 403
         rows = Business.query.filter_by(owner_id=user.id).order_by(Business.created.desc()).all()
         return jsonify([business_payload(row, include_contact=True) for row in rows])
 
@@ -268,11 +224,13 @@ def init_market():
     @jwt_required()
     def market_create_business():
         user = current_user()
-        if not user or user.role != 'vendor':
-            return jsonify({'error': 'Register as a vendor before adding a business.'}), 403
+        if not is_owner(user):
+            return jsonify({'error': 'Sign in as a restaurant, shop, or service to add a business.'}), 403
         fields, error = read_business(request.get_json() or {})
         if error:
             return jsonify({'error': error}), 400
+        if user.role in ('restaurant', 'shop', 'service') and fields['kind'] != user.role:
+            return jsonify({'error': 'This account can only add another place of the same type.'}), 400
         row = Business(id=str(uuid.uuid4()), owner_id=user.id, status='active')
         apply_business(row, fields)
         db.session.add(row)
@@ -445,8 +403,8 @@ def init_market():
     @jwt_required()
     def market_vendor_orders():
         user = current_user()
-        if not user or user.role != 'vendor':
-            return jsonify({'error': 'Vendor access required'}), 403
+        if not is_owner(user):
+            return jsonify({'error': 'Sign in as a restaurant, shop, or service to manage this.'}), 403
         rows = MarketOrder.query.filter_by(owner_id=user.id).order_by(MarketOrder.created.desc()).limit(100).all()
         result = []
         for row in rows:
@@ -591,184 +549,3 @@ def init_market():
         db.session.commit()
         return jsonify(business_payload(row, include_contact=True))
 
-    def issue_token(user):
-        from flask_jwt_extended import create_access_token
-        return create_access_token(identity=user.id)
-
-    def public_user(user):
-        return {'id': user.id, 'name': user.name, 'email': user.email, 'role': user.role, 'phone': user.phone or ''}
-
-    def donation_reference():
-        import secrets
-        alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-        for _ in range(8):
-            reference = 'D-' + ''.join(secrets.choice(alphabet) for _ in range(6))
-            if not Donation.query.filter_by(reference=reference).first():
-                return reference
-        return 'D-' + uuid.uuid4().hex[:8].upper()
-
-    def donation_payload(row):
-        return {
-            'id': row.id,
-            'reference': row.reference,
-            'donorType': row.donor_type,
-            'amount': row.amount,
-            'purpose': row.purpose or '',
-            'status': row.status,
-            'created': row.created.isoformat() if row.created else None,
-        }
-
-    @app.route('/api/market/buyer/register', methods=['POST'])
-    def buyer_register():
-        data = request.get_json() or {}
-        name = clean_text(data.get('name'), 100)
-        email = clean_text(data.get('email'), 120).lower()
-        password = str(data.get('password') or '')
-        phone = clean_text(data.get('phone'), 30)
-        if not name or not email or len(password) < 6:
-            return jsonify({'error': 'Add your name, email, and a password of at least 6 characters.'}), 400
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already registered'}), 400
-        user = User(
-            id=str(uuid.uuid4()),
-            name=name,
-            email=email,
-            password=bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            role='buyer',
-            phone=phone,
-            city=clean_text(data.get('city'), 80) or 'Greater Noida'
-        )
-        db.session.add(user)
-        db.session.commit()
-        return jsonify({'access_token': issue_token(user), 'user': public_user(user)}), 201
-
-    @app.route('/api/market/buyer/login', methods=['POST'])
-    def buyer_login():
-        data = request.get_json() or {}
-        email = clean_text(data.get('email'), 120).lower()
-        password = str(data.get('password') or '')
-        user = User.query.filter_by(email=email).first()
-        if not user or user.role != 'buyer' or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-            return jsonify({'error': 'Use your buyer email and password. Students sign in on the housing page.'}), 401
-        return jsonify({'access_token': issue_token(user), 'user': public_user(user)})
-
-    @app.route('/api/market/donor/register', methods=['POST'])
-    def donor_register():
-        data = request.get_json() or {}
-        donor_type = clean_text(data.get('donorType') or data.get('donor_type'), 20)
-        if donor_type not in DONOR_TYPES:
-            return jsonify({'error': 'Choose a personal, corporate, or business donor account.'}), 400
-        name = clean_text(data.get('name'), 100)
-        email = clean_text(data.get('email'), 120).lower()
-        password = str(data.get('password') or '')
-        organization = clean_text(data.get('organization'), 120)
-        if donor_type != 'personal' and not organization:
-            return jsonify({'error': 'Add the organisation or business name.'}), 400
-        if not name or not email or len(password) < 6:
-            return jsonify({'error': 'Add your name, email, and a password of at least 6 characters.'}), 400
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already registered'}), 400
-        user = User(
-            id=str(uuid.uuid4()),
-            name=name,
-            email=email,
-            password=bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            role='donor',
-            phone=clean_text(data.get('phone'), 30),
-            city=clean_text(data.get('city'), 80) or 'Greater Noida'
-        )
-        profile = DonorProfile(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            donor_type=donor_type,
-            organization=organization,
-            phone=user.phone or '',
-            city=user.city or ''
-        )
-        db.session.add(user)
-        db.session.add(profile)
-        db.session.commit()
-        payload = public_user(user)
-        payload['donorType'] = donor_type
-        payload['organization'] = organization
-        return jsonify({'access_token': issue_token(user), 'user': payload}), 201
-
-    @app.route('/api/market/donor/login', methods=['POST'])
-    def donor_login():
-        data = request.get_json() or {}
-        email = clean_text(data.get('email'), 120).lower()
-        password = str(data.get('password') or '')
-        user = User.query.filter_by(email=email).first()
-        profile = DonorProfile.query.filter_by(user_id=user.id).first() if user else None
-        if not user or user.role != 'donor' or not profile or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-            return jsonify({'error': 'Use the email and password for your donor account.'}), 401
-        payload = public_user(user)
-        payload['donorType'] = profile.donor_type
-        payload['organization'] = profile.organization or ''
-        return jsonify({'access_token': issue_token(user), 'user': payload})
-
-    @app.route('/api/market/donations', methods=['POST'])
-    @jwt_required()
-    def create_donation():
-        user = current_user()
-        profile = DonorProfile.query.filter_by(user_id=user.id).first() if user else None
-        if not user or user.role != 'donor' or not profile:
-            return jsonify({'error': 'Sign in with a donor account before recording a donation.'}), 403
-        data = request.get_json() or {}
-        amount = clean_money(data.get('amount'))
-        if not amount:
-            return jsonify({'error': 'Enter a donation amount in rupees.'}), 400
-        row = Donation(
-            id=str(uuid.uuid4()),
-            reference=donation_reference(),
-            donor_id=user.id,
-            donor_type=profile.donor_type,
-            amount=amount,
-            purpose=clean_text(data.get('purpose'), 200) or 'StudentStay support',
-            status='pledged'
-        )
-        db.session.add(row)
-        db.session.commit()
-        return jsonify(donation_payload(row)), 201
-
-    @app.route('/api/market/donations/mine', methods=['GET'])
-    @jwt_required()
-    def my_donations():
-        user = current_user()
-        profile = DonorProfile.query.filter_by(user_id=user.id).first() if user else None
-        if not user or user.role != 'donor' or not profile:
-            return jsonify({'error': 'Donor access required'}), 403
-        rows = Donation.query.filter_by(donor_id=user.id).order_by(Donation.created.desc()).limit(50).all()
-        return jsonify({'donorType': profile.donor_type, 'organization': profile.organization or '', 'donations': [donation_payload(row) for row in rows]})
-
-    @app.route('/api/market/admin/donations', methods=['GET'])
-    @jwt_required()
-    def admin_donations():
-        user = current_user()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Admin access required'}), 403
-        rows = Donation.query.order_by(Donation.created.desc()).limit(200).all()
-        result = []
-        for row in rows:
-            donor = User.query.get(row.donor_id)
-            item = donation_payload(row)
-            item['donorName'] = donor.name if donor else ''
-            item['donorEmail'] = donor.email if donor else ''
-            result.append(item)
-        return jsonify(result)
-
-    @app.route('/api/market/admin/donations/<donation_id>', methods=['PUT'])
-    @jwt_required()
-    def admin_donation_status(donation_id):
-        user = current_user()
-        row = Donation.query.get(donation_id)
-        if not user or user.role != 'admin' or not row:
-            return jsonify({'error': 'Admin access required'}), 403
-        status = clean_text((request.get_json() or {}).get('status'), 20)
-        if status not in ('pledged', 'received', 'cancelled'):
-            return jsonify({'error': 'Choose pledged, received, or cancelled.'}), 400
-        if row.status == 'received' and status != 'received':
-            return jsonify({'error': 'A received donation stays received.'}), 400
-        row.status = status
-        db.session.commit()
-        return jsonify(donation_payload(row))

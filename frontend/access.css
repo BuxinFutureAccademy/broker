@@ -1,8 +1,38 @@
 /* Additional styles for access page */
 
+.auth-tabs { gap: 12px; }
+.tab { font-size: 13px; }
+.role-picker.hidden, .auth-split.hidden, .alt-signin.hidden, .enter-choice.hidden, .signup-only.hidden, .business-only.hidden, .user-only.hidden, .forgot-link.hidden, .reset-panel.hidden, #resetCodeForm.hidden, #resetEmailForm.hidden { display: none; }
+.forgot-link { margin: 10px 0 0; padding: 0; border: 0; background: none; color: #0759d6; font: 700 13px inherit; cursor: pointer; }
+.reset-panel { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e3ebf5; }
+.reset-panel h3 { margin: 0 0 6px; color: #09264c; }
+.reset-panel p { margin: 0 0 12px; color: #5b7290; }
+.enter-choice { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 22px; background: rgba(9, 27, 54, 0.46); backdrop-filter: blur(6px); }
+.enter-choice-card { width: min(640px, 100%); background: #fff; border-radius: 22px; padding: 28px 26px 22px; box-shadow: 0 24px 60px rgba(9, 38, 76, 0.22); }
+.enter-kicker { display: inline-block; margin-bottom: 8px; color: #0759d6; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.enter-choice-card h2 { margin: 0 0 6px; color: #09264c; font-size: 28px; letter-spacing: -0.4px; }
+.enter-choice-card > p { margin: 0 0 18px; color: #5b7290; font-size: 15px; }
+.enter-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.enter-choice-grid a { display: flex; align-items: center; gap: 14px; min-height: 92px; padding: 14px; border: 1px solid #e4ecf5; border-radius: 16px; background: #f8fbff; color: #123154; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+.enter-choice-grid a:hover { transform: translateY(-2px); border-color: #b9d4f6; box-shadow: 0 10px 24px rgba(7, 89, 214, 0.12); }
+.enter-choice-grid b { display: block; font-size: 16px; line-height: 1.25; }
+.enter-choice-grid small { display: block; margin-top: 3px; color: #6b829c; font-size: 12px; line-height: 1.35; }
+.choice-icon { width: 52px; height: 52px; flex: none; display: grid; place-items: center; border-radius: 14px; }
+.choice-icon svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.choice-icon.house { background: #e7f0ff; color: #0759d6; }
+.choice-icon.food { background: #fff4d6; color: #b7791f; }
+.choice-icon.shop { background: #e7f8ef; color: #0f8a4b; }
+.choice-icon.service { background: #f3e9ff; color: #7a3ff2; }
+@media (max-width: 640px) {
+  .enter-choice-card { padding: 22px 16px 16px; border-radius: 18px; }
+  .enter-choice-card h2 { font-size: 24px; }
+  .enter-choice-grid { grid-template-columns: 1fr; }
+  .enter-choice-grid a { min-height: 78px; }
+}
+
 .role-picker {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 8px;
   margin-bottom: 20px;
 }
