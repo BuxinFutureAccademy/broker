@@ -135,6 +135,7 @@ def init_market():
             'finalAmount': order.final_amount,
             'status': order.status,
             'customerConfirm': order.customer_confirm or '',
+            'customerNote': order.customer_note or '',
             'customerAmount': order.customer_amount,
             'commissionRate': order.commission_rate,
             'commissionAmount': order.commission_amount,
@@ -378,6 +379,16 @@ def init_market():
             return jsonify({'error': 'Choose a quantity from 1 to 20.'}), 400
         if item.stock is not None and item.stock < quantity:
             return jsonify({'error': 'There is not enough stock for that quantity.'}), 400
+        if business.kind == 'service':
+            blocker = None
+            for existing in MarketOrder.query.filter_by(customer_id=user.id, kind='service').all():
+                if existing.status in ('pending', 'accepted') or (existing.status == 'completed' and not existing.customer_confirm):
+                    blocker = existing
+                    break
+            if blocker:
+                if blocker.item_id == item.id and blocker.status == 'pending':
+                    return jsonify(order_payload(blocker, include_contact=True))
+                return jsonify({'error': 'Finish your current service request before you request another. Open your requests and confirm whether you received it.'}), 400
         recent = MarketOrder.query.filter_by(customer_id=user.id, item_id=item.id, status='pending').order_by(MarketOrder.created.desc()).first()
         if recent and recent.created and recent.created > datetime.utcnow() - timedelta(seconds=60):
             return jsonify(order_payload(recent, include_contact=True))
@@ -477,13 +488,17 @@ def init_market():
         data = request.get_json() or {}
         result = clean_text(data.get('result'), 20)
         if result not in CONFIRMATIONS:
-            return jsonify({'error': 'Choose completed, not completed, or a dispute.'}), 400
+            return jsonify({'error': 'Choose received, not received, or a note.'}), 400
+        note = clean_text(data.get('note'), 200)
+        if result == 'disputed' and not note:
+            return jsonify({'error': 'Write a short note.'}), 400
         amount = None
         if data.get('amount') not in (None, ''):
             amount = clean_money(data.get('amount'))
             if amount is None:
                 return jsonify({'error': 'The amount must be a whole number of rupees.'}), 400
         order.customer_confirm = result
+        order.customer_note = note
         order.customer_amount = amount
         if result == 'completed':
             order.commission_status = 'confirmed'
@@ -491,7 +506,7 @@ def init_market():
             order.status = 'disputed'
             order.commission_status = 'disputed'
         order.updated = datetime.utcnow()
-        audit(order, user, 'confirm_' + result, '' if amount is None else f'customer amount {amount}')
+        audit(order, user, 'confirm_' + result, note or ('' if amount is None else f'customer amount {amount}'))
         db.session.commit()
         return jsonify(order_payload(order, include_contact=True))
 

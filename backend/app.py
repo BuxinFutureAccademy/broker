@@ -202,6 +202,7 @@ class MarketOrder(db.Model):
     final_amount = db.Column(db.Integer)
     status = db.Column(db.String(20), default='pending', index=True)
     customer_confirm = db.Column(db.String(20), default='')
+    customer_note = db.Column(db.String(200), default='')
     customer_amount = db.Column(db.Integer)
     commission_rate = db.Column(db.Integer)
     commission_amount = db.Column(db.Integer)
@@ -407,6 +408,11 @@ def ensure_schema():
             if name not in columns:
                 db.session.execute(text(f'ALTER TABLE payment_setting ADD COLUMN {name} {kind}'))
                 db.session.commit()
+    if 'market_order' in tables:
+        columns = {column['name'] for column in inspector.get_columns('market_order')}
+        if 'customer_note' not in columns:
+            db.session.execute(text('ALTER TABLE market_order ADD COLUMN customer_note VARCHAR(200)'))
+            db.session.commit()
     if 'user' in tables:
         columns = {column['name'] for column in inspector.get_columns('user')}
         if 'google_sub' not in columns:

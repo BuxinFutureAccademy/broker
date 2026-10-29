@@ -101,6 +101,32 @@ def main():
     repeat = client.put(f"/api/market/orders/{paid.get_json()['id']}", json={'status': 'completed', 'finalAmount': 200}, headers=auth(vendor_token))
     assert repeat.status_code == 400
 
+    service_owner = client.post('/api/auth/signup', json={
+        'name': 'Service Owner', 'email': 'svc@market.test', 'password': 'secret12', 'role': 'service',
+        'businessName': 'Campus Help', 'category': 'Help', 'phone': '+91 90000 00002', 'city': 'Alpha 1'
+    })
+    assert service_owner.status_code == 201, service_owner.get_json()
+    service_token = service_owner.get_json()['access_token']
+    service_business = client.get('/api/market/mine', headers=auth(service_token)).get_json()[0]['id']
+    first_item = client.post(f'/api/market/businesses/{service_business}/items', json={'name': 'Haircut', 'price': 200}, headers=auth(service_token))
+    second_item = client.post(f'/api/market/businesses/{service_business}/items', json={'name': 'Beard trim', 'price': 80}, headers=auth(service_token))
+    assert first_item.status_code == 201 and second_item.status_code == 201
+    first = client.post('/api/market/orders', json={'itemId': first_item.get_json()['id']}, headers=auth(student_token))
+    assert first.status_code == 201, first.get_json()
+    blocked_second = client.post('/api/market/orders', json={'itemId': second_item.get_json()['id']}, headers=auth(student_token))
+    assert blocked_second.status_code == 400
+    marked = client.put(f"/api/market/orders/{first.get_json()['id']}", json={'status': 'completed', 'finalAmount': 200}, headers=auth(service_token))
+    assert marked.status_code == 200, marked.get_json()
+    still_blocked = client.post('/api/market/orders', json={'itemId': second_item.get_json()['id']}, headers=auth(student_token))
+    assert still_blocked.status_code == 400
+    empty_note = client.post(f"/api/market/orders/{first.get_json()['id']}/confirm", json={'result': 'disputed'}, headers=auth(student_token))
+    assert empty_note.status_code == 400
+    confirmed = client.post(f"/api/market/orders/{first.get_json()['id']}/confirm", json={'result': 'completed', 'note': 'Paid in cash'}, headers=auth(student_token))
+    assert confirmed.status_code == 200, confirmed.get_json()
+    assert confirmed.get_json()['customerNote'] == 'Paid in cash'
+    second = client.post('/api/market/orders', json={'itemId': second_item.get_json()['id']}, headers=auth(student_token))
+    assert second.status_code == 201, second.get_json()
+
     housing = client.post('/api/auth/signup', json={
         'name': 'No Vendor', 'email': 'nope@market.test', 'password': 'secret12', 'role': 'vendor'
     })

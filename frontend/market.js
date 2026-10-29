@@ -271,7 +271,8 @@
           showContact(result, order);
         } catch (error) {
           button.disabled = false;
-          result.innerHTML = `<p class="market-note">${esc(error.message)}</p>`;
+          const openRequest = /current service request/i.test(error.message) ? '<p><a href="orders.html?kind=service">Open your request</a></p>' : '';
+          result.innerHTML = `<p class="market-note">${esc(error.message)}</p>${openRequest}`;
         }
       }));
     }).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
@@ -284,12 +285,26 @@
       box.innerHTML = '<p>Sign in to see your requests.</p><a href="access.html">Sign in</a>';
     } else {
       const paint = rows => {
-        box.innerHTML = rows.length ? rows.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.itemName)}</h3><p>${esc(row.businessName)} · ${esc(row.status)} · Listed ${money(row.listedTotal)}${row.finalAmount == null ? '' : ` · Final ${money(row.finalAmount)}`}</p><div>${contactLinks(row.contact, row.reference, row.itemName)}</div>${row.status === 'completed' && !row.customerConfirm ? `<form data-confirm="${esc(row.id)}"><label>Amount you paid<input name="amount" inputmode="numeric" placeholder="Optional"></label><button class="primary-button" name="result" value="completed" type="submit">Completed</button> <button class="small-button" name="result" value="not_completed" type="submit">Not completed</button> <button class="small-button" name="result" value="disputed" type="submit">Report a problem</button></form>` : `<p>${row.customerConfirm ? `Your answer: ${esc(row.customerConfirm)}` : 'Waiting for the business. No answer is not a confirmation.'}</p>`}</article>`).join('') : '<p>You have no requests yet.</p>';
+        const answerText = row => {
+          if (!row.customerConfirm) return '';
+          const said = { completed: 'You confirmed that you received it.', not_completed: 'You said you did not receive it.', disputed: 'You sent a note.' }[row.customerConfirm] || `Your answer: ${row.customerConfirm}`;
+          return `${said}${row.customerNote ? ` ${row.customerNote}` : ''}`;
+        };
+        const confirmBlock = row => {
+          if (row.kind === 'service' && (row.status === 'pending' || row.status === 'accepted')) return '<p>This request is still open. Finish it before you request another service.</p>';
+          if (row.status === 'completed' && !row.customerConfirm) {
+            if (row.kind === 'service') return `<form data-confirm="${esc(row.id)}"><p>The service owner marked this received${row.finalAmount == null ? '' : ` for ${money(row.finalAmount)}`}. Confirm it before you request another service.</p><label>Note<textarea name="note" rows="2" placeholder="Optional, unless you are sending a note"></textarea></label><button class="primary-button" name="result" value="completed" type="submit">I received it</button> <button class="small-button" name="result" value="not_completed" type="submit">I did not receive it</button> <button class="small-button" name="result" value="disputed" type="submit">Send a note</button></form>`;
+            return `<form data-confirm="${esc(row.id)}"><label>Amount you paid<input name="amount" inputmode="numeric" placeholder="Optional"></label><button class="primary-button" name="result" value="completed" type="submit">Completed</button> <button class="small-button" name="result" value="not_completed" type="submit">Not completed</button> <button class="small-button" name="result" value="disputed" type="submit">Report a problem</button></form>`;
+          }
+          return `<p>${answerText(row) || 'Waiting for the business. No answer is not a confirmation.'}</p>`;
+        };
+        box.innerHTML = rows.length ? rows.map(row => `<article class="panel"><h3>${esc(row.reference)} · ${esc(row.itemName)}</h3><p>${esc(row.businessName)} · ${esc(row.status)} · Listed ${money(row.listedTotal)}${row.finalAmount == null ? '' : ` · Final ${money(row.finalAmount)}`}</p><div>${contactLinks(row.contact, row.reference, row.itemName)}</div>${confirmBlock(row)}</article>`).join('') : '<p>You have no requests yet.</p>';
         box.querySelectorAll('[data-confirm]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
           const result = event.submitter?.value || 'completed';
           try {
-            await api(`/market/orders/${form.dataset.confirm}/confirm`, { method: 'POST', body: JSON.stringify({ result, amount: new FormData(form).get('amount') }) });
+            const data = new FormData(form);
+            await api(`/market/orders/${form.dataset.confirm}/confirm`, { method: 'POST', body: JSON.stringify({ result, amount: data.get('amount'), note: data.get('note') }) });
             location.reload();
           } catch (error) { alert(error.message); }
         }));
@@ -417,9 +432,15 @@
         const query = (document.querySelector('#orderFilter')?.value || '').trim().toLowerCase();
         const shown = rows.filter(row => !query || `${row.reference} ${row.status} ${row.itemName} ${row.customer?.name || ''}`.toLowerCase().includes(query));
         const receivedLabel = session.role === 'service' ? 'Received' : 'Completed';
+        const customerAnswer = row => {
+          if (!row.customerConfirm) return '';
+          const said = row.customerConfirm === 'completed' ? 'The customer confirmed they received it.' : row.customerConfirm === 'not_completed' ? 'The customer said they did not receive it.' : 'The customer sent a note.';
+          return `<p>${said}${row.customerNote ? ` ${esc(row.customerNote)}` : ''}</p>`;
+        };
         const requestActions = row => {
-          if (row.status === 'completed') return `<p>Received ${row.finalAmount == null ? '' : money(row.finalAmount)}.</p>`;
+          if (row.status === 'completed') return `<p>Received ${row.finalAmount == null ? '' : money(row.finalAmount)}.</p>${row.customerConfirm ? '' : '<p>Waiting for the customer to confirm.</p>'}${customerAnswer(row)}`;
           if (row.status === 'cancelled') return '<p>Cancelled.</p>';
+          if (row.status === 'disputed') return customerAnswer(row);
           if (row.status !== 'pending' && row.status !== 'accepted') return '';
           const accept = row.status === 'pending' ? '<button class="small-button" name="status" value="accepted" type="submit">Accept</button>' : '';
           return `<form data-status="${esc(row.id)}"><input name="finalAmount" inputmode="numeric" placeholder="Amount received ₹"><button class="primary-button" name="status" value="completed" type="submit">${receivedLabel}</button>${accept}<button class="small-button danger" name="status" value="cancelled" type="submit">Cancel</button></form>`;
@@ -436,7 +457,7 @@
       const ownerCopy = {
         restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'Keep the restaurant profile, the menu, and the meal requests in one place.', items: 'Menu', item: 'dish', hint: 'Add as many dishes as you want. Each one needs a name, a price, and a photo.', request: 'Accept a meal request, then mark it completed after the student pays you.', profile: 'Restaurant profile', profileHint: 'This is the restaurant people see. Set the sector and the photo here.', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace', category: 'Meals' },
         shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'Keep the shop profile, the products, and the purchase requests in one place.', items: 'Products', item: 'product', hint: 'Add as many products as you want. Each one needs a name, a price, a stock count, and a photo.', request: 'Accept a purchase, then mark it completed after the student pays you.', profile: 'Shop profile', profileHint: 'This is the shop people see. Set the sector and the photo here.', stock: true, publicPage: 'shop.html', brand: 'Shop workspace', category: 'Grocery' },
-        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'This page is your profile and your requests.', items: 'Services', item: 'service', hint: 'Tap + to add a service. Every service you save is listed here.', request: 'When a student requests a service, open it here. Type the amount you received, then press Received.', profile: 'Service profile', profileHint: 'Edit the company here: the name, the sector, and the photo. Add services with the + button.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
+        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'This page is your profile and your requests.', items: 'Services', item: 'service', hint: 'Tap + to add a service. Every service you save is listed here.', request: 'Type the amount you received, then press Received. The student confirms it before they can request another service.', profile: 'Service profile', profileHint: 'Edit the company here: the name, the sector, and the photo. Add services with the + button.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
       };
       const copy = ownerCopy[session.role] || ownerCopy.restaurant;
       const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };
