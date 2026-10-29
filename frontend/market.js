@@ -320,8 +320,11 @@
         const glance = document.querySelector('#ownerGlance');
         if (glance) {
           const placeName = copy.item === 'dish' ? 'restaurant' : copy.item === 'product' ? 'shop' : 'service';
+          const glanceLine = session.role === 'service'
+            ? `Your profile · ${esc(profile.area || 'Sector not set')}`
+            : `${esc(profile.category || copy.eyebrow)} · ${esc(profile.area || 'Sector not set')}`;
           glance.innerHTML = profile
-            ? `<article class="panel profile-glance"><img alt="" src="${esc(profile.imageUrl || covers[profile.kind] || '')}"><div><h2>${esc(profile.name)}</h2><p>${esc(profile.category || copy.eyebrow)} · ${esc(profile.area || 'Sector not set')}</p><a href="#place">Edit profile</a></div></article>`
+            ? `<article class="panel profile-glance"><img alt="" src="${esc(profile.imageUrl || covers[profile.kind] || '')}"><div><h2>${esc(profile.name)}</h2><p>${glanceLine}</p><a href="#place">Edit profile</a></div></article>`
             : `<article class="panel"><h2>No profile yet</h2><p>Save your ${placeName} profile before you add ${esc(copy.items.toLowerCase())}.</p><p><a href="#place">Open profile</a></p></article>`;
         }
         const profileForm = document.querySelector('#profileForm');
@@ -349,10 +352,28 @@
         const stockField = copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" placeholder="How many you have"></label>` : '';
         const items = profile?.items || [];
         const itemRows = items.map(item => `<div class="owner-item"><img class="owner-thumb" alt="" src="${esc(item.photoUrl || covers[profile.kind] || '')}"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-edit="${esc(item.id)}">Edit</button><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div><form class="form-grid owner-edit" data-edit-form="${esc(item.id)}" hidden><label>Name<input name="name" value="${esc(item.name)}" required></label><label>Price (₹)<input name="price" inputmode="numeric" value="${esc(item.price)}" required></label>${copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" value="${item.stock == null ? '' : esc(item.stock)}"></label>` : ''}<label class="wide">Description<textarea name="description" rows="2">${esc(item.description || '')}</textarea></label><label class="wide photo-field">Replace photo<input name="photo" type="file" accept="image/*"></label><button class="primary-button" type="submit">Save changes</button></form>`).join('');
-        const addForm = profile
-          ? `<form class="form-grid owner-item-form" data-item="${esc(profile.id)}"><h3>Add a ${esc(copy.item)}</h3><label>Name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide photo-field">Photo<input name="photo" type="file" accept="image/*" required></label><button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form>`
-          : `<p class="empty-state">Save your profile first. Then you can add ${esc(copy.items.toLowerCase())}.</p>`;
-        businesses.innerHTML = `<article class="panel owner-place"><div class="owner-items">${itemRows || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div>${addForm}</article>`;
+        const itemFields = `<label>Name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide photo-field">Photo<input name="photo" type="file" accept="image/*" required></label>`;
+        const addForm = !profile
+          ? `<p class="empty-state">Save your profile first. Then you can add ${esc(copy.items.toLowerCase())}.</p>`
+          : session.role === 'service'
+            ? `<button class="add-service" type="button" data-add-toggle><span>+</span>Add a service</button><form class="form-grid owner-item-form" data-item="${esc(profile.id)}" hidden>${itemFields}<div class="add-service-actions"><button class="primary-button" type="submit">Save service</button><button class="small-button" type="button" data-add-cancel>Cancel</button></div></form>`
+            : `<form class="form-grid owner-item-form" data-item="${esc(profile.id)}"><h3>Add a ${esc(copy.item)}</h3>${itemFields}<button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form>`;
+        const list = `<div class="owner-items">${itemRows || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div>`;
+        businesses.innerHTML = session.role === 'service'
+          ? `<article class="panel owner-place">${addForm}${list}</article>`
+          : `<article class="panel owner-place">${list}${addForm}</article>`;
+        const addToggle = businesses.querySelector('[data-add-toggle]');
+        const addSheet = businesses.querySelector('[data-item]');
+        addToggle?.addEventListener('click', () => {
+          if (addSheet) addSheet.hidden = false;
+          addToggle.hidden = true;
+          addSheet?.querySelector('[name="name"]')?.focus();
+        });
+        businesses.querySelector('[data-add-cancel]')?.addEventListener('click', () => {
+          addSheet?.reset();
+          if (addSheet) addSheet.hidden = true;
+          if (addToggle) addToggle.hidden = false;
+        });
         businesses.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', () => {
           const editor = businesses.querySelector(`[data-edit-form="${button.dataset.edit}"]`);
           if (editor) editor.hidden = !editor.hidden;
@@ -407,7 +428,7 @@
       const ownerCopy = {
         restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'Keep the restaurant profile, the menu, and the meal requests in one place.', items: 'Menu', item: 'dish', hint: 'Add as many dishes as you want. Each one needs a name, a price, and a photo.', request: 'Accept a meal request, then mark it completed after the student pays you.', profile: 'Restaurant profile', profileHint: 'This is the restaurant people see. Set the sector and the photo here.', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace', category: 'Meals' },
         shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'Keep the shop profile, the products, and the purchase requests in one place.', items: 'Products', item: 'product', hint: 'Add as many products as you want. Each one needs a name, a price, a stock count, and a photo.', request: 'Accept a purchase, then mark it completed after the student pays you.', profile: 'Shop profile', profileHint: 'This is the shop people see. Set the sector and the photo here.', stock: true, publicPage: 'shop.html', brand: 'Shop workspace', category: 'Grocery' },
-        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'Your profile and your requests are here. Services you add are listed under Services, and on the services homepage.', items: 'Services', item: 'service', hint: 'Each service you save is listed here, and on the services homepage. A name, a price, and a photo are enough.', request: 'Accept a request, then mark it completed after the student pays you.', profile: 'Service profile', profileHint: 'Edit the company here: the name, the sector, and the photo. Services are added separately.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
+        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'This page is your profile and your requests.', items: 'Services', item: 'service', hint: 'Tap + to add a service. Every service you save is listed here.', request: 'Accept a request, then mark it completed after the student pays you.', profile: 'Service profile', profileHint: 'Edit the company here: the name, the sector, and the photo. Add services with the + button.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
       };
       const copy = ownerCopy[session.role] || ownerCopy.restaurant;
       const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };

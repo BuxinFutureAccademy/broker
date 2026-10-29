@@ -48,6 +48,10 @@
 .owner-item p { margin: 4px 0 0; color: #60758d; font-size: 13px; }
 .owner-item-actions { display: flex; gap: 8px; flex: none; }
 .owner-item-form, .owner-edit { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e6eef6; }
+.owner-item-form[hidden], .owner-edit[hidden], .add-service[hidden] { display: none !important; }
+.add-service { display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; min-height: 92px; margin: 0 0 8px; border: 1.5px dashed #0759d6; border-radius: 16px; background: #f4f8ff; color: #0759d6; font: 800 16px inherit; cursor: pointer; }
+.add-service span { width: 46px; height: 46px; border-radius: 50%; background: #0759d6; color: #fff; display: grid; place-items: center; font-size: 32px; line-height: 1; }
+.add-service-actions { display: flex; gap: 8px; align-items: center; }
 .owner-thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 8px; background: #eaf2ff; flex: none; }
 .photo-field input[type=file] { padding: 8px 0; }
 .photo-preview { width: 140px; height: 100px; object-fit: cover; border-radius: 12px; margin-top: 8px; background: #eaf2ff; }
