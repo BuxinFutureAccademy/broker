@@ -56,6 +56,9 @@
       return response.json();
     } catch (error) {
       console.error('API Call Error:', error);
+      if (error instanceof TypeError) {
+        throw new Error('The server did not answer. Wait a moment and try again.');
+      }
       throw error;
     }
   }

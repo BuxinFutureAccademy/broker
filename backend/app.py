@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
-from flask_mail import Mail, Message
+from flask_mail import Mail
+from werkzeug.exceptions import HTTPException
 from flask_sqlalchemy import SQLAlchemy
 from datetime import timedelta
 import cloudinary
@@ -44,6 +45,17 @@ cloudinary.config(
 jwt = JWTManager(app)
 mail = Mail(app)
 db = SQLAlchemy(app)
+
+@app.errorhandler(Exception)
+def handle_unexpected(error):
+    if isinstance(error, HTTPException):
+        return error
+    app.logger.exception('Request failed')
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    return jsonify({'error': 'Something went wrong. Please try again.'}), 500
 
 # Database Models
 class User(db.Model):
@@ -416,19 +428,54 @@ with app.app_context():
 # Helper function for sending emails. Signup and requests must still succeed
 # when SMTP is not configured on the server.
 def send_email(to, subject, template):
-    if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+    """Send one email and return within about 10 seconds.
+
+    Gmail often closes a bad sign-in, and a blocked SMTP port can sit until the
+    host kills the request. Either case must come back as a normal JSON error.
+    """
+    username = app.config.get('MAIL_USERNAME')
+    password = app.config.get('MAIL_PASSWORD')
+    if not username or not password:
         return False
-    try:
-        msg = Message(
-            subject,
-            recipients=[to],
-            html=template
-        )
-        mail.send(msg)
-        return True
-    except Exception:
-        app.logger.exception('Email could not be sent to %s', to)
+    import smtplib
+    import threading
+    from email.message import EmailMessage
+    message = EmailMessage()
+    message['Subject'] = subject
+    message['From'] = app.config.get('MAIL_DEFAULT_SENDER') or username
+    message['To'] = to
+    message.set_content('Your StudentStay code is in this email.')
+    message.add_alternative(template, subtype='html')
+    host = app.config.get('MAIL_SERVER') or 'smtp.gmail.com'
+    port = int(app.config.get('MAIL_PORT') or 587)
+    use_tls = bool(app.config.get('MAIL_USE_TLS'))
+    outcome = {}
+    cancel = threading.Event()
+
+    def deliver():
+        try:
+            with smtplib.SMTP(host, port, timeout=8) as smtp:
+                smtp.ehlo()
+                if use_tls:
+                    smtp.starttls()
+                    smtp.ehlo()
+                smtp.login(username, password)
+                if cancel.is_set():
+                    return
+                smtp.send_message(message)
+            outcome['ok'] = True
+        except Exception:
+            app.logger.exception('Email could not be sent to %s', to)
+            outcome['ok'] = False
+
+    worker = threading.Thread(target=deliver, daemon=True)
+    worker.start()
+    worker.join(10)
+    if worker.is_alive():
+        cancel.set()
+        app.logger.error('Email send timed out for %s', to)
         return False
+    return bool(outcome.get('ok'))
 
 PHONE_EMAIL_DOMAIN = '@phone.studentstay.local'
 
@@ -848,7 +895,7 @@ def forgot_password():
     if not sent:
         PasswordReset.query.filter_by(email=email).delete()
         db.session.commit()
-        return jsonify({'error': 'The code could not be sent. Check the email setup, then try again.'}), 502
+        return jsonify({'error': 'The code could not be sent. The mail sign-in was refused, so no email went out.'}), 502
     return jsonify({'message': 'A code is on the way to that email.'})
 
 @app.route('/api/auth/password/reset', methods=['POST'])
