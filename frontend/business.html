@@ -6,7 +6,8 @@
   <title>Business · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=13">
   <link rel="stylesheet" href="catalog.css?v=9">
-  <link rel="stylesheet" href="market.css?v=1">
+  <link rel="stylesheet" href="property.css?v=9">
+  <link rel="stylesheet" href="market.css?v=6">
 </head>
 <body data-market-business>
   <header class="topbar">
@@ -15,8 +16,11 @@
     <div class="account"><button class="login" onclick="location.href='access.html'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
     <button class="menu" aria-label="Open menu">☰</button>
   </header>
-  <main class="catalog-page" id="businessDetails"><p>Loading…</p></main>
+  <main class="property-page">
+    <a class="back-link" id="businessBack" href="food.html">← Back</a>
+    <div id="businessDetails"><div class="loading-state">Loading…</div></div>
+  </main>
   <script src="session.js?v=20"></script>
-  <script src="market.js?v=8"></script>
+  <script src="market.js?v=10"></script>
 </body>
 </html>

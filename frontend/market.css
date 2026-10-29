@@ -16,7 +16,11 @@
 .catalog-hero .market-search { margin-top: 18px; }
 .catalog-hero .market-search input { border: 0; }
 .market-search input { flex: 1; height: 46px; border: 1px solid #d5e0ec; border-radius: 12px; padding: 0 12px; font: 16px inherit; }
-.item-row { display: grid; grid-template-columns: 92px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid #e6eef6; }
+.item-row, .menu-offer { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 14px 0; border-top: 1px solid #e7edf4; }
+.menu-offer img { width: 96px; height: 76px; object-fit: cover; border-radius: 10px; background: #edf2f7; }
+.menu-offer b { display: block; color: #0d2b52; font-size: 15px; }
+.menu-offer .detail-price { font-size: 18px; margin: 6px 0 0; }
+.menu-offer .pay-now { width: auto; min-width: 132px; height: 42px; padding: 0 16px; }
 .item-row img { width: 92px; height: 72px; object-fit: cover; border-radius: 10px; background: #eaf2ff; }
 .buy-result { margin-top: 10px; padding: 12px; border-radius: 12px; background: #f4f7fb; }
 .buy-result a { display: inline-block; margin: 6px 8px 0 0; font-weight: 700; color: #0759d6; }

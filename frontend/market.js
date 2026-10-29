@@ -171,17 +171,37 @@
       node.innerHTML = `<b>Request ${esc(order.reference)}</b><p>Status: ${esc(order.status)}. Pay the business directly. This request is saved.</p><div>${contactLinks(order.contact, order.reference, order.itemName)}</div><p><a href="orders.html?kind=${esc(order.kind)}">See your requests</a></p>`;
     };
     api(`/market/businesses/${encodeURIComponent(id || '')}`).then(row => {
-      const action = row.kind === 'service' ? 'Request service' : 'Buy';
+      const pool = pools[row.kind] || {};
+      const action = row.kind === 'service' ? 'Request service' : (row.kind === 'shop' ? 'Buy' : 'Order');
+      const about = { restaurant: 'About this restaurant', shop: 'About this shop', service: 'About this service' }[row.kind] || 'About this place';
+      const menu = { restaurant: 'Menu', shop: 'Products', service: 'Services' }[row.kind] || 'Items';
+      const back = document.querySelector('#businessBack');
+      if (back) {
+        back.href = pool.list || pool.home || 'index.html';
+        back.textContent = `← Back to ${(pool.name || 'places').toLowerCase()}`;
+      }
+      document.title = `${row.name} · StudentStay`;
       stayIn(row.kind);
-      box.innerHTML = `<p><a href="${esc((pools[row.kind] || {}).list || '#')}">← Back</a></p><h1>${esc(row.name)}</h1><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${esc(row.description || '')}</p>${row.hours ? `<p>Hours: ${esc(row.hours)}</p>` : ''}<div id="itemList"></div>`;
-      const list = document.querySelector('#itemList');
       const items = row.items || [];
-      list.innerHTML = items.length ? items.map(item => {
+      const cover = row.imageUrl || row.logoUrl || covers[row.kind] || photo('');
+      const photos = [...new Set([cover, ...items.map(item => item.photoUrl).filter(Boolean)])];
+      const priced = items.filter(item => item.available !== false).map(item => Number(item.price || 0));
+      const from = priced.length ? Math.min(...priced) : null;
+      const thumbs = photos.map((src, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(src)}" alt=""></button>`).join('');
+      const lines = items.length ? items.map(item => {
         const blocked = !item.available || item.stock === 0;
-        return `<article class="item-row"><img alt="" src="${esc(photo(item.photoUrl))}"><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><p>${money(item.price)}${item.priceNote ? ` · ${esc(item.priceNote)}` : ''}${item.stock == null ? '' : ` · ${item.stock} in stock`}${item.available ? '' : ' · Unavailable'}</p>${blocked ? '' : `<button class="primary-button" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
-      }).join('') : '<p>No items yet.</p>';
-      list.querySelectorAll('[data-buy]').forEach(button => button.addEventListener('click', async () => {
-        const result = list.querySelector(`[data-result="${button.dataset.buy}"]`);
+        const note = [item.stock == null ? '' : `${item.stock} in stock`, item.available ? '' : 'Unavailable'].filter(Boolean).join(' · ');
+        return `<article class="menu-offer"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
+      }).join('') : '<p class="detail-notice">Nothing is listed yet.</p>';
+      box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something beside the photo. Sign in, then pay this place directly. The phone number stays hidden until you send a request.</p></section></aside></div>`;
+      const mainPhoto = document.querySelector('#mainPhoto');
+      box.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
+        const src = photos[Number(button.dataset.photoIndex)];
+        if (src && mainPhoto) mainPhoto.src = src;
+        box.querySelectorAll('[data-photo-index]').forEach(other => other.classList.toggle('active', other === button));
+      }));
+      box.querySelectorAll('[data-buy]').forEach(button => button.addEventListener('click', async () => {
+        const result = box.querySelector(`[data-result="${button.dataset.buy}"]`);
         if (!token()) {
           result.innerHTML = `<p class="market-note">Sign in, then come back and tap this button.</p><a href="access.html?interest=${esc(row.kind === 'restaurant' ? 'restaurants' : row.kind === 'shop' ? 'shops' : 'services')}">Sign in</a>`;
           return;
