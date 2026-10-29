@@ -615,10 +615,10 @@ def google_login():
     return jsonify(auth_payload(user))
 
 def open_google_account(user, role, sub, display_name, email):
-    """Open the owner page the person picked.
+    """Open whichever owner type was clicked.
 
-    A user account becomes that owner. An account that is already a landlord,
-    restaurant, shop, or service stays that one type.
+    The same Google account can be a landlord, a restaurant, a shop, or a service.
+    The click chooses the type for this sign-in.
     """
     import uuid
     owner_roles = ('landlord', 'restaurant', 'shop', 'service')
@@ -629,7 +629,7 @@ def open_google_account(user, role, sub, display_name, email):
     if user and user.role == 'broker':
         return None, 'Broker accounts are closed. Sign in as a student or a landlord.'
     if user and user.role != role:
-        if user.role == 'student' and role in owner_roles:
+        if role in owner_roles:
             user.role = role
         else:
             return None, f'This Google account is a {called.get(user.role, user.role)}. Choose that type to open the page.'
