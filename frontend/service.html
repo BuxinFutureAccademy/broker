@@ -1,31 +1,64 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Services · StudentStay</title>
-  <link rel="stylesheet" href="style.css?v=12">
-  <link rel="stylesheet" href="catalog.css?v=9">
-  <link rel="stylesheet" href="market.css?v=3">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>StudentStay — Services in Greater Noida</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="catalog.css?v=9" />
+  <link rel="stylesheet" href="market.css?v=5" />
 </head>
-<body class="pool-service" data-market-list="service" data-market-limit="6">
+<body class="pool-service" data-market-home="service" data-market-more="services.html" data-market-interest="services">
   <header class="topbar">
-    <a class="brand" href="service.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Services in Greater Noida</small></span></a>
+    <a class="brand" href="service.html" aria-label="Services home"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Services in Greater Noida</small></span></a>
     <nav class="nav"><a class="active" href="service.html">Home</a><a href="services.html">Services</a></nav>
-    <div class="account"><button class="login" onclick="location.href='access.html?interest=services'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
+    <div class="account"><button class="language">◎ &nbsp;English⌄</button><button class="login">Login</button><button class="signup">Owners</button></div>
     <button class="menu" aria-label="Open menu">☰</button>
   </header>
-  <main class="catalog-page">
-    <div class="catalog-hero property-hero">
-      <span class="eyebrow">SERVICES</span>
-      <h1>Find help nearby</h1>
-      <p>Barbers, repairs, and other help in Greater Noida. Open one to see the price.</p>
-      <form id="marketSearch" class="market-search"><input name="q" placeholder="Search a service or area" aria-label="Search services"><button class="primary-button" type="submit">Search</button></form>
-    </div>
-    <div class="catalog-title"><div><h2>Help nearby</h2><p>A short list. Open services for everything on offer.</p></div><a data-market-more href="services.html">View all →</a></div>
-    <div id="marketList" class="market-grid"></div>
+  <main id="home">
+    <section class="hero hero-service">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <div class="trust">✦ &nbsp;Everyday help for students in Greater Noida</div>
+        <h1>Find Help Nearby<br>in <em>Greater Noida</em></h1>
+        <h2>Barber. Repair. Everyday help.</h2>
+        <p>Services in Alpha, Beta, Gamma, Delta and the Knowledge Parks.<br class="desktop"> Pick a sector so the help is not far.</p>
+      </div>
+      <form class="search market-search-bar" id="searchForm">
+        <label class="search-field city-field"><span class="field-icon">●</span><span><small>Sector</small><select name="area" data-sectors aria-label="Sector"><option value="">Any sector</option></select></span></label>
+        <label class="search-field"><span class="field-icon">◆</span><span><small>Service</small><input name="q" aria-label="Search services" placeholder="Barber, repair, or a name"></span></label>
+        <button class="search-btn" type="submit"><span>⌕</span> Search</button>
+      </form>
+    </section>
+    <section class="benefits">
+      <article><span class="benefit-icon">●</span><div><b>By sector</b><p>See help in the<br>sector you choose.</p></div></article>
+      <article><span class="benefit-icon">◆</span><div><b>See the price</b><p>Open a service and see<br>what it costs.</p></div></article>
+      <article><span class="benefit-icon">⌖</span><div><b>Close to you</b><p>Pick a sector so the<br>help is not far.</p></div></article>
+      <article><span class="benefit-icon">♟</span><div><b>Student friendly</b><p>Made for students in<br>Greater Noida.</p></div></article>
+      <article><span class="benefit-icon">✓</span><div><b>Pay the person</b><p>Request help, then<br>pay them directly.</p></div></article>
+    </section>
+    <section class="sector-band">
+      <div class="section-heading"><div><h2>Sectors</h2><p>Help can be in any sector. Choose one.</p></div></div>
+      <div class="sector-row" id="sectorRow"></div>
+    </section>
+    <section class="discover">
+      <div class="properties-panel" id="properties">
+        <div class="section-heading"><div><h2 id="placeHeading">Services</h2><p id="placeCaption">Help posted in Greater Noida.</p></div><a id="placeMore" href="services.html">View All →</a></div>
+        <div class="property-grid" id="homePlaces"></div>
+      </div>
+    </section>
+    <section class="help-band">
+      <div class="section-heading">
+        <div><h2>Contact</h2><p>Ask about a service, a request, or your account.</p></div>
+        <a href="contact.html">Open contact →</a>
+      </div>
+    </section>
   </main>
   <script src="session.js?v=19"></script>
-  <script src="market.js?v=6"></script>
+  <script src="market.js?v=7"></script>
 </body>
 </html>

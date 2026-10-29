@@ -6,7 +6,7 @@
   <title>Your place · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=12">
   <link rel="stylesheet" href="portal.css?v=6">
-  <link rel="stylesheet" href="market.css?v=4">
+  <link rel="stylesheet" href="market.css?v=5">
 </head>
 <body class="portal-body" data-market-owner>
   <header class="portal-header">
@@ -78,7 +78,7 @@
           <label>Category<input name="category" placeholder="Meals, grocery, barber" required></label>
           <label>Phone<input name="phone" placeholder="+91 98765 43210" required></label>
           <label>WhatsApp<input name="whatsapp" placeholder="Same number, if you use WhatsApp"></label>
-          <label>Area<input name="area" placeholder="Greater Noida sector"></label>
+          <label>Sector<select name="area" required><option value="">Choose a Greater Noida sector</option><option>Alpha 1</option><option>Alpha 2</option><option>Beta 1</option><option>Beta 2</option><option>Gamma 1</option><option>Gamma 2</option><option>Delta 1</option><option>Delta 2</option><option>Knowledge Park 1</option><option>Knowledge Park 2</option><option>Knowledge Park 3</option><option>Pari Chowk</option><option>Omega 1</option><option>Chi</option><option>Phi</option><option>Swarn Nagari</option></select></label>
           <label>Hours<input name="hours" placeholder="10:00 to 22:00"></label>
           <label class="wide">Street address<input name="address" placeholder="Shown only after someone requests"></label>
           <label class="wide">Description<textarea name="description" rows="3" placeholder="What people should know before they request"></textarea></label>
@@ -87,6 +87,6 @@
       </section>
     </section>
   </main>
-  <script src="market.js?v=6"></script>
+  <script src="market.js?v=7"></script>
 </body>
 </html>

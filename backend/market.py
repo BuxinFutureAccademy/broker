@@ -190,6 +190,7 @@ def init_market():
                 continue
             card = business_payload(row, include_items=False)
             card['itemCount'] = len(items)
+            card['itemNames'] = [item.name for item in items]
             card['fromPrice'] = min((item.price or 0 for item in items), default=None)
             result.append(card)
         return jsonify(result)

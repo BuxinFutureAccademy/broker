@@ -4,9 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shops · StudentStay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=12">
   <link rel="stylesheet" href="catalog.css?v=9">
-  <link rel="stylesheet" href="market.css?v=3">
+  <link rel="stylesheet" href="market.css?v=5">
 </head>
 <body class="pool-shop" data-market-list="shop">
   <header class="topbar">
@@ -17,10 +20,10 @@
   </header>
   <main class="catalog-page">
     <div class="catalog-hero property-hero"><span class="eyebrow">SHOPS</span><h1>All shops</h1><p>Every shop in Greater Noida. Open one to see products and prices.</p></div>
-    <form id="marketSearch" class="market-search"><input name="q" placeholder="Search a shop or product" aria-label="Search shops"><button class="primary-button" type="submit">Search</button></form>
-    <div id="marketList" class="market-grid"></div>
+    <form id="marketSearch" class="market-search"><select name="area" data-sectors aria-label="Sector"><option value="">Any sector</option></select><input name="q" placeholder="Search a shop or product" aria-label="Search shops"><button class="primary-button" type="submit">Search</button></form>
+    <div id="marketList" class="property-grid all-properties"></div>
   </main>
   <script src="session.js?v=19"></script>
-  <script src="market.js?v=6"></script>
+  <script src="market.js?v=7"></script>
 </body>
 </html>

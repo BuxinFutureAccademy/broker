@@ -34,6 +34,50 @@
     }
   };
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
+  const sectors = ['Alpha 1', 'Alpha 2', 'Beta 1', 'Beta 2', 'Gamma 1', 'Gamma 2', 'Delta 1', 'Delta 2', 'Knowledge Park 1', 'Knowledge Park 2', 'Knowledge Park 3', 'Pari Chowk', 'Omega 1', 'Chi', 'Phi', 'Swarn Nagari'];
+  const covers = {
+    restaurant: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80',
+    shop: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80',
+    service: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=900&q=80'
+  };
+  const fillSectors = select => {
+    if (!select || select.dataset.ready === '1') return;
+    const current = select.value;
+    select.innerHTML = `<option value="">Any sector</option>${sectors.map(name => `<option>${esc(name)}</option>`).join('')}`;
+    if ([...select.options].some(option => option.value === current || option.textContent === current)) select.value = current;
+    select.dataset.ready = '1';
+  };
+  const placeCard = (row, kind) => {
+    const count = Number(row.itemCount || 0);
+    const unit = { restaurant: ['dish', 'dishes'], shop: ['product', 'products'], service: ['service', 'services'] }[kind] || ['item', 'items'];
+    const listed = count === 1 ? `1 ${unit[0]}` : `${count} ${unit[1]}`;
+    const price = row.fromPrice == null ? 'Price on request' : `From ${money(row.fromPrice)}`;
+    const image = row.imageUrl || row.logoUrl || covers[kind] || covers.restaurant;
+    return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(row.name)}"><span class="tag blue">${esc(row.category || (pools[kind] || {}).name || '')}</span><button class="heart" type="button" aria-label="Save">♥</button></div><div class="property-info"><h3>${esc(row.name)}</h3><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${price}</div><div class="amenities"><span>${esc(listed)}</span><span>Open</span></div></div></article>`;
+  };
+  const bindPlaces = box => {
+    if (!box || box.dataset.bound === '1') return;
+    box.dataset.bound = '1';
+    const open = tile => { location.href = `business.html?id=${encodeURIComponent(tile.dataset.businessId)}`; };
+    box.addEventListener('click', event => {
+      const heart = event.target.closest('.heart');
+      if (heart) { event.preventDefault(); event.stopPropagation(); heart.classList.toggle('saved'); return; }
+      const tile = event.target.closest('[data-business-id]');
+      if (tile) open(tile);
+    });
+    box.addEventListener('keydown', event => {
+      const tile = event.target.closest('[data-business-id]');
+      if (tile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(tile); }
+    });
+  };
+  const matchesPlace = (row, area, query) => {
+    const place = String(row.area || '').toLowerCase();
+    if (area && !place.includes(area.toLowerCase())) return false;
+    if (!query) return true;
+    const names = Array.isArray(row.itemNames) ? row.itemNames.join(' ') : '';
+    const blob = `${row.name || ''} ${row.category || ''} ${row.description || ''} ${row.area || ''} ${names}`.toLowerCase();
+    return blob.includes(query.toLowerCase());
+  };
 
   async function api(path, options = {}) {
     const headers = { ...(options.headers || {}) };
@@ -68,23 +112,73 @@
     const kind = listRoot.getAttribute('data-market-list');
     const box = document.querySelector('#marketList');
     const form = document.querySelector('#marketSearch');
-    const limit = Number(listRoot.getAttribute('data-market-limit') || 0);
-    const more = document.querySelector('[data-market-more]');
-    const words = { restaurant: ['dish', 'dishes', 'No restaurants are listed yet.'], shop: ['product', 'products', 'No shops are listed yet.'], service: ['service', 'services', 'No services are listed yet.'] }[kind] || ['item', 'items', 'Nothing is listed here yet.'];
-    const paint = rows => {
-      const shown = limit > 0 ? rows.slice(0, limit) : rows;
-      box.innerHTML = shown.length ? shown.map(row => {
-        const count = Number(row.itemCount || 0);
-        const listed = count === 1 ? `1 ${words[0]}` : `${count} ${words[1]}`;
-        return `<a class="market-card" href="business.html?id=${encodeURIComponent(row.id)}"><img alt="" src="${esc(photo(row.imageUrl || row.logoUrl))}"><div><b>${esc(row.name)}</b><p>${esc(row.category)} · ${esc(row.area || 'Greater Noida')}</p><p>${row.fromPrice == null ? 'Price on request' : `From ${money(row.fromPrice)}`} · ${listed}</p></div></a>`;
-      }).join('') : `<p class="empty-state">${words[2]}</p>`;
-      if (more) more.hidden = shown.length === 0;
+    const empty = { restaurant: 'No restaurants in that sector yet.', shop: 'No shops in that sector yet.', service: 'No services in that sector yet.' }[kind] || 'Nothing is listed here yet.';
+    fillSectors(form?.elements.area);
+    const params = new URLSearchParams(location.search);
+    if (form?.elements.q && params.get('q')) form.elements.q.value = params.get('q');
+    if (form?.elements.area && params.get('area')) form.elements.area.value = params.get('area');
+    let rows = [];
+    const paint = () => {
+      if (!box) return;
+      const area = form?.elements.area?.value || '';
+      const query = form?.elements.q?.value || '';
+      const shown = rows.filter(row => matchesPlace(row, area, query));
+      box.innerHTML = shown.length ? shown.map(row => placeCard(row, kind)).join('') : `<div class="empty-state">${empty}</div>`;
+      bindPlaces(box);
     };
-    const load = query => api(`/market/businesses?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(query || '')}`).then(paint).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
-    form?.addEventListener('submit', event => { event.preventDefault(); load(new FormData(form).get('q')); });
-    const initial = new URLSearchParams(location.search).get('q') || '';
-    if (initial && form?.elements.q) form.elements.q.value = initial;
-    load(initial);
+    form?.addEventListener('submit', event => { event.preventDefault(); paint(); });
+    form?.elements.area?.addEventListener('change', paint);
+    api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => { rows = Array.isArray(items) ? items : []; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
+  }
+
+  const homeRoot = document.querySelector('[data-market-home]');
+  if (homeRoot) {
+    const kind = homeRoot.getAttribute('data-market-home');
+    const box = document.querySelector('#homePlaces');
+    const form = document.querySelector('#searchForm');
+    const row = document.querySelector('#sectorRow');
+    const more = document.querySelector('#placeMore');
+    const heading = document.querySelector('#placeHeading');
+    const caption = document.querySelector('#placeCaption');
+    const listPage = homeRoot.getAttribute('data-market-more') || '#';
+    const interest = homeRoot.getAttribute('data-market-interest') || '';
+    const titles = { restaurant: 'Restaurants', shop: 'Shops', service: 'Services' };
+    const empty = { restaurant: 'No restaurants in that Greater Noida sector yet.', shop: 'No shops in that Greater Noida sector yet.', service: 'No services in that Greater Noida sector yet.' };
+    fillSectors(form?.elements.area);
+    if (row) {
+      row.innerHTML = sectors.map(name => `<button class="sector-card" type="button" data-sector="${esc(name)}"><span class="sector-mark">${esc(name.split(' ')[0])}</span><b>${esc(name)}</b><small>Greater Noida</small></button>`).join('');
+    }
+    let rows = [];
+    const paint = () => {
+      if (!box) return;
+      const area = form?.elements.area?.value || '';
+      const query = String(form?.elements.q?.value || '').trim();
+      const shown = rows.filter(item => matchesPlace(item, area, query));
+      box.innerHTML = shown.length ? shown.map(item => placeCard(item, kind)).join('') : `<div class="empty-state">${empty[kind] || 'Nothing in that sector yet.'}</div>`;
+      bindPlaces(box);
+      if (heading) heading.textContent = area ? `${titles[kind] || 'Places'} in ${area}` : (titles[kind] || 'Places');
+      if (caption) caption.textContent = area ? `Showing ${area}.` : 'Every sector in Greater Noida.';
+      if (more) more.href = area ? `${listPage}?area=${encodeURIComponent(area)}` : listPage;
+      row?.querySelectorAll('[data-sector]').forEach(card => card.classList.toggle('on', card.dataset.sector === area));
+    };
+    form?.addEventListener('submit', event => {
+      event.preventDefault();
+      paint();
+      document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
+    });
+    form?.elements.area?.addEventListener('change', paint);
+    row?.addEventListener('click', event => {
+      const card = event.target.closest('[data-sector]');
+      if (!card || !form?.elements.area) return;
+      form.elements.area.value = form.elements.area.value === card.dataset.sector ? '' : card.dataset.sector;
+      paint();
+      document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
+    });
+    if (!token()) {
+      document.querySelector('.login')?.addEventListener('click', () => { location.href = interest ? `access.html?interest=${encodeURIComponent(interest)}` : 'access.html'; });
+      document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=owners'; });
+    }
+    api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => { rows = Array.isArray(items) ? items : []; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
   }
 
   const businessRoot = document.querySelector('[data-market-business]');
@@ -160,7 +254,7 @@
         placeRows = rows;
         paintStats();
         const stockField = copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" placeholder="How many you have"></label>` : '';
-        businesses.innerHTML = rows.map(row => `<article class="panel owner-place"><div class="panel-heading"><div><span class="eyebrow">${esc(row.category || copy.eyebrow)}</span><h2>${esc(row.name)}</h2><p>${esc(row.phone || 'No phone yet')} · ${esc(row.area || 'Greater Noida')}</p></div></div><div class="owner-items">${(row.items || []).map(item => `<div class="owner-item"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div>`).join('') || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div><form class="form-grid owner-item-form" data-item="${esc(row.id)}"><label>${esc(copy.item[0].toUpperCase() + copy.item.slice(1))} name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label><label>Category<input name="category" placeholder="Optional"></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide">Photo link<input name="photoUrl" placeholder="https://"></label><button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form></article>`).join('') || `<p class="empty-state">Add your first ${esc(copy.item === 'dish' ? 'restaurant' : copy.item === 'product' ? 'shop' : 'service')} from Add a place.</p>`;
+        businesses.innerHTML = rows.map(row => `<article class="panel owner-place"><div class="panel-heading"><div><span class="eyebrow">${esc(row.category || copy.eyebrow)}</span><h2>${esc(row.name)}</h2><p>${esc(row.phone || 'No phone yet')} · ${esc(row.area || 'Greater Noida')}</p></div><label class="owner-sector">Sector<select data-area="${esc(row.id)}">${sectors.includes(row.area) ? '' : `<option value="">${esc(row.area || 'Choose a sector')}</option>`}${sectors.map(name => `<option${row.area === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label></div><div class="owner-items">${(row.items || []).map(item => `<div class="owner-item"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div>`).join('') || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div><form class="form-grid owner-item-form" data-item="${esc(row.id)}"><label>${esc(copy.item[0].toUpperCase() + copy.item.slice(1))} name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label><label>Category<input name="category" placeholder="Optional"></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide">Photo link<input name="photoUrl" placeholder="https://"></label><button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form></article>`).join('') || `<p class="empty-state">Add your first ${esc(copy.item === 'dish' ? 'restaurant' : copy.item === 'product' ? 'shop' : 'service')} from Add a place.</p>`;
         businesses.querySelectorAll('[data-item]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
           const data = Object.fromEntries(new FormData(form));
@@ -178,6 +272,14 @@
         businesses.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', async () => {
           if (!confirm('Remove this item? Past requests stay saved.')) return;
           try { await api(`/market/items/${button.dataset.remove}`, { method: 'DELETE' }); load(); } catch (error) { alert(error.message); }
+        }));
+        businesses.querySelectorAll('[data-area]').forEach(select => select.addEventListener('change', async () => {
+          const row = placeRows.find(item => item.id === select.dataset.area);
+          if (!row || !select.value || select.value === row.area) return;
+          try {
+            await api(`/market/businesses/${row.id}`, { method: 'PUT', body: JSON.stringify({ kind: row.kind, name: row.name, category: row.category, phone: row.phone, whatsapp: row.whatsapp || '', address: row.address || '', area: select.value, hours: row.hours || '', description: row.description || '', imageUrl: row.imageUrl || '', logoUrl: row.logoUrl || '' }) });
+            load();
+          } catch (error) { alert(error.message); }
         }));
       };
       const paintOrders = rows => {
