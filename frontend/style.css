@@ -67,4 +67,9 @@
   .phone-nav a{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:#6b829c;font-size:10px;font-weight:700;padding:4px 0;border-radius:12px}
   .phone-nav a b{font-size:16px;line-height:1}
   .phone-nav a.on{color:#0759d6;background:#eaf2ff}
+  .topbar{height:auto;min-height:58px;flex-wrap:wrap;align-items:center}
+  .topbar .menu{display:none !important}
+  .topbar .nav{display:flex !important;position:static;flex:1 0 100%;order:4;height:44px;gap:2px;overflow-x:auto;padding:0 8px;background:#fff;border-top:1px solid #e6eef6;box-shadow:none;flex-direction:row}
+  .topbar .nav a{height:44px;padding:0 10px;font-weight:700;white-space:nowrap;font-size:13px}
+  .topbar .nav a.active:after{bottom:0}
 }

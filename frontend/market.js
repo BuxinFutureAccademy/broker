@@ -20,18 +20,12 @@
       const small = brand.querySelector('small');
       if (small) small.textContent = pool.tag;
     }
-    if (document.body.hasAttribute('data-market-business')) {
-      const nav = document.querySelector('.nav');
-      if (nav) nav.innerHTML = `<a href="${pool.home}">Home</a><a href="${pool.list}">${pool.name}</a>`;
-    }
-    const phone = document.querySelector('.phone-nav');
-    if (phone) {
-      const you = phone.lastElementChild;
-      const page = (location.pathname.split('/').pop() || '').toLowerCase();
-      const homeOn = page === pool.home ? ' class="on"' : '';
-      const listOn = page === pool.list ? ' class="on"' : '';
-      phone.innerHTML = `<a${homeOn} href="${pool.home}"><b>⌂</b><span>Home</span></a><a${listOn} href="${pool.list}"><b>●</b><span>${pool.name}</span></a>${you ? you.outerHTML : ''}`;
-    }
+    document.querySelectorAll('.nav a').forEach(link => link.classList.toggle('active', link.getAttribute('href') === pool.home));
+    document.querySelectorAll('.phone-nav a').forEach(link => {
+      const label = link.querySelector('span')?.textContent || '';
+      if (label === 'You' || label === 'Sign in') return;
+      link.classList.toggle('on', link.getAttribute('href') === pool.home);
+    });
   };
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
   const sectors = ['Alpha 1', 'Alpha 2', 'Beta 1', 'Beta 2', 'Gamma 1', 'Gamma 2', 'Delta 1', 'Delta 2', 'Knowledge Park 1', 'Knowledge Park 2', 'Knowledge Park 3', 'Pari Chowk', 'Omega 1', 'Chi', 'Phi', 'Swarn Nagari'];
