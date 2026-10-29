@@ -202,6 +202,24 @@ class MarketSetting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     commission_percent = db.Column(db.Integer, default=10)
 
+class DonorProfile(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    user_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, unique=True, index=True)
+    donor_type = db.Column(db.String(20), nullable=False)
+    organization = db.Column(db.String(120), default='')
+    phone = db.Column(db.String(30), default='')
+    city = db.Column(db.String(80), default='')
+
+class Donation(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    reference = db.Column(db.String(16), unique=True, nullable=False, index=True)
+    donor_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
+    donor_type = db.Column(db.String(20), nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    purpose = db.Column(db.String(200), default='')
+    status = db.Column(db.String(20), default='pledged', index=True)
+    created = db.Column(db.DateTime, default=db.func.current_timestamp(), index=True)
+
 DEMO_USERS = [
     {'name': 'Test Student', 'email': 'student@test.com', 'password': 'student123', 'role': 'student', 'phone': '+91 98765 43210', 'city': 'Greater Noida'},
     {'name': 'Test Landlord', 'email': 'landlord@test.com', 'password': 'landlord123', 'role': 'landlord', 'phone': '+91 98765 43211', 'city': 'Greater Noida', 'address': 'Greater Noida'},
@@ -513,8 +531,8 @@ def google_login():
     import urllib.request
     data = request.get_json() or {}
     role = data.get('role')
-    if role not in ('student', 'landlord'):
-        return jsonify({'error': 'Choose Student or Landlord first.'}), 400
+    if role not in ('student', 'landlord', 'buyer'):
+        return jsonify({'error': 'Choose Student, Landlord, or Buyer first.'}), 400
     credential = (data.get('credential') or '').strip()
     client_id = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
     if not client_id:

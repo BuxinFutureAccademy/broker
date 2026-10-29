@@ -85,7 +85,7 @@
     return response.json();
   }
 
-  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'admin' ? 'admin.html' : role === 'vendor' ? 'vendor.html' : 'student.html'; };
+  const go = (role) => { location.href = role === 'landlord' ? 'landlord.html' : role === 'admin' ? 'admin.html' : role === 'vendor' ? 'vendor.html' : role === 'buyer' ? 'buyer.html' : role === 'donor' ? 'donor.html' : 'student.html'; };
 
   document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', () => {
     localStorage.removeItem('studentstay_token');

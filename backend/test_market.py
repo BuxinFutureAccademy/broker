@@ -1,5 +1,10 @@
 import os
-os.environ['DATABASE_URL'] = 'sqlite:///market_test.db'
+db_path = os.path.join(os.path.dirname(__file__), 'market_test.db')
+if os.path.exists(db_path):
+    os.remove(db_path)
+os.environ['DATABASE_URL'] = 'sqlite:///' + db_path.replace('\\', '/')
+os.environ['MAIL_USERNAME'] = ''
+os.environ['MAIL_PASSWORD'] = ''
 
 import app as app_module
 
@@ -89,6 +94,30 @@ def main():
         'name': 'No Vendor', 'email': 'nope@market.test', 'password': 'secret12', 'role': 'vendor'
     })
     assert housing.status_code == 400
+
+    buyer = client.post('/api/market/buyer/register', json={
+        'name': 'Buyer Ada', 'email': 'buyer@market.test', 'password': 'secret12', 'phone': '+91 90000 00009'
+    })
+    assert buyer.status_code == 201, buyer.get_json()
+    assert buyer.get_json()['user']['role'] == 'buyer'
+    buyer_order = client.post('/api/market/orders', json={'itemId': item_id, 'quantity': 1}, headers=auth(buyer.get_json()['access_token']))
+    assert buyer_order.status_code == 201, buyer_order.get_json()
+    assert buyer_order.get_json()['reference'].startswith('M-')
+
+    blocked_gift = client.post('/api/market/donations', json={'amount': 500}, headers=auth(buyer.get_json()['access_token']))
+    assert blocked_gift.status_code == 403
+
+    donor = client.post('/api/market/donor/register', json={
+        'donorType': 'corporate', 'name': 'Ada Contact', 'organization': 'Ada Ltd',
+        'email': 'donor@market.test', 'password': 'secret12'
+    })
+    assert donor.status_code == 201, donor.get_json()
+    assert donor.get_json()['user']['role'] == 'donor'
+    assert donor.get_json()['user']['donorType'] == 'corporate'
+    gift = client.post('/api/market/donations', json={'amount': 500, 'purpose': 'Rent support'}, headers=auth(donor.get_json()['access_token']))
+    assert gift.status_code == 201, gift.get_json()
+    assert gift.get_json()['reference'].startswith('D-')
+    assert gift.get_json()['status'] == 'pledged'
     print('market checks passed')
 
 
@@ -96,6 +125,8 @@ if __name__ == '__main__':
     try:
         main()
     finally:
-        db_path = os.path.join(os.path.dirname(__file__), 'market_test.db')
+        with app_module.app.app_context():
+            app_module.db.session.remove()
+            app_module.db.engine.dispose()
         if os.path.exists(db_path):
             os.remove(db_path)

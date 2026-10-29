@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Donor · StudentStay</title>
+  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="portal.css?v=6">
+  <link rel="stylesheet" href="market.css?v=2">
+</head>
+<body class="portal-body" data-market-donor>
+  <header class="portal-header">
+    <a class="brand" href="donations.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Donor</small></span></a>
+    <a href="donations.html">Donations</a>
+  </header>
+  <main class="dashboard-main" style="padding:24px">
+    <section id="donorGate">
+      <h1>Donor account</h1>
+      <p>This account is only for gifts. It is not a buyer, a vendor, or a student housing account.</p>
+      <form id="donorRegister" class="market-form panel">
+        <h2>Register</h2>
+        <select name="donorType" required>
+          <option value="personal">Personal donor</option>
+          <option value="corporate">Corporate donor</option>
+          <option value="business">Business donor</option>
+        </select>
+        <input name="name" placeholder="Your name" required>
+        <input name="organization" placeholder="Company or business name, if not personal">
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" minlength="6" placeholder="Password" required>
+        <input name="phone" placeholder="Phone">
+        <input name="city" placeholder="City">
+        <button class="primary-button" type="submit">Create donor account</button>
+      </form>
+      <form id="donorLogin" class="market-form panel">
+        <h2>Sign in</h2>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <button class="primary-button" type="submit">Sign in</button>
+      </form>
+    </section>
+    <section id="donorDesk" hidden>
+      <h1 id="donorKind">Donor</h1>
+      <form id="donationForm" class="market-form panel">
+        <h2>Record a pledge</h2>
+        <input name="amount" inputmode="numeric" placeholder="Amount in ₹" required>
+        <input name="purpose" placeholder="What the gift is for">
+        <button class="primary-button" type="submit">Save pledge</button>
+      </form>
+      <div id="donationList"></div>
+    </section>
+  </main>
+  <script src="market.js?v=2"></script>
+</body>
+</html>

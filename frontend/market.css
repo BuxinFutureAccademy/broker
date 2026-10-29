@@ -3,6 +3,8 @@
 .small-button { background: #eaf2ff; color: #0759d6; }
 .market-form, .panel form { display: grid; gap: 8px; }
 .market-form input, .market-form textarea, .panel input, .panel textarea, .panel select { width: 100%; border: 1px solid #d5e0ec; border-radius: 12px; padding: 10px 12px; font: 16px inherit; }
+.market-sub { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.market-sub a { padding: 8px 12px; border-radius: 999px; background: #eaf2ff; color: #0759d6; text-decoration: none; font-weight: 700; }
 .market-hero p { max-width: 640px; }
 .market-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .market-card { display: block; background: #fff; border: 1px solid #e3ebf5; border-radius: 16px; overflow: hidden; text-decoration: none; color: #0d2b52; }

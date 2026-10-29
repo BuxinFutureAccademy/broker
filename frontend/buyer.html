@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buyer · StudentStay</title>
+  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="portal.css?v=6">
+  <link rel="stylesheet" href="market.css?v=2">
+</head>
+<body class="portal-body" data-market-buyer>
+  <header class="portal-header">
+    <a class="brand" href="market.html"><span class="brand-icon">⌂</span><span><strong>Student<span>Stay</span></strong><small>Buyer</small></span></a>
+    <a href="market.html">Market</a>
+  </header>
+  <main class="dashboard-main" style="padding:24px">
+    <nav class="market-sub"><a href="restaurants.html">Restaurants</a><a href="shops.html">Shops</a><a href="services.html">Services</a><a href="orders.html">Requests</a><a href="donations.html">Donations</a></nav>
+    <section id="buyerGate">
+      <h1>Buyer account</h1>
+      <p>Use this to order food, products, and services. It is not a student housing account. Students keep signing in on the housing page.</p>
+      <div id="buyerGoogle"></div>
+      <form id="buyerRegister" class="market-form panel">
+        <h2>Register</h2>
+        <input name="name" placeholder="Your name" required>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" minlength="6" placeholder="Password" required>
+        <input name="phone" placeholder="Phone">
+        <button class="primary-button" type="submit">Create buyer account</button>
+      </form>
+      <form id="buyerLogin" class="market-form panel">
+        <h2>Sign in</h2>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <button class="primary-button" type="submit">Sign in</button>
+      </form>
+    </section>
+    <section id="buyerDesk" hidden>
+      <h1>Your marketplace</h1>
+      <p>A request is saved before you see the phone number. Paying the vendor in cash is not recorded as received until you confirm it.</p>
+      <div id="orderList"></div>
+    </section>
+  </main>
+  <script src="market.js?v=2"></script>
+</body>
+</html>
