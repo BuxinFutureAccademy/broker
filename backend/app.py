@@ -253,7 +253,8 @@ def serialize_listing(listing, viewer=None, approved=None, pending=None):
     pending = pending or set()
     is_owner = bool(viewer and viewer.id == listing.owner_id)
     is_admin = bool(viewer and viewer.role == 'admin')
-    is_unlocked = is_owner or is_admin or listing.id in approved
+    sees_house = is_owner or is_admin
+    fee_sent = bool(viewer and viewer.role == 'student' and (listing.id in approved or listing.id in pending))
     area = listing.sector or listing.city or 'Greater Noida'
     status = ''
     if viewer and viewer.role == 'student':
@@ -264,7 +265,7 @@ def serialize_listing(listing, viewer=None, approved=None, pending=None):
     data = {
         'id': listing.id,
         'ownerId': listing.owner_id,
-        'ownerName': listing.owner_name if is_unlocked else 'Landlord',
+        'ownerName': listing.owner_name if sees_house else 'Landlord',
         'title': listing.title,
         'type': listing.type,
         'rent': listing.rent,
@@ -274,15 +275,16 @@ def serialize_listing(listing, viewer=None, approved=None, pending=None):
         'city': listing.city or 'Greater Noida',
         'description': listing.description,
         'photos': listing.photos,
-        'unlocked': is_unlocked,
+        'unlocked': sees_house,
         'unlockStatus': status,
         'created': listing.created.isoformat() if listing.created else None,
     }
-    if is_unlocked:
-        broker = broker_contact()
+    if sees_house:
         data['address'] = listing.address
         data['ownerPhone'] = owner.phone if owner else ''
         data['ownerEmail'] = owner.email if owner else ''
+    if sees_house or fee_sent:
+        broker = broker_contact()
         data['brokerName'] = broker['name']
         data['brokerPhone'] = broker['phone']
         data['brokerEmail'] = broker['email']
@@ -872,7 +874,7 @@ def get_student_requests():
             'status': req.status,
             'listing': {
                 'title': listing.title if listing else 'Listing removed',
-                'address': listing.address if listing else '',
+                'address': '',
                 'rent': listing.rent if listing else 0
             }
         })
@@ -1395,7 +1397,7 @@ def update_payment_settings():
     db.session.commit()
     return jsonify(payment_payload())
 
-def unlock_payload(row):
+def unlock_payload(row, include_private=True):
     student = User.query.get(row.student_id)
     listing = Listing.query.get(row.listing_id)
     return {
@@ -1406,7 +1408,7 @@ def unlock_payload(row):
         'created': row.created.isoformat() if row.created else None,
         'studentId': row.student_id,
         'ownerId': listing.owner_id if listing else '',
-        'ownerName': listing.owner_name if listing else '',
+        'ownerName': listing.owner_name if listing and include_private else '',
         'student': {
             'name': student.name if student else 'Student',
             'email': student.email if student else '',
@@ -1416,11 +1418,11 @@ def unlock_payload(row):
             'id': listing.id if listing else '',
             'title': listing.title if listing else 'Home removed',
             'sector': (listing.sector or listing.city) if listing else '',
-            'address': listing.address if listing else '',
+            'address': listing.address if listing and include_private else '',
             'rent': listing.rent if listing else 0,
             'brokerFee': int(listing.rent or 0) // 2 if listing else 0,
             'photos': (listing.photos or []) if listing else [],
-            'ownerName': listing.owner_name if listing else '',
+            'ownerName': listing.owner_name if listing and include_private else '',
         },
     }
 
@@ -1458,7 +1460,7 @@ def student_unlocks():
     if not user or user.role != 'student':
         return jsonify({'error': 'Student access required'}), 403
     rows = Unlock.query.filter_by(student_id=user.id).order_by(Unlock.created.desc()).all()
-    return jsonify([unlock_payload(row) for row in rows])
+    return jsonify([unlock_payload(row, include_private=False) for row in rows])
 
 @app.route('/api/unlocks/landlord', methods=['GET'])
 @jwt_required()

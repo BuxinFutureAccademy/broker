@@ -14,12 +14,20 @@
     ? `<a class="contact-line" href="${esc(href)}">${label} &nbsp;${esc(value)}</a>`
     : '';
 
-  const people = item => {
-    const address = [item.address, item.city].filter(Boolean).join(', ');
-    return `<section class="contact-card" id="contact"><h2>People who can help</h2><p class="detail-notice">Your broker fee is approved. Call either person about this house.</p><div class="person-block"><div class="owner-row"><span class="owner-avatar">${esc((item.ownerName || 'L').slice(0, 1).toUpperCase())}</span><div><b>${esc(item.ownerName || 'Landlord')}</b><small>Landlord</small></div></div><p class="detail-location">⌖ ${esc(address)}</p>${contactLine('☎', item.ownerPhone, `tel:${dial(item.ownerPhone)}`)}${contactLine('✉', item.ownerEmail, `mailto:${item.ownerEmail}`)}</div><div class="person-block"><div class="owner-row"><span class="owner-avatar broker">${esc((item.brokerName || 'A').slice(0, 1).toUpperCase())}</span><div><b>${esc(item.brokerName || 'StudentStay')}</b><small>Your broker</small></div></div>${contactLine('☎', item.brokerPhone, `tel:${dial(item.brokerPhone)}`)}${contactLine('✉', item.brokerEmail, `mailto:${item.brokerEmail}`)}</div></section>`;
+  const brokerCard = item => {
+    const name = item.brokerName || 'StudentStay';
+    const phone = item.brokerPhone || '';
+    const email = item.brokerEmail || '';
+    const area = item.sector || item.city || 'Greater Noida';
+    const intro = `Hello, my name is ______. I paid the StudentStay broker fee for ${item.title || 'a room'} in ${area}. I am sending my receipt. Please tell me the next step.`;
+    const wa = dial(phone).replace(/^\+/, '');
+    const lines = [
+      contactLine('Call', phone, `tel:${dial(phone)}`),
+      wa ? `<a class="contact-line" href="https://wa.me/${wa}?text=${encodeURIComponent(intro)}" target="_blank" rel="noopener">WhatsApp &nbsp;${esc(phone)}</a>` : '',
+      email ? `<a class="contact-line" href="mailto:${esc(email)}?subject=${encodeURIComponent('Broker fee receipt')}&body=${encodeURIComponent(intro)}">Email &nbsp;${esc(email)}</a>` : ''
+    ].filter(Boolean).join('');
+    return `<section class="contact-card" id="contact"><h2>Next step</h2><p class="detail-notice">Contact the broker and send your broker fee receipt. The house location and the landlord’s number stay private.</p><div class="person-block"><div class="owner-row"><span class="owner-avatar broker">${esc(name.slice(0, 1).toUpperCase())}</span><div><b>${esc(name)}</b><small>Your broker</small></div></div>${lines || '<p class="detail-notice">The broker contact is not saved yet. Open the Contact page.</p>'}</div></section>`;
   };
-
-  const waitingCard = () => `<section class="fee-card waiting" id="contact"><span class="fee-orb"></span><div><small>BROKER FEE</small><h2>Waiting for admin approval</h2><p>Your receipt is in. The address, map, and phone numbers open after it is approved.</p><a href="student.html#requests">See your payment</a></div></section>`;
 
   const feeOf = item => {
     const listed = Number(item.brokerFee);
@@ -32,7 +40,7 @@
     const saved = Math.max(rent - fee, 0);
     return `<div class="deal"><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span><span class="deal-badge">50% OFF</span><div class="deal-prices"><span class="was">${money(rent)}</span><strong>${money(fee)}</strong></div><p class="deal-save">You save ${money(saved)} on the broker fee</p></div>`;
   };
-  const payCard = item => `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2>${dealHtml(item)}<p>One QR for every house. After approval you get the exact address, the map, and both phone numbers.</p><button class="pay-now" type="button" id="openPay">Pay now</button></section>`;
+  const payCard = item => `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2>${dealHtml(item)}<p>One QR for every house. After you pay, contact the broker and send your receipt. The house location and the landlord’s number stay private.</p><button class="pay-now" type="button" id="openPay">Pay now</button></section>`;
 
   const openPay = (item, payment) => {
     document.querySelector('#payModal')?.remove();
@@ -74,7 +82,7 @@
         });
         const savedPayload = await saved.json();
         if (!saved.ok) throw new Error(savedPayload.error || 'Could not send the receipt.');
-        message.textContent = 'Receipt sent. Waiting for admin approval.';
+        message.textContent = 'Receipt sent. Contact the broker and send them this receipt.';
         location.href = 'student.html#requests';
       } catch (error) {
         button.disabled = false;
@@ -87,17 +95,18 @@
     const user = session();
     const photos = (item.photos || []).filter(Boolean);
     const area = item.sector || item.city || 'Greater Noida';
-    const unlocked = item.unlocked === true;
-    const fullAddress = unlocked ? [item.address, item.city].filter(Boolean).join(', ') : area;
-    const map = unlocked
+    const showHouse = item.unlocked === true && user?.role !== 'student';
+    const fullAddress = showHouse ? [item.address, item.city].filter(Boolean).join(', ') : area;
+    const paid = user?.role === 'student' && (item.unlockStatus === 'pending' || item.unlockStatus === 'approved');
+    const map = showHouse
       ? `<section class="map-panel"><h2>Exact location</h2><p>${esc(fullAddress)}</p><iframe class="map-frame" title="Map showing ${esc(item.title)}" src="https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe><div class="map-actions"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}" target="_blank" rel="noopener">Open directions in Google Maps ↗</a></div></section>`
-      : `<section class="map-panel"><h2>Area</h2><p>${esc(area)}, Greater Noida</p><p class="detail-notice">The street and map stay hidden until the broker fee is approved.</p></section>`;
+      : `<section class="map-panel"><h2>Area</h2><p>${esc(area)}, Greater Noida</p><p class="detail-notice">The street and the map stay private.</p></section>`;
     let aside = '';
     let payment = null;
-    if (unlocked) aside = people(item);
-    else if (!user) aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2>${dealHtml(item)}<p>Sign in as a student, then scan the QR and pay the discounted fee.</p><a class="pay-now" href="access.html#student">Sign in to pay</a></section>`;
-    else if (user.role !== 'student') aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Students pay this fee</h2><p>A student account is what unlocks the address and the phone numbers.</p></section>`;
-    else if (item.unlockStatus === 'pending') aside = waitingCard();
+    if (paid) aside = brokerCard(item);
+    else if (showHouse) aside = `<section class="pay-card" id="contact"><small>THIS HOUSE</small><h2>Posted by the landlord</h2><p>${esc(fullAddress)}</p></section>`;
+    else if (!user) aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Pay the broker fee</h2>${dealHtml(item)}<p>Sign in as a student, pay the fee, then contact the broker and send your receipt.</p><a class="pay-now" href="access.html#student">Sign in to pay</a></section>`;
+    else if (user.role !== 'student') aside = `<section class="pay-card" id="contact"><small>BROKER FEE</small><h2>Students pay this fee</h2><p>After they pay, they contact the broker and send the receipt. The house location stays private.</p></section>`;
     else {
       try {
         const response = await fetch(`${API_BASE}/payment`);
@@ -105,7 +114,7 @@
       } catch { payment = { amount: 0, qrUrl: '', note: '' }; }
       aside = payCard(item);
     }
-    target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt=""></button>`).join('')}</div></div>${map}</section><aside><section class="detail-content"><span class="detail-badge">${esc(item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(unlocked ? fullAddress : area)}</p><div class="detail-price">${money(item.rent)} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || '')}</p>${item.available ? `<p class="detail-notice">Available from ${esc(item.available)}</p>` : ''}</section>${aside}</aside></div>`;
+    target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt=""></button>`).join('')}</div></div>${map}</section><aside><section class="detail-content"><span class="detail-badge">${esc(item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(showHouse ? fullAddress : area)}</p><div class="detail-price">${money(item.rent)} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || '')}</p>${item.available ? `<p class="detail-notice">Available from ${esc(item.available)}</p>` : ''}</section>${aside}</aside></div>`;
     const mainPhoto = document.querySelector('#mainPhoto');
     document.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
       const photo = photos[Number(button.dataset.photoIndex)];
