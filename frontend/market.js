@@ -85,6 +85,17 @@
     return payload;
   }
 
+  async function uploadFile(file) {
+    const body = new FormData();
+    body.append('file', file);
+    const response = await fetch(`${API_BASE}/upload`, { method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body });
+    const text = await response.text();
+    let payload = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
+    if (!response.ok || !payload.url) throw new Error(payload.error || 'The photo could not be uploaded.');
+    return payload.url;
+  }
+
   const saveSession = payload => {
     localStorage.setItem('studentstay_token', payload.access_token);
     localStorage.setItem('studentstay_user', JSON.stringify(payload.user));
@@ -253,15 +264,70 @@
       const businesses = document.querySelector('#vendorBusinesses');
       const orders = document.querySelector('#vendorOrders');
       const paint = rows => {
-        placeRows = rows;
+        const same = rows.filter(row => session.role === 'vendor' || row.kind === session.role);
+        const oldestFirst = same.slice().reverse();
+        const profile = oldestFirst.find(row => (row.items || []).length) || oldestFirst[0] || null;
+        placeRows = profile ? [profile] : [];
         paintStats();
+        const glance = document.querySelector('#ownerGlance');
+        if (glance) {
+          const placeName = copy.item === 'dish' ? 'restaurant' : copy.item === 'product' ? 'shop' : 'service';
+          glance.innerHTML = profile
+            ? `<article class="panel profile-glance"><img alt="" src="${esc(profile.imageUrl || covers[profile.kind] || '')}"><div><h2>${esc(profile.name)}</h2><p>${esc(profile.category || copy.eyebrow)} · ${esc(profile.area || 'Sector not set')}</p><a href="#place">Edit profile</a></div></article>`
+            : `<article class="panel"><h2>No profile yet</h2><p>Save your ${placeName} profile before you add ${esc(copy.items.toLowerCase())}.</p><p><a href="#place">Open profile</a></p></article>`;
+        }
+        const profileForm = document.querySelector('#profileForm');
+        if (profileForm) {
+          profileForm.dataset.id = profile ? profile.id : '';
+          const setField = (name, value) => { if (profileForm.elements[name]) profileForm.elements[name].value = value || ''; };
+          setField('name', profile?.name);
+          setField('category', profile?.category);
+          setField('phone', profile?.phone);
+          setField('whatsapp', profile?.whatsapp);
+          const area = profileForm.elements.area;
+          if (area && profile?.area && ![...area.options].some(option => option.value === profile.area)) {
+            area.insertAdjacentHTML('beforeend', `<option>${esc(profile.area)}</option>`);
+          }
+          setField('area', sectors.includes(profile?.area) ? profile.area : (profile?.area || ''));
+          setField('hours', profile?.hours);
+          setField('address', profile?.address);
+          setField('description', profile?.description);
+          const preview = document.querySelector('#profilePreview');
+          if (preview) {
+            preview.hidden = !profile?.imageUrl;
+            if (profile?.imageUrl) preview.src = profile.imageUrl;
+          }
+        }
         const stockField = copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" placeholder="How many you have"></label>` : '';
-        businesses.innerHTML = rows.map(row => `<article class="panel owner-place"><div class="panel-heading"><div><span class="eyebrow">${esc(row.category || copy.eyebrow)}</span><h2>${esc(row.name)}</h2><p>${esc(row.phone || 'No phone yet')} · ${esc(row.area || 'Greater Noida')}</p></div><label class="owner-sector">Sector<select data-area="${esc(row.id)}">${sectors.includes(row.area) ? '' : `<option value="">${esc(row.area || 'Choose a sector')}</option>`}${sectors.map(name => `<option${row.area === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label></div><div class="owner-items">${(row.items || []).map(item => `<div class="owner-item"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div>`).join('') || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div><form class="form-grid owner-item-form" data-item="${esc(row.id)}"><label>${esc(copy.item[0].toUpperCase() + copy.item.slice(1))} name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label><label>Category<input name="category" placeholder="Optional"></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide">Photo link<input name="photoUrl" placeholder="https://"></label><button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form></article>`).join('') || `<p class="empty-state">Add your first ${esc(copy.item === 'dish' ? 'restaurant' : copy.item === 'product' ? 'shop' : 'service')} from Add a place.</p>`;
+        const items = profile?.items || [];
+        const itemRows = items.map(item => `<div class="owner-item"><img class="owner-thumb" alt="" src="${esc(item.photoUrl || covers[profile.kind] || '')}"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-edit="${esc(item.id)}">Edit</button><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div><form class="form-grid owner-edit" data-edit-form="${esc(item.id)}" hidden><label>Name<input name="name" value="${esc(item.name)}" required></label><label>Price (₹)<input name="price" inputmode="numeric" value="${esc(item.price)}" required></label>${copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" value="${item.stock == null ? '' : esc(item.stock)}"></label>` : ''}<label class="wide">Description<textarea name="description" rows="2">${esc(item.description || '')}</textarea></label><label class="wide photo-field">Replace photo<input name="photo" type="file" accept="image/*"></label><button class="primary-button" type="submit">Save changes</button></form>`).join('');
+        const addForm = profile
+          ? `<form class="form-grid owner-item-form" data-item="${esc(profile.id)}"><h3>Add a ${esc(copy.item)}</h3><label>Name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide photo-field">Photo<input name="photo" type="file" accept="image/*" required></label><button class="primary-button" type="submit">Save ${esc(copy.item)}</button></form>`
+          : `<p class="empty-state">Save your profile first. Then you can add ${esc(copy.items.toLowerCase())}.</p>`;
+        businesses.innerHTML = `<article class="panel owner-place"><div class="owner-items">${itemRows || `<p class="empty-state">No ${esc(copy.items.toLowerCase())} yet.</p>`}</div>${addForm}</article>`;
+        businesses.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', () => {
+          const editor = businesses.querySelector(`[data-edit-form="${button.dataset.edit}"]`);
+          if (editor) editor.hidden = !editor.hidden;
+        }));
+        businesses.querySelectorAll('[data-edit-form]').forEach(editor => editor.addEventListener('submit', async event => {
+          event.preventDefault();
+          const data = new FormData(editor);
+          const item = (profile.items || []).find(entry => entry.id === editor.dataset.editForm);
+          try {
+            const file = data.get('photo');
+            const photoUrl = file && file.size ? await uploadFile(file) : (item?.photoUrl || '');
+            await api(`/market/items/${editor.dataset.editForm}`, { method: 'PUT', body: JSON.stringify({ name: data.get('name'), price: data.get('price'), description: data.get('description'), stock: copy.stock ? (data.get('stock') || null) : item?.stock, photoUrl, available: item ? item.available : true }) });
+            load();
+          } catch (error) { alert(error.message); }
+        }));
         businesses.querySelectorAll('[data-item]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
-          const data = Object.fromEntries(new FormData(form));
+          const data = new FormData(form);
+          const file = data.get('photo');
+          if (!file || !file.size) { alert('Upload a photo.'); return; }
           try {
-            await api(`/market/businesses/${form.dataset.item}/items`, { method: 'POST', body: JSON.stringify({ ...data, available: true, stock: data.stock || null }) });
+            const photoUrl = await uploadFile(file);
+            await api(`/market/businesses/${form.dataset.item}/items`, { method: 'POST', body: JSON.stringify({ name: data.get('name'), price: data.get('price'), description: data.get('description'), stock: data.get('stock') || null, photoUrl, available: true }) });
             load();
           } catch (error) { alert(error.message); }
         }));
@@ -274,14 +340,6 @@
         businesses.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', async () => {
           if (!confirm('Remove this item? Past requests stay saved.')) return;
           try { await api(`/market/items/${button.dataset.remove}`, { method: 'DELETE' }); load(); } catch (error) { alert(error.message); }
-        }));
-        businesses.querySelectorAll('[data-area]').forEach(select => select.addEventListener('change', async () => {
-          const row = placeRows.find(item => item.id === select.dataset.area);
-          if (!row || !select.value || select.value === row.area) return;
-          try {
-            await api(`/market/businesses/${row.id}`, { method: 'PUT', body: JSON.stringify({ kind: row.kind, name: row.name, category: row.category, phone: row.phone, whatsapp: row.whatsapp || '', address: row.address || '', area: select.value, hours: row.hours || '', description: row.description || '', imageUrl: row.imageUrl || '', logoUrl: row.logoUrl || '' }) });
-            load();
-          } catch (error) { alert(error.message); }
         }));
       };
       const paintOrders = rows => {
@@ -299,9 +357,9 @@
         }));
       };
       const ownerCopy = {
-        restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'Put dishes on the menu and answer meal requests.', items: 'Menu', item: 'dish', hint: 'Each dish needs a name and a price in rupees.', request: 'Accept a meal request, then mark it completed after the student pays you.', add: 'Add another restaurant', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace' },
-        shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'List products, keep the stock count, and answer purchase requests.', items: 'Products', item: 'product', hint: 'Each product needs a name, a price, and how many you have.', request: 'Accept a purchase, then mark it completed after the student pays you.', add: 'Add another shop', stock: true, publicPage: 'shop.html', brand: 'Shop workspace' },
-        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'List what you offer and answer requests for help.', items: 'Services', item: 'service', hint: 'Each service needs a name and a price in rupees.', request: 'Accept a request, then mark it completed after the student pays you.', add: 'Add another service', stock: false, publicPage: 'service.html', brand: 'Service workspace' }
+        restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'Keep the restaurant profile, the menu, and the meal requests in one place.', items: 'Menu', item: 'dish', hint: 'Add as many dishes as you want. Each one needs a name, a price, and a photo.', request: 'Accept a meal request, then mark it completed after the student pays you.', profile: 'Restaurant profile', profileHint: 'This is the restaurant people see. Set the sector and the photo here.', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace', category: 'Meals' },
+        shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'Keep the shop profile, the products, and the purchase requests in one place.', items: 'Products', item: 'product', hint: 'Add as many products as you want. Each one needs a name, a price, a stock count, and a photo.', request: 'Accept a purchase, then mark it completed after the student pays you.', profile: 'Shop profile', profileHint: 'This is the shop people see. Set the sector and the photo here.', stock: true, publicPage: 'shop.html', brand: 'Shop workspace', category: 'Grocery' },
+        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'Keep the service profile, what you offer, and the requests in one place.', items: 'Services', item: 'service', hint: 'Add as many services as you want. Each one needs a name, a price, and a photo.', request: 'Accept a request, then mark it completed after the student pays you.', profile: 'Service profile', profileHint: 'This is the service people see. Set the sector and the photo here.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
       };
       const copy = ownerCopy[session.role] || ownerCopy.restaurant;
       const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };
@@ -313,8 +371,12 @@
       setText('#ownerItemsTitle', copy.items);
       setText('#ownerItemsHint', copy.hint);
       setText('#ownerRequestHint', copy.request);
-      setText('#ownerAddTitle', copy.add);
+      setText('#ownerAddTitle', copy.profile);
+      setText('#ownerProfileHint', copy.profileHint);
+      setText('#ownerProfileEyebrow', copy.eyebrow);
       setText('#ownerBrand', copy.brand);
+      const categoryField = document.querySelector('#profileForm [name="category"]');
+      if (categoryField) categoryField.placeholder = copy.category;
       setText('#ownerName', session.name || 'Owner');
       setText('#ownerAvatar', (session.name || 'O').slice(0, 1).toUpperCase());
       const publicLink = document.querySelector('#ownerPublic');
@@ -322,11 +384,6 @@
       document.title = `${copy.title} · StudentStay`;
       stayIn(session.role);
       setText('#ownerBrand', copy.brand);
-      const kindField = document.querySelector('#newBusiness [name="kind"]');
-      if (kindField && ['restaurant', 'shop', 'service'].includes(session.role)) {
-        [...kindField.options].forEach(option => { if (option.value !== session.role) option.remove(); });
-        kindField.value = session.role;
-      }
       let placeRows = [];
       let orderRows = [];
       const paintStats = () => {
@@ -335,7 +392,7 @@
         const items = placeRows.reduce((sum, row) => sum + (row.items || []).length, 0);
         const open = orderRows.filter(row => row.status === 'pending' || row.status === 'accepted').length;
         const done = orderRows.filter(row => row.status === 'completed').length;
-        const cards = [[String(placeRows.length), 'Places'], [String(items), copy.items], [String(open), 'Open requests'], [String(done), 'Completed']];
+        const cards = [[String(items), copy.items], [String(open), 'Open requests'], [String(done), 'Completed']];
         box.innerHTML = cards.map(([value, label]) => `<article class="stat-card"><span class="stat-icon">●</span><div><strong>${esc(value)}</strong><small>${esc(label)}</small></div></article>`).join('');
       };
       const showOwnerPage = () => {
@@ -351,10 +408,31 @@
       const load = () => api('/market/mine').then(paint).catch(error => { businesses.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       const loadOrders = () => api('/market/vendor/orders').then(rows => { orders.dataset.rows = JSON.stringify(rows); paintOrders(rows); }).catch(error => { orders.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       document.querySelector('#orderFilter')?.addEventListener('input', () => { try { paintOrders(JSON.parse(orders.dataset.rows || '[]')); } catch { /* ignore */ } });
-      document.querySelector('#newBusiness')?.addEventListener('submit', async event => {
+      const profilePhoto = document.querySelector('#profileForm [name="photo"]');
+      const profilePreview = document.querySelector('#profilePreview');
+      profilePhoto?.addEventListener('change', () => {
+        const file = profilePhoto.files?.[0];
+        if (!file || !profilePreview) return;
+        profilePreview.hidden = false;
+        profilePreview.src = URL.createObjectURL(file);
+      });
+      document.querySelector('#profileForm')?.addEventListener('submit', async event => {
         event.preventDefault();
-        const data = Object.fromEntries(new FormData(event.currentTarget));
-        try { await api('/market/businesses', { method: 'POST', body: JSON.stringify(data) }); event.currentTarget.reset(); if (kindField && ['restaurant', 'shop', 'service'].includes(session.role)) kindField.value = session.role; load(); } catch (error) { alert(error.message); }
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const button = form.querySelector('button');
+        button.disabled = true;
+        try {
+          const current = placeRows[0];
+          const file = data.get('photo');
+          const imageUrl = file && file.size ? await uploadFile(file) : (current?.imageUrl || '');
+          const body = { kind: session.role === 'vendor' ? (current?.kind || 'restaurant') : session.role, name: data.get('name'), category: data.get('category'), phone: data.get('phone'), whatsapp: data.get('whatsapp'), area: data.get('area'), hours: data.get('hours'), address: data.get('address'), description: data.get('description'), imageUrl, logoUrl: current?.logoUrl || '' };
+          if (current) await api(`/market/businesses/${current.id}`, { method: 'PUT', body: JSON.stringify(body) });
+          else await api('/market/businesses', { method: 'POST', body: JSON.stringify(body) });
+          if (form.elements.photo) form.elements.photo.value = '';
+          load();
+        } catch (error) { alert(error.message); }
+        finally { button.disabled = false; }
       });
       load();
       loadOrders();

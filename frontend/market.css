@@ -46,7 +46,16 @@
 .owner-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid #e6eef6; }
 .owner-item p { margin: 4px 0 0; color: #60758d; font-size: 13px; }
 .owner-item-actions { display: flex; gap: 8px; flex: none; }
-.owner-item-form { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e6eef6; }
+.owner-item-form, .owner-edit { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e6eef6; }
+.owner-thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 8px; background: #eaf2ff; flex: none; }
+.photo-field input[type=file] { padding: 8px 0; }
+.photo-preview { width: 140px; height: 100px; object-fit: cover; border-radius: 12px; margin-top: 8px; background: #eaf2ff; }
+.photo-preview[hidden] { display: none !important; }
+.profile-glance { display: grid; grid-template-columns: 120px 1fr; gap: 14px; align-items: center; margin-bottom: 16px; }
+.profile-glance img { width: 120px; height: 88px; object-fit: cover; border-radius: 12px; background: #eaf2ff; }
+.profile-glance h2 { margin: 0 0 4px; }
+.profile-glance p { margin: 0; color: #60758d; }
+.profile-glance a { display: inline-block; margin-top: 8px; color: #0759d6; font-weight: 700; text-decoration: none; }
 @media (max-width: 780px) {
   .search.market-search-bar { grid-template-columns: 1fr; }
 }
@@ -55,4 +64,5 @@
   .market-search { flex-direction: column; }
   .market-search select, .market-search .primary-button { width: 100%; }
   .owner-item { align-items: flex-start; flex-direction: column; }
+  .profile-glance { grid-template-columns: 1fr; }
 }

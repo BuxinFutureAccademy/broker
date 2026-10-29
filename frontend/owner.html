@@ -6,7 +6,7 @@
   <title>Your place · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=12">
   <link rel="stylesheet" href="portal.css?v=6">
-  <link rel="stylesheet" href="market.css?v=5">
+  <link rel="stylesheet" href="market.css?v=8">
 </head>
 <body class="portal-body" data-market-owner>
   <header class="portal-header">
@@ -23,7 +23,7 @@
       <a class="selected" href="#overview">▦ &nbsp; Overview</a>
       <a href="#requests">◻ &nbsp; Requests</a>
       <a href="#items" id="ownerItemsNav">☰ &nbsp; Menu</a>
-      <a href="#place">＋ &nbsp; Add a place</a>
+      <a href="#place" id="ownerProfileNav">◈ &nbsp; Profile</a>
       <a id="ownerPublic" href="food.html">↗ &nbsp; View page</a>
     </aside>
     <section class="dashboard-main" id="ownerDesk">
@@ -35,6 +35,7 @@
             <p id="ownerBlurb">This page is only your place.</p>
           </div>
         </div>
+        <div id="ownerGlance"></div>
         <div class="stat-row" id="ownerStats"></div>
       </section>
       <section class="workspace" id="requests" hidden>
@@ -61,19 +62,12 @@
       <section class="workspace" id="place" hidden>
         <div class="page-heading">
           <div>
-            <span class="eyebrow">ANOTHER PLACE</span>
-            <h1 id="ownerAddTitle">Add another place</h1>
-            <p>It stays the same type as this account.</p>
+            <span class="eyebrow" id="ownerProfileEyebrow">PROFILE</span>
+            <h1 id="ownerAddTitle">Your profile</h1>
+            <p id="ownerProfileHint">People see this name, this sector, and this photo. You do not choose the sector again when you add an item.</p>
           </div>
         </div>
-        <form id="newBusiness" class="panel form-grid">
-          <label class="hidden">Type
-            <select name="kind" required>
-              <option value="restaurant">Restaurant</option>
-              <option value="shop">Shop</option>
-              <option value="service">Service</option>
-            </select>
-          </label>
+        <form id="profileForm" class="panel form-grid">
           <label>Name<input name="name" placeholder="The name people will see" required></label>
           <label>Category<input name="category" placeholder="Meals, grocery, barber" required></label>
           <label>Phone<input name="phone" placeholder="+91 98765 43210" required></label>
@@ -82,11 +76,12 @@
           <label>Hours<input name="hours" placeholder="10:00 to 22:00"></label>
           <label class="wide">Street address<input name="address" placeholder="Shown only after someone requests"></label>
           <label class="wide">Description<textarea name="description" rows="3" placeholder="What people should know before they request"></textarea></label>
-          <button class="primary-button wide" type="submit">Save place</button>
+          <label class="wide photo-field">Photo<input name="photo" type="file" accept="image/*"><img id="profilePreview" class="photo-preview" alt="" hidden></label>
+          <button class="primary-button wide" type="submit">Save profile</button>
         </form>
       </section>
     </section>
   </main>
-  <script src="market.js?v=8"></script>
+  <script src="market.js?v=11"></script>
 </body>
 </html>
