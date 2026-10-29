@@ -68,8 +68,8 @@ def main():
     blocked = client.post(f'/api/market/orders/{order_id}/confirm', json={'result': 'completed'}, headers=auth(other.get_json()['access_token']))
     assert blocked.status_code == 403
 
-    jumped = client.put(f'/api/market/orders/{order_id}', json={'status': 'completed', 'finalAmount': 300}, headers=auth(vendor_token))
-    assert jumped.status_code == 400
+    missing = client.put(f'/api/market/orders/{order_id}', json={'status': 'completed'}, headers=auth(vendor_token))
+    assert missing.status_code == 400
 
     accepted = client.put(f'/api/market/orders/{order_id}', json={'status': 'accepted'}, headers=auth(vendor_token))
     assert accepted.status_code == 200
@@ -91,6 +91,15 @@ def main():
 
     again = client.post(f'/api/market/orders/{order_id}/confirm', json={'result': 'disputed'}, headers=auth(student_token))
     assert again.status_code == 400
+
+    paid = client.post('/api/market/orders', json={'itemId': item_id, 'quantity': 1}, headers=auth(student_token))
+    assert paid.status_code == 201, paid.get_json()
+    received = client.put(f"/api/market/orders/{paid.get_json()['id']}", json={'status': 'completed', 'finalAmount': 200}, headers=auth(vendor_token))
+    assert received.status_code == 200, received.get_json()
+    assert received.get_json()['status'] == 'completed'
+    assert received.get_json()['finalAmount'] == 200
+    repeat = client.put(f"/api/market/orders/{paid.get_json()['id']}", json={'status': 'completed', 'finalAmount': 200}, headers=auth(vendor_token))
+    assert repeat.status_code == 400
 
     housing = client.post('/api/auth/signup', json={
         'name': 'No Vendor', 'email': 'nope@market.test', 'password': 'secret12', 'role': 'vendor'

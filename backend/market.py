@@ -2,7 +2,7 @@
 
 KINDS = ('restaurant', 'shop', 'service')
 VENDOR_MOVES = {
-    'pending': {'accepted', 'cancelled'},
+    'pending': {'accepted', 'completed', 'cancelled'},
     'accepted': {'completed', 'cancelled'},
 }
 CONFIRMATIONS = {'completed', 'not_completed', 'disputed'}
@@ -33,8 +33,11 @@ def init_market():
         return str(value or '').strip()[:limit]
 
     def clean_money(value):
+        text = str(value if value is not None else '').strip().replace(',', '').replace('₹', '').replace(' ', '')
+        if not text:
+            return None
         try:
-            amount = int(value)
+            amount = int(text)
         except (TypeError, ValueError):
             return None
         if amount < 0 or amount > 10000000:
@@ -437,11 +440,15 @@ def init_market():
         status = clean_text(data.get('status'), 20)
         allowed = VENDOR_MOVES.get(order.status, set())
         if status not in allowed:
+            if order.status == 'completed':
+                return jsonify({'error': 'This request is already marked as received.'}), 400
+            if order.status == 'cancelled':
+                return jsonify({'error': 'This request is cancelled.'}), 400
             return jsonify({'error': 'That status change is not allowed.'}), 400
         if status == 'completed':
             amount = clean_money(data.get('finalAmount') if 'finalAmount' in data else data.get('final_amount'))
             if amount is None:
-                return jsonify({'error': 'Enter the final sale amount in rupees.'}), 400
+                return jsonify({'error': 'Enter the amount you received, in rupees.'}), 400
             rate = commission_rate()
             order.final_amount = amount
             order.commission_rate = rate
