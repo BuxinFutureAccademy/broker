@@ -528,14 +528,44 @@ def init_market():
         if status:
             rows = rows.filter_by(status=status)
         payload = []
-        for row in rows.order_by(MarketOrder.created.desc()).limit(200).all():
+        for row in rows.order_by(MarketOrder.created.desc()).all():
             item = order_payload(row, include_contact=False)
             vendor = User.query.get(row.owner_id)
             customer = User.query.get(row.customer_id)
+            business = Business.query.get(row.business_id)
             item['vendorName'] = vendor.name if vendor else ''
+            item['vendorEmail'] = app_module.public_email(vendor) if vendor else ''
+            item['vendorPhone'] = vendor.phone if vendor else ''
+            item['customerId'] = row.customer_id
             item['customerName'] = customer.name if customer else ''
+            item['customerEmail'] = app_module.public_email(customer) if customer else ''
+            item['customerPhone'] = customer.phone if customer else ''
+            item['businessPhone'] = business.phone if business else ''
+            item['businessWhatsapp'] = business.whatsapp if business else ''
+            item['businessArea'] = business.area if business else ''
+            item['businessAddress'] = business.address if business else ''
             payload.append(item)
-        return jsonify({'commissionPercent': commission_rate(), 'orders': payload})
+        place_rows = Business.query
+        if kind in KINDS:
+            place_rows = place_rows.filter_by(kind=kind)
+        places = []
+        for row in place_rows.order_by(Business.name.asc()).all():
+            owner = User.query.get(row.owner_id)
+            places.append({
+                'id': row.id,
+                'kind': row.kind,
+                'name': row.name,
+                'category': row.category or '',
+                'area': row.area or '',
+                'phone': row.phone or '',
+                'whatsapp': row.whatsapp or '',
+                'address': row.address or '',
+                'status': row.status or 'active',
+                'ownerName': owner.name if owner else '',
+                'ownerEmail': app_module.public_email(owner) if owner else '',
+                'ownerPhone': owner.phone if owner else '',
+            })
+        return jsonify({'commissionPercent': commission_rate(), 'orders': payload, 'places': places})
 
     @app.route('/api/market/admin/commission', methods=['PUT'])
     @jwt_required()

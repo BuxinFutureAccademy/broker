@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin workspace · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="portal.css?v=8">
+  <link rel="stylesheet" href="portal.css?v=10">
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -28,8 +28,9 @@
       <a href="#reports">₹ &nbsp; Reports</a>
       <a href="#students">🎓 &nbsp; Students</a>
       <a href="#landlords">⌂ &nbsp; Landlords</a>
-      <a href="#homes">▣ &nbsp; Homes</a>
-      <a href="admin-market.html">◉ &nbsp; Market</a>
+      <a href="#restaurants">🍴 &nbsp; Restaurants</a>
+      <a href="#shop">▣ &nbsp; Shop</a>
+      <a href="#services">✦ &nbsp; Services</a>
       <a href="index.html">↗ &nbsp; View website</a>
       <div class="sidebar-help">
         <b>Admin access</b>
@@ -42,11 +43,23 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Overview</h1>
-            <p>A count of the site. Open Payment QR, Receipts, Students, Landlords, or Homes for the details.</p>
+            <p>A count of the site. Open Payment QR, Receipts, Students, Landlords, Restaurants, Shop, or Services for the full record.</p>
           </div>
           <span class="admin-status">● &nbsp; Live data</span>
         </div>
         <div class="stat-row" id="adminStats"></div>
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Commission</h2>
+              <p>Recorded when a restaurant, shop, or service enters the amount received. It does not change sales already saved.</p>
+            </div>
+          </div>
+          <form id="commissionRate" class="report-filter">
+            <label>Percent<input name="percent" inputmode="numeric"></label>
+            <button class="primary-button" type="submit">Save rate</button>
+          </form>
+        </section>
       </section>
 
       <section class="workspace" id="payments" hidden>
@@ -151,20 +164,43 @@
         <section class="panel" id="personView"></section>
       </section>
 
-      <section class="workspace" id="homes" hidden>
+      <section class="workspace" id="restaurants" hidden>
         <div class="page-heading">
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
-            <h1>Homes</h1>
-            <p>Every room a landlord has posted on the site.</p>
+            <h1>Restaurants</h1>
+            <p>Every order. The student, their contact, the restaurant, whether the restaurant received the money, and whether the student confirmed.</p>
           </div>
         </div>
-        <section class="panel">
-          <div class="listing-grid" id="adminListings"></div>
-        </section>
+        <div class="stat-row" id="restaurantsStats"></div>
+        <div id="restaurantsActivity"><p class="market-note">Loading restaurants…</p></div>
+      </section>
+
+      <section class="workspace" id="shop" hidden>
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Shop</h1>
+            <p>Every purchase. The student, their contact, the shop, whether the shop received the money, and whether the student confirmed.</p>
+          </div>
+        </div>
+        <div class="stat-row" id="shopStats"></div>
+        <div id="shopActivity"><p class="market-note">Loading shop…</p></div>
+      </section>
+
+      <section class="workspace" id="services" hidden>
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">ADMIN CONSOLE</span>
+            <h1>Services</h1>
+            <p>Every request. The student, their contact, the service, whether the service received the money, and whether the student confirmed.</p>
+          </div>
+        </div>
+        <div class="stat-row" id="servicesStats"></div>
+        <div id="servicesActivity"><p class="market-note">Loading services…</p></div>
       </section>
     </section>
   </main>
-  <script src="portal-api.js?v=8"></script>
+  <script src="portal-api.js?v=10"></script>
 </body>
 </html>

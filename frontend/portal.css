@@ -49,3 +49,17 @@
 .person-actions .person-open{margin-left:0}
 .small-button.danger{border:0;border-radius:10px;background:#fde8e8;color:#9b1c1c;padding:8px 12px;font-weight:700;cursor:pointer}
 .report-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.activity-place{border:1px solid #e2eaf3;border-radius:14px;padding:16px 16px 4px;margin-bottom:14px;background:#fff}
+.activity-place h2{margin:0;font-size:18px}
+.activity-place .place-meta,.activity-place .place-count{margin:4px 0 0;color:#526a85;font-size:13px}
+.activity-day{margin:14px 0 0;font-size:12px;font-weight:800;letter-spacing:.4px;color:#71849a;text-transform:uppercase}
+.activity-order{border-top:1px solid #eaf0f6;padding:12px 0}
+.activity-order h3{margin:0 0 4px;font-size:15px}
+.activity-order p{margin:2px 0;color:#3d5670;font-size:13px}
+.activity-order a{color:#0759d6;font-weight:700}
+.activity-flags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.activity-flags span{border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:#f4f7fb;color:#24527f}
+.activity-flags .yes{background:#e8f8ee;color:#0d7a3a}
+.activity-flags .no{background:#fff4e5;color:#9a6200}
+.activity-flags .bad{background:#fde8e8;color:#9b1c1c}
+.market-note{color:#526a85}

@@ -157,6 +157,22 @@ def main():
         owner.role = 'restaurant'
         app_module.db.session.commit()
 
+    admin = client.post('/api/auth/login', json={'email': 'admin@test.com', 'password': 'admin123', 'role': 'admin'})
+    assert admin.status_code == 200, admin.get_json()
+    activity = client.get('/api/market/admin/orders?kind=restaurant', headers=auth(admin.get_json()['access_token']))
+    assert activity.status_code == 200, activity.get_json()
+    restaurant_rows = activity.get_json()
+    match = next(row for row in restaurant_rows['orders'] if row['itemName'] == 'Jollof')
+    assert match['customerName'] == 'Bo Student'
+    assert match['customerEmail'] == 'bo@market.test'
+    assert 'customerPhone' in match
+    place = next(row for row in restaurant_rows['places'] if row['name'] == 'Ada Kitchen')
+    assert place['ownerPhone'] == '+91 90000 00001'
+    shop_only = client.get('/api/market/admin/orders?kind=shop', headers=auth(admin.get_json()['access_token']))
+    assert shop_only.status_code == 200
+    assert all(row['kind'] == 'shop' for row in shop_only.get_json()['orders'])
+    assert all(row['kind'] == 'shop' for row in shop_only.get_json()['places'])
+
     print('market checks passed')
 
 

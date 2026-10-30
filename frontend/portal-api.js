@@ -636,7 +636,6 @@
         reportFilter.dataset.bound = '1';
         reportFilter.addEventListener('change', paintReports);
       }
-      renderListings('#adminListings', listings);
       const paymentForm = document.querySelector('#paymentForm');
       const qrPreview = document.querySelector('#qrPreview');
       if (paymentForm && payment) {
@@ -728,9 +727,148 @@
     }
   }
 
+  const activityPages = {
+    restaurants: { kind: 'restaurant', place: 'restaurant', owner: 'Restaurant owner', did: 'ordered' },
+    shop: { kind: 'shop', place: 'shop', owner: 'Shop owner', did: 'bought' },
+    services: { kind: 'service', place: 'service', owner: 'Service owner', did: 'requested' },
+  };
+
+  const activityWhen = value => {
+    if (!value) return '—';
+    const text = String(value);
+    const stamp = /[zZ]|[+-]\d\d:?\d\d$/.test(text) ? text : `${text}Z`;
+    const date = new Date(stamp);
+    if (Number.isNaN(date.getTime())) return text;
+    return date.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
+
+  const activityDay = value => {
+    if (!value) return 'Unknown day';
+    const text = String(value);
+    const stamp = /[zZ]|[+-]\d\d:?\d\d$/.test(text) ? text : `${text}Z`;
+    const date = new Date(stamp);
+    if (Number.isNaN(date.getTime())) return text;
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const activityToday = value => activityDay(value) === activityDay(new Date().toISOString());
+
+  const reachLine = (name, phone, email) => {
+    const bits = [esc(name || 'Unknown')];
+    const dialed = String(phone || '').replace(/[^\d+]/g, '');
+    bits.push(dialed ? `<a href="tel:${dialed}">${esc(phone)}</a>` : 'No phone');
+    bits.push(email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>` : 'No email');
+    return bits.join(' · ');
+  };
+
+  let activityCache = null;
+
+  function paintActivity() {
+    const rateForm = document.querySelector('#commissionRate');
+    if (rateForm && activityCache && document.activeElement !== rateForm.elements.percent) {
+      rateForm.elements.percent.value = activityCache.commissionPercent ?? '';
+    }
+    Object.entries(activityPages).forEach(([id, copy]) => {
+      const stats = document.querySelector(`#${id}Stats`);
+      const box = document.querySelector(`#${id}Activity`);
+      if (!stats || !box) return;
+      if (!activityCache) {
+        box.innerHTML = '<p class="market-note">Loading…</p>';
+        return;
+      }
+      const orders = (activityCache.orders || []).filter(row => row.kind === copy.kind);
+      const listed = new Map((activityCache.places || []).filter(row => row.kind === copy.kind).map(place => [place.id, place]));
+      orders.forEach(order => {
+        if (listed.has(order.businessId)) return;
+        listed.set(order.businessId, {
+          id: order.businessId,
+          name: order.businessName || 'Unknown',
+          area: order.businessArea || '',
+          phone: order.businessPhone || '',
+          whatsapp: order.businessWhatsapp || '',
+          address: order.businessAddress || '',
+          ownerName: order.vendorName || '',
+          ownerPhone: order.vendorPhone || '',
+          ownerEmail: order.vendorEmail || '',
+        });
+      });
+      const todayOrders = orders.filter(order => activityToday(order.created));
+      const personKey = order => order.customerId || order.customerEmail || order.customerName || order.id;
+      const people = new Set(orders.map(personKey));
+      const peopleToday = new Set(todayOrders.map(personKey));
+      const received = orders.filter(order => order.finalAmount != null);
+      const paid = received.reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
+      stats.innerHTML = `<div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>People who ${copy.did}</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${todayOrders.length}</strong><small>Today · ${peopleToday.size} ${peopleToday.size === 1 ? 'person' : 'people'}</small></div></div><div class="stat-card"><span class="stat-icon">↻</span><div><strong>${orders.length}</strong><small>Times ${copy.did}</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Money received</small></div></div>`;
+      const places = [...listed.values()].sort((a, b) => {
+        const last = id => orders.find(order => order.businessId === id)?.created || '';
+        return String(last(b.id)).localeCompare(String(last(a.id))) || String(a.name).localeCompare(String(b.name));
+      });
+      if (!places.length) {
+        box.innerHTML = `<div class="empty-state">No ${id === 'shop' ? 'shops' : id} yet.</div>`;
+        return;
+      }
+      box.innerHTML = places.map(place => {
+        const rows = orders.filter(order => order.businessId === place.id);
+        const placePaid = rows.filter(order => order.finalAmount != null).reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
+        const placePeople = new Set(rows.map(personKey));
+        const placeToday = rows.filter(order => activityToday(order.created)).length;
+        const days = [];
+        rows.forEach(order => {
+          const label = activityDay(order.created);
+          let day = days.find(item => item.label === label);
+          if (!day) {
+            day = { label, rows: [] };
+            days.push(day);
+          }
+          day.rows.push(order);
+        });
+        const body = days.map(day => {
+          const dayPaid = day.rows.reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
+          const dayMoney = day.rows.some(order => order.finalAmount != null) ? `${money(dayPaid)} received` : 'none received yet';
+          return `<h3 class="activity-day">${esc(day.label)} · ${day.rows.length} ${day.rows.length === 1 ? 'time' : 'times'} · ${dayMoney}</h3>${day.rows.map(order => {
+          const receivedText = order.status === 'cancelled' ? 'Cancelled' : (order.finalAmount == null ? 'Has not received the money' : `Received ${money(order.finalAmount)}`);
+          const receivedClass = order.status === 'cancelled' ? '' : (order.finalAmount == null ? 'no' : 'yes');
+          let confirmText = 'Has not confirmed';
+          let confirmClass = 'no';
+          if (order.customerConfirm === 'completed') { confirmText = 'Confirmed received'; confirmClass = 'yes'; }
+          else if (order.customerConfirm === 'not_completed') { confirmText = 'Did not receive it'; confirmClass = 'bad'; }
+          else if (order.customerConfirm === 'disputed') { confirmText = 'Sent a note'; confirmClass = 'bad'; }
+          const where = [place.area, place.address].filter(Boolean).join(' · ');
+          return `<article class="activity-order"><h3>${esc(order.itemName)} · ${esc(order.reference || '')}</h3><p>${esc(activityWhen(order.created))}${order.quantity > 1 ? ` · ${esc(order.quantity)}` : ''} · Listed ${money(order.listedTotal || order.listedPrice)}</p><p>Customer: ${reachLine(order.customerName, order.customerPhone, order.customerEmail)}</p><p>${esc(copy.place[0].toUpperCase() + copy.place.slice(1))}: ${esc(order.businessName || place.name)}${where ? ` · ${esc(where)}` : ''}${place.phone ? ` · <a href="tel:${String(place.phone).replace(/[^\d+]/g, '')}">${esc(place.phone)}</a>` : ''}</p><div class="activity-flags"><span class="${receivedClass}">${esc(copy.place[0].toUpperCase() + copy.place.slice(1))}: ${esc(receivedText)}</span><span class="${confirmClass}">Customer: ${esc(confirmText)}</span></div>${order.customerNote ? `<p>Note: ${esc(order.customerNote)}</p>` : ''}${order.commissionAmount == null ? '' : `<p>Commission ${money(order.commissionAmount)} · ${esc(order.commissionStatus || 'recorded')}</p>`}</article>`;
+        }).join('')}`;
+        }).join('');
+        return `<article class="activity-place"><h2>${esc(place.name || 'Untitled')}</h2><p class="place-meta">${esc(copy.owner)}: ${reachLine(place.ownerName, place.ownerPhone, place.ownerEmail)}</p><p class="place-meta">${esc(place.category || '')}${place.area ? ` · ${esc(place.area)}` : ''}${place.phone ? ` · <a href="tel:${String(place.phone).replace(/[^\d+]/g, '')}">${esc(place.phone)}</a>` : ''}${place.whatsapp ? ` · WhatsApp ${esc(place.whatsapp)}` : ''}${place.address ? ` · ${esc(place.address)}` : ''}</p><p class="place-count">${placePeople.size} ${placePeople.size === 1 ? 'person' : 'people'} · ${rows.length} ${rows.length === 1 ? 'time' : 'times'} · ${placeToday} today · ${money(placePaid)} received</p>${body || '<div class="empty-state">No activity yet.</div>'}</article>`;
+      }).join('');
+    });
+  }
+
+  async function loadActivity() {
+    try {
+      activityCache = await apiCall('/market/admin/orders');
+      paintActivity();
+    } catch (error) {
+      Object.keys(activityPages).forEach(id => {
+        const box = document.querySelector(`#${id}Activity`);
+        if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`;
+      });
+    }
+  }
+
   if (document.querySelector('#adminStats')) {
     const session = guard('admin');
-    if (session) refreshAdmin();
+    if (session) {
+      refreshAdmin();
+      loadActivity();
+      setInterval(loadActivity, 15000);
+      const rateForm = document.querySelector('#commissionRate');
+      rateForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+          await apiCall('/market/admin/commission', { method: 'PUT', body: JSON.stringify({ percent: new FormData(rateForm).get('percent') }) });
+          await loadActivity();
+        } catch (error) { alert(error.message); }
+      });
+    }
   }
 
   function showWorkspace() {
