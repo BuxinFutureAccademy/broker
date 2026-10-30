@@ -180,6 +180,17 @@ def main():
     assert shop_only.status_code == 200
     assert all(row['kind'] == 'shop' for row in shop_only.get_json()['orders'])
     assert all(row['kind'] == 'shop' for row in shop_only.get_json()['places'])
+    created = client.post('/api/market/businesses', json={
+        'kind': 'restaurant', 'name': 'Delete Me Kitchen', 'category': 'Meals', 'area': 'Alpha 1', 'phone': '+91 90000 00009',
+    }, headers=auth(vendor_token))
+    assert created.status_code == 201, created.get_json()
+    place_id = created.get_json()['id']
+    denied = client.delete(f'/api/market/admin/businesses/{place_id}', headers=auth(vendor_token))
+    assert denied.status_code == 403, denied.get_json()
+    removed = client.delete(f'/api/market/admin/businesses/{place_id}', headers=auth(admin.get_json()['access_token']))
+    assert removed.status_code == 200, removed.get_json()
+    after = client.get('/api/market/admin/orders?kind=restaurant', headers=auth(admin.get_json()['access_token']))
+    assert all(row['id'] != place_id for row in after.get_json()['places'])
 
     print('market checks passed')
 

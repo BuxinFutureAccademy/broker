@@ -80,6 +80,9 @@
 .period-fields{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
 .period-fields label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#526a85}
 .period-fields input{height:40px;border:1px solid #d5e0ec;border-radius:10px;padding:0 10px;font:16px inherit}
+.period-summary{margin:0 0 12px;font-weight:700;color:#16324f}
+.period-move{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.period-move button{height:36px;border:1px solid #d5e0ec;border-radius:999px;background:#fff;color:#24527f;font:700 13px inherit;padding:0 14px;cursor:pointer}
 @media(max-width:700px){
   .directory-head{display:none}
   .directory-row{grid-template-columns:1fr auto}

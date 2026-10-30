@@ -600,3 +600,19 @@ def init_market():
         db.session.commit()
         return jsonify(business_payload(row, include_contact=True))
 
+    @app.route('/api/market/admin/businesses/<business_id>', methods=['DELETE'])
+    @jwt_required()
+    def market_admin_delete_business(business_id):
+        user = current_user()
+        row = Business.query.get(business_id)
+        if not user or user.role != 'admin' or not row:
+            return jsonify({'error': 'Admin access required'}), 403
+        order_ids = [order.id for order in MarketOrder.query.filter_by(business_id=row.id).all()]
+        if order_ids:
+            MarketAudit.query.filter(MarketAudit.order_id.in_(order_ids)).delete(synchronize_session=False)
+        MarketOrder.query.filter_by(business_id=row.id).delete(synchronize_session=False)
+        CatalogItem.query.filter_by(business_id=row.id).delete(synchronize_session=False)
+        db.session.delete(row)
+        db.session.commit()
+        return jsonify({'message': 'Deleted'})
+

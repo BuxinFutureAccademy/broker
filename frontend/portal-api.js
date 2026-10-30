@@ -833,8 +833,9 @@
       return { start: new Date(year, month, 1), end: new Date(year, month + 1, 1) };
     }
     if (viewState.mode === 'range') {
-      const start = new Date(`${viewState.from}T00:00:00`);
-      const end = new Date(`${viewState.to}T00:00:00`);
+      let start = new Date(`${viewState.from}T00:00:00`);
+      let end = new Date(`${viewState.to}T00:00:00`);
+      if (start > end) { const swap = start; start = end; end = swap; }
       end.setDate(end.getDate() + 1);
       return { start, end };
     }
@@ -853,17 +854,61 @@
 
   const tenPercent = amount => Math.floor((Number(amount || 0) * 10 + 50) / 100);
 
+  const writtenDay = date => date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const periodText = () => {
+    const { start, end } = viewRange();
+    const last = new Date(end.getTime() - 1);
+    if (viewState.mode === 'day') return writtenDay(start);
+    if (viewState.mode === 'month') return start.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    return `${writtenDay(start)} – ${writtenDay(last)}`;
+  };
+
+  function movePeriod(step) {
+    viewRange();
+    if (viewState.mode === 'week') {
+      const start = weekStart(viewState.week);
+      start.setDate(start.getDate() + step * 7);
+      viewState.week = weekKey(start);
+    } else if (viewState.mode === 'month') {
+      const match = /^(\d{4})-(\d{2})$/.exec(viewState.month);
+      const date = new Date(match ? Number(match[1]) : new Date().getFullYear(), (match ? Number(match[2]) - 1 : new Date().getMonth()) + step, 1);
+      viewState.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    } else if (viewState.mode === 'range') {
+      const from = new Date(`${viewState.from}T00:00:00`);
+      const to = new Date(`${viewState.to}T00:00:00`);
+      const span = Math.max(1, Math.round((to - from) / 86400000) + 1);
+      from.setDate(from.getDate() + step * span);
+      to.setDate(to.getDate() + step * span);
+      viewState.from = dayKey(from);
+      viewState.to = dayKey(to);
+    } else {
+      const date = new Date(`${viewState.day}T00:00:00`);
+      date.setDate(date.getDate() + step);
+      viewState.day = dayKey(date);
+    }
+    paintView();
+  }
+
   const periodControls = () => {
     const modes = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['range', 'Any dates']];
     const buttons = modes.map(([mode, label]) => `<button type="button" data-period="${mode}" class="${viewState.mode === mode ? 'on' : ''}">${label}</button>`).join('');
+    const move = viewState.mode === 'week'
+      ? ['Previous week', 'Next week']
+      : viewState.mode === 'month'
+        ? ['Previous month', 'Next month']
+        : viewState.mode === 'range'
+          ? ['Earlier dates', 'Later dates']
+          : ['Previous day', 'Next day'];
+    const { start } = viewRange();
     const field = viewState.mode === 'week'
-      ? `<label>Week<input name="week" type="week" value="${esc(viewState.week)}"></label>`
+      ? `<label>Pick any day in that week<input name="weekDay" type="date" value="${esc(dayKey(start))}"></label>`
       : viewState.mode === 'month'
         ? `<label>Month<input name="month" type="month" value="${esc(viewState.month)}"></label>`
         : viewState.mode === 'range'
           ? `<label>From<input name="from" type="date" value="${esc(viewState.from)}"></label><label>To<input name="to" type="date" value="${esc(viewState.to)}"></label>`
           : `<label>Day<input name="day" type="date" value="${esc(viewState.day)}"></label>`;
-    return `<div class="period-switch">${buttons}</div><div class="period-fields">${field}</div>`;
+    return `<div class="period-switch">${buttons}</div><p class="period-summary">${esc(periodText())}. Only the customers and the money from these dates.</p><div class="period-move"><button type="button" data-shift="-1">${move[0]}</button><button type="button" data-shift="1">${move[1]}</button></div><div class="period-fields">${field}</div>`;
   };
 
   function renderLandlords(people) {
@@ -878,6 +923,20 @@
       return `<article class="directory-row"><div><b>${esc(person.name)}</b><p>${esc(person.email || 'No email')}</p></div><div>${esc(location)}</div><div>${esc(person.phone || 'No phone')}</div><div class="person-actions"><button class="small-button person-open" type="button" data-view-landlord="${esc(person.id)}">View</button><button class="small-button danger" type="button" data-delete-user="${esc(person.id)}" data-delete-role="landlord" data-delete-name="${esc(person.name)}">Delete</button></div></article>`;
     }).join('')}</div>`;
     bindDeletes(box);
+  }
+
+  async function deletePlace(id, kind, name) {
+    const label = kind === 'restaurant' ? 'restaurant' : kind === 'service' ? 'service' : 'shop';
+    if (!window.confirm(`Delete ${name}? This ${label} will be removed.`)) return;
+    try {
+      await apiCall(`/market/admin/businesses/${id}`, { method: 'DELETE' });
+      if (viewState.target?.id === id) {
+        viewState.target = null;
+        const modal = document.querySelector('#placeView');
+        if (modal) modal.hidden = true;
+      }
+      await loadActivity();
+    } catch (error) { alert(error.message); }
   }
 
   function openView(target) {
@@ -964,11 +1023,9 @@
       const head = `<div class="directory-head"><span>Name</span><span>Location</span><span>Contact</span><span></span></div>`;
       box.innerHTML = `<div class="directory">${head}${places.map(place => {
         const location = [place.area, place.address].filter(Boolean).join(' · ') || 'Greater Noida';
-        return `<article class="directory-row"><div><b>${esc(place.name || 'Untitled')}</b><p>${esc(place.category || copy.place)}</p></div><div>${esc(location)}</div><div>${esc(place.phone || place.ownerPhone || 'No phone')}</div><div><button class="small-button person-open" type="button" data-view-place="${esc(place.id)}" data-view-kind="${esc(copy.kind)}">View</button></div></article>`;
+        return `<article class="directory-row"><div><b>${esc(place.name || 'Untitled')}</b><p>${esc(place.category || copy.place)}</p></div><div>${esc(location)}</div><div>${esc(place.phone || place.ownerPhone || 'No phone')}</div><div class="person-actions"><button class="small-button person-open" type="button" data-view-place="${esc(place.id)}" data-view-kind="${esc(copy.kind)}">View</button><button class="small-button danger" type="button" data-delete-place="${esc(place.id)}" data-delete-kind="${esc(copy.kind)}" data-delete-name="${esc(place.name || 'Untitled')}">Delete</button></div></article>`;
       }).join('')}</div>`;
     });
-    const modal = document.querySelector('#placeView');
-    if (viewState.target && !modal?.contains(document.activeElement)) paintView();
   }
 
   async function loadActivity() {
@@ -990,6 +1047,11 @@
       loadActivity();
       setInterval(loadActivity, 15000);
       document.addEventListener('click', event => {
+        const remove = event.target.closest('[data-delete-place]');
+        if (remove) {
+          deletePlace(remove.dataset.deletePlace, remove.dataset.deleteKind, remove.dataset.deleteName);
+          return;
+        }
         const place = event.target.closest('[data-view-place]');
         if (place) {
           openView({ id: place.dataset.viewPlace, kind: place.dataset.viewKind });
@@ -998,6 +1060,11 @@
         const landlord = event.target.closest('[data-view-landlord]');
         if (landlord) {
           openView({ id: landlord.dataset.viewLandlord, kind: 'landlord' });
+          return;
+        }
+        const shift = event.target.closest('[data-shift]');
+        if (shift) {
+          movePeriod(Number(shift.dataset.shift));
           return;
         }
         const period = event.target.closest('[data-period]');
@@ -1014,8 +1081,15 @@
       });
       document.querySelector('#placeView')?.addEventListener('change', event => {
         const name = event.target.name;
-        if (!name || !(name in viewState)) return;
-        viewState[name] = event.target.value;
+        const value = event.target.value;
+        if (!value) return;
+        if (name === 'weekDay') {
+          const picked = new Date(`${value}T00:00:00`);
+          if (Number.isNaN(picked.getTime())) return;
+          viewState.week = weekKey(picked);
+        } else if (name === 'day' || name === 'week' || name === 'month' || name === 'from' || name === 'to') {
+          viewState[name] = value;
+        } else return;
         paintView();
       });
       document.addEventListener('keydown', event => {
