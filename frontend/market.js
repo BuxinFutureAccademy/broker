@@ -220,8 +220,13 @@
   if (businessRoot) {
     const id = new URLSearchParams(location.search).get('id');
     const box = document.querySelector('#businessDetails');
-    const showContact = (node, order) => {
-      node.innerHTML = `<b>Request ${esc(order.reference)}</b><p>Status: ${esc(order.status)}. Pay the business directly. This request is saved.</p><div>${contactLinks(order.contact, order.reference, order.itemName)}</div><p><a href="orders.html?kind=${esc(order.kind)}">See your requests</a></p>`;
+    const orderOpen = (order, kind) => order && order.kind === kind && (order.status === 'pending' || order.status === 'accepted' || (order.status === 'completed' && !order.customerConfirm));
+    const orderStatusText = (order) => {
+      const who = { restaurant: 'restaurant', shop: 'shop', service: 'service' }[order.kind] || 'place';
+      if (order.status === 'pending') return `Waiting for the ${who} to accept ${order.itemName}.`;
+      if (order.status === 'accepted') return `The ${who} accepted ${order.itemName}.`;
+      if (order.status === 'completed') return `The ${who} marked ${order.itemName} received${order.finalAmount == null ? '' : ` for ${money(order.finalAmount)}`}. Confirm it before you order again.`;
+      return order.status;
     };
     api(`/market/businesses/${encodeURIComponent(id || '')}`).then(row => {
       const pool = pools[row.kind] || {};
@@ -246,7 +251,7 @@
         const note = [item.stock == null ? '' : `${item.stock} in stock`, item.available ? '' : 'Unavailable'].filter(Boolean).join(' · ');
         return `<article class="menu-offer" data-offer="${esc(item.id)}"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
       }).join('') : '<p class="detail-notice">Nothing is listed yet.</p>';
-      box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something beside the photo. Sign in, then pay this place directly. The phone number stays hidden until you send a request.</p></section></aside></div>`;
+      box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p><article class="menu-live" id="menuLive" hidden></article>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something on the menu. The order stays there and updates while you wait. Confirm it before you order again.</p></section></aside></div>`;
       const mainPhoto = document.querySelector('#mainPhoto');
       const focusId = new URLSearchParams(location.search).get('item');
       const safeId = focusId ? (window.CSS?.escape ? CSS.escape(focusId) : focusId.replace(/[^a-zA-Z0-9-]/g, '')) : '';
@@ -260,6 +265,49 @@
         if (src && mainPhoto) mainPhoto.src = src;
         box.querySelectorAll('[data-photo-index]').forEach(other => other.classList.toggle('active', other === button));
       }));
+      const liveCard = () => document.querySelector('#menuLive');
+      let liveStamp = '';
+      const paintLive = order => {
+        const card = liveCard();
+        const open = orderOpen(order, row.kind) ? order : null;
+        box.querySelectorAll('[data-buy]').forEach(button => { button.disabled = !!open; });
+        const next = open ? `${open.id}|${open.status}|${open.finalAmount}|${open.customerConfirm}` : '';
+        if (next === liveStamp) return;
+        if (card && card.contains(document.activeElement)) return;
+        liveStamp = next;
+        if (!card) return;
+        if (!open) { card.hidden = true; card.innerHTML = ''; return; }
+        const here = open.businessId === row.id;
+        const actions = open.status === 'completed'
+          ? `<form class="menu-live-form" data-live-confirm="${esc(open.id)}"><label>Note<textarea name="note" rows="2" placeholder="Optional, unless you are sending a note"></textarea></label><button class="primary-button" name="result" value="completed" type="submit">I received it</button><button class="small-button" name="result" value="not_completed" type="submit">I did not receive it</button><button class="small-button" name="result" value="disputed" type="submit">Send a note</button></form>`
+          : '';
+        const elsewhere = here ? '' : `<p><a href="business.html?id=${encodeURIComponent(open.businessId)}&item=${encodeURIComponent(open.itemId || '')}">Open that menu</a></p>`;
+        card.hidden = false;
+        card.innerHTML = `<b>${esc(open.itemName)} · ${esc(open.reference)}</b><p>${esc(orderStatusText(open))}</p>${actions}${elsewhere}<div class="menu-live-contact">${contactLinks(open.contact, open.reference, open.itemName)}</div>`;
+      };
+      const watch = async () => {
+        if (!token()) return;
+        try {
+          const rows = await api('/market/my-orders');
+          const open = (Array.isArray(rows) ? rows : []).find(order => orderOpen(order, row.kind));
+          paintLive(open || null);
+        } catch { /* keep the status already on the menu */ }
+      };
+      box.addEventListener('submit', async event => {
+        const form = event.target.closest('[data-live-confirm]');
+        if (!form || !box.contains(form)) return;
+        event.preventDefault();
+        const result = event.submitter?.value || 'completed';
+        const data = new FormData(form);
+        form.querySelectorAll('button').forEach(button => { button.disabled = true; });
+        try {
+          await api(`/market/orders/${form.dataset.liveConfirm}/confirm`, { method: 'POST', body: JSON.stringify({ result, note: data.get('note') }) });
+          await watch();
+        } catch (error) {
+          form.querySelectorAll('button').forEach(button => { button.disabled = false; });
+          alert(error.message);
+        }
+      });
       box.querySelectorAll('[data-buy]').forEach(button => button.addEventListener('click', async () => {
         const result = box.querySelector(`[data-result="${button.dataset.buy}"]`);
         if (!token()) {
@@ -268,14 +316,21 @@
         }
         button.disabled = true;
         try {
-          const order = await api('/market/orders', { method: 'POST', body: JSON.stringify({ itemId: button.dataset.buy, quantity: 1 }) });
-          showContact(result, order);
+          await api('/market/orders', { method: 'POST', body: JSON.stringify({ itemId: button.dataset.buy, quantity: 1 }) });
+          await watch();
+          liveCard()?.scrollIntoView({ block: 'nearest' });
         } catch (error) {
-          button.disabled = false;
-          const openRequest = /Finish your current/i.test(error.message) ? `<p><a href="orders.html?kind=${esc(row.kind)}">Open your request</a></p>` : '';
-          result.innerHTML = `<p class="market-note">${esc(error.message)}</p>${openRequest}`;
+          await watch();
+          if (liveCard()?.hidden !== false) {
+            button.disabled = false;
+            result.innerHTML = `<p class="market-note">${esc(error.message)}</p>`;
+          }
         }
       }));
+      if (token()) {
+        watch();
+        setInterval(watch, 4000);
+      }
     }).catch(error => { box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
   }
 
@@ -496,9 +551,14 @@
       showOwnerPage();
       paintStats();
       const load = () => api('/market/mine').then(paint).catch(error => { businesses.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
+      let orderStamp = '';
       const loadOrders = () => api('/market/vendor/orders').then(rows => {
         const mine = (Array.isArray(rows) ? rows : []).filter(row => row.kind === session.role);
-        orders.dataset.rows = JSON.stringify(mine);
+        const stamp = JSON.stringify(mine);
+        if (stamp === orderStamp) return;
+        if (orders.contains(document.activeElement)) return;
+        orderStamp = stamp;
+        orders.dataset.rows = stamp;
         paintOrders(mine);
       }).catch(error => { orders.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
       document.querySelector('#orderFilter')?.addEventListener('input', () => { try { paintOrders(JSON.parse(orders.dataset.rows || '[]')); } catch { /* ignore */ } });
@@ -530,6 +590,7 @@
       });
       load();
       loadOrders();
+      setInterval(loadOrders, 5000);
     }
     document.querySelector('[data-owner-out]')?.addEventListener('click', () => {
       localStorage.removeItem('studentstay_token');

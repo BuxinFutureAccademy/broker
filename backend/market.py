@@ -129,6 +129,7 @@ def init_market():
             'businessId': order.business_id,
             'businessName': business.name if business else '',
             'itemName': order.item_name,
+            'itemId': order.item_id or '',
             'quantity': order.quantity,
             'listedPrice': order.listed_price,
             'listedTotal': order.listed_total,
