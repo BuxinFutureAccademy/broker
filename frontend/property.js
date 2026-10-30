@@ -10,10 +10,6 @@
   const token = () => localStorage.getItem('studentstay_token');
   const dial = value => String(value || '').replace(/[^+\d]/g, '');
 
-  const contactLine = (label, value, href) => value
-    ? `<a class="contact-line" href="${esc(href)}">${label} &nbsp;${esc(value)}</a>`
-    : '';
-
   const brokerCard = item => {
     const name = item.brokerName || 'StudentStay';
     const phone = item.brokerPhone || '';
@@ -21,12 +17,15 @@
     const area = item.sector || item.city || 'Greater Noida';
     const intro = `Hello, my name is ______. I paid the StudentStay broker fee for ${item.title || 'a room'} in ${area}. I am sending my receipt. Please tell me the next step.`;
     const wa = dial(phone).replace(/^\+/, '');
-    const lines = [
-      contactLine('Call', phone, `tel:${dial(phone)}`),
-      wa ? `<a class="contact-line" href="https://wa.me/${wa}?text=${encodeURIComponent(intro)}" target="_blank" rel="noopener">WhatsApp &nbsp;${esc(phone)}</a>` : '',
-      email ? `<a class="contact-line" href="mailto:${esc(email)}?subject=${encodeURIComponent('Broker fee receipt')}&body=${encodeURIComponent(intro)}">Email &nbsp;${esc(email)}</a>` : ''
+    const go = (label, value, href, extra) => value
+      ? `<a class="broker-go${extra || ''}" href="${esc(href)}"${extra ? ' target="_blank" rel="noopener"' : ''}>${label}<span>${esc(value)}</span></a>`
+      : '';
+    const actions = [
+      go('Call', phone, `tel:${dial(phone)}`),
+      go('WhatsApp', phone, `https://wa.me/${wa}?text=${encodeURIComponent(intro)}`, ' wa'),
+      go('Email', email, `mailto:${esc(email)}?subject=${encodeURIComponent('Broker fee receipt')}&body=${encodeURIComponent(intro)}`)
     ].filter(Boolean).join('');
-    return `<section class="contact-card" id="contact"><h2>Next step</h2><p class="detail-notice">Contact the broker and send your broker fee receipt. The house location and the landlord’s number stay private.</p><div class="person-block"><div class="owner-row"><span class="owner-avatar broker">${esc(name.slice(0, 1).toUpperCase())}</span><div><b>${esc(name)}</b><small>Your broker</small></div></div>${lines || '<p class="detail-notice">The broker contact is not saved yet. Open the Contact page.</p>'}</div></section>`;
+    return `<section class="contact-card broker-spot" id="contact"><p class="broker-arrow"><b>→</b> Here is the broker</p><h2>Next step</h2><p class="detail-notice">Call, WhatsApp, or email. Send your receipt. The house location and the landlord’s number stay private.</p><div class="person-block"><div class="owner-row"><span class="owner-avatar broker">${esc(name.slice(0, 1).toUpperCase())}</span><div><b>${esc(name)}</b><small>Your broker</small></div></div><div class="broker-actions">${actions || '<p class="detail-notice">The broker contact is not saved yet. Open the Contact page.</p>'}</div></div></section>`;
   };
 
   const feeOf = item => {
@@ -121,6 +120,7 @@
       if (photo && mainPhoto) mainPhoto.src = photo;
     }));
     document.querySelector('#openPay')?.addEventListener('click', () => openPay(item, payment || { amount: 0, qrUrl: '', note: '' }));
+    if (location.hash === '#contact') document.querySelector('#contact')?.scrollIntoView({ block: 'center' });
   };
 
   const load = async () => {

@@ -413,7 +413,7 @@ def init_market():
         user = current_user()
         if not user:
             return jsonify({'error': 'Sign in required'}), 401
-        rows = MarketOrder.query.filter_by(customer_id=user.id).order_by(MarketOrder.created.desc()).limit(50).all()
+        rows = MarketOrder.query.filter_by(customer_id=user.id).order_by(MarketOrder.created.desc()).limit(200).all()
         return jsonify([order_payload(row, include_contact=True) for row in rows])
 
     @app.route('/api/market/vendor/orders', methods=['GET'])

@@ -128,6 +128,7 @@ class Listing(db.Model):
     city = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text, nullable=False)
     photos = db.Column(db.JSON)  # Array of Cloudinary URLs
+    taken = db.Column(db.Boolean, default=False)
     created = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 class Request(db.Model):
@@ -378,6 +379,7 @@ def serialize_listing(listing, viewer=None, approved=None, pending=None):
         'city': listing.city or 'Greater Noida',
         'description': listing.description,
         'photos': listing.photos,
+        'taken': bool(listing.taken),
         'unlocked': sees_house,
         'unlockStatus': status,
         'created': listing.created.isoformat() if listing.created else None,
@@ -401,6 +403,9 @@ def ensure_schema():
         columns = {column['name'] for column in inspector.get_columns('listing')}
         if 'sector' not in columns:
             db.session.execute(text('ALTER TABLE listing ADD COLUMN sector VARCHAR(80)'))
+            db.session.commit()
+        if 'taken' not in columns:
+            db.session.execute(text('ALTER TABLE listing ADD COLUMN taken BOOLEAN DEFAULT 0'))
             db.session.commit()
     if 'payment_setting' in tables:
         columns = {column['name'] for column in inspector.get_columns('payment_setting')}
@@ -984,8 +989,14 @@ def get_current_user():
 def get_listings():
     viewer = viewer_from_request()
     approved, pending = unlock_maps(viewer)
-    listings = Listing.query.order_by(Listing.created.desc()).all()
-    return jsonify([serialize_listing(listing, viewer, approved, pending) for listing in listings])
+    rows = []
+    for listing in Listing.query.order_by(Listing.created.desc()).all():
+        if listing.taken:
+            keeps = viewer and (viewer.role == 'admin' or viewer.id == listing.owner_id or (viewer.role == 'student' and (listing.id in approved or listing.id in pending)))
+            if not keeps:
+                continue
+        rows.append(serialize_listing(listing, viewer, approved, pending))
+    return jsonify(rows)
 
 @app.route('/api/listings', methods=['POST'])
 @jwt_required()
@@ -1062,6 +1073,19 @@ def delete_listing(listing_id):
     db.session.commit()
     
     return jsonify({'message': 'Listing deleted successfully'})
+
+@app.route('/api/listings/<listing_id>/taken', methods=['PUT'])
+@jwt_required()
+def mark_listing_taken(listing_id):
+    user = User.query.get(get_jwt_identity())
+    listing = Listing.query.get(listing_id)
+    if not user or user.role != 'landlord':
+        return jsonify({'error': 'Only the landlord can mark a room taken'}), 403
+    if not listing or listing.owner_id != user.id:
+        return jsonify({'error': 'That room was not found'}), 404
+    listing.taken = bool((request.get_json() or {}).get('taken'))
+    db.session.commit()
+    return jsonify(serialize_listing(listing, user))
 
 @app.route('/api/listings/landlord', methods=['GET'])
 @jwt_required()
@@ -1286,11 +1310,10 @@ def delete_user_account(user_id):
         return jsonify({'error': 'Account not found'}), 404
     if person.role == 'admin' or person.id == admin.id:
         return jsonify({'error': 'The admin account stays.'}), 400
-    if person.role == 'landlord':
-        for listing in Listing.query.filter_by(owner_id=person.id).all():
-            Unlock.query.filter_by(listing_id=listing.id).delete()
-            Request.query.filter_by(listing_id=listing.id).delete()
-            db.session.delete(listing)
+    for listing in Listing.query.filter_by(owner_id=person.id).all():
+        Unlock.query.filter_by(listing_id=listing.id).delete()
+        Request.query.filter_by(listing_id=listing.id).delete()
+        db.session.delete(listing)
     Unlock.query.filter_by(student_id=person.id).delete()
     Request.query.filter_by(student_id=person.id).delete()
     BrokerProfile.query.filter_by(user_id=person.id).delete()

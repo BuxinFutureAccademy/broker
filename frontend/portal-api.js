@@ -323,9 +323,10 @@
 
     try {
       await claimPendingRequest();
-      const [listings, unlocks] = await Promise.all([
+      const [listings, unlocks, orders] = await Promise.all([
         apiCall('/listings'),
-        apiCall('/unlocks/student')
+        apiCall('/unlocks/student'),
+        apiCall('/market/my-orders').catch(() => [])
       ]);
 
       const listingCountEl = document.querySelector('#listingCount');
@@ -339,17 +340,38 @@
         const title = esc(item.listing?.title || 'Home');
         const sector = esc(item.listing?.sector || 'Greater Noida');
         const fee = money(item.listing?.brokerFee ?? Math.floor(Number(item.listing?.rent || 0) / 2));
-        const house = `property.html?id=${encodeURIComponent(item.listing?.id || '')}`;
-        if (item.status === 'rejected') return `<article class="fee-card rejected"><div><small>NOT ACCEPTED · ${fee}</small><h3>${title}</h3><p>${sector}. Upload a new receipt for this house.</p></div><a class="pay-now" href="${house}">Pay again</a></article>`;
-        return `<article class="fee-card ${item.status === 'approved' ? 'approved' : 'waiting'}"><div><small>${item.status === 'approved' ? 'APPROVED' : 'RECEIPT SENT'} · ${fee}</small><h3>${title}</h3><p>${sector}. Next step: contact the broker and send your receipt. The house location stays private.</p></div><a class="pay-now" href="${house}">Contact the broker</a></article>`;
+        const house = `property.html?id=${encodeURIComponent(item.listing?.id || '')}#contact`;
+        if (item.status === 'rejected') return `<article class="fee-card rejected"><div><small>NOT ACCEPTED · ${fee}</small><h3>${title}</h3><p>${sector}. Upload a new receipt for this house.</p></div><a class="pay-now" href="${house.replace('#contact', '')}">Pay again</a></article>`;
+        return `<article class="fee-card ${item.status === 'approved' ? 'approved' : 'waiting'}"><div><small>${item.status === 'approved' ? 'APPROVED' : 'RECEIPT SENT'} · ${fee}</small><h3>${title}</h3><p>${sector}. Next step: contact the broker and send your receipt. The house location stays private.</p><p class="broker-arrow"><b>→</b> The broker’s number and WhatsApp are on the next page.</p></div><a class="pay-now" href="${house}">Contact the broker</a></article>`;
       };
       const requestsEl = document.querySelector('#studentRequests');
       if (requestsEl) {
         requestsEl.innerHTML = unlocks.map(feeCard).join('') || '<div class="empty-state">You have not paid a broker fee yet. Open a home and tap Pay now.</div>';
-        if (location.hash === '#requests') {
-          requestsEl.closest('section')?.scrollIntoView({ block: 'start' });
-          document.querySelectorAll('.side-nav a').forEach(link => link.classList.toggle('selected', link.getAttribute('href') === '#requests'));
+        if (location.hash === '#requests' || location.hash === '#history') {
+          document.querySelector(location.hash)?.scrollIntoView({ block: 'start' });
+          document.querySelectorAll('.side-nav a').forEach(link => link.classList.toggle('selected', link.getAttribute('href') === location.hash));
         }
+      }
+      const historyEl = document.querySelector('#studentHistory');
+      if (historyEl) {
+        const when = value => {
+          if (!value) return '';
+          const text = String(value);
+          const stamp = /[zZ]|[+-]\d\d:?\d\d$/.test(text) ? text : `${text}Z`;
+          const date = new Date(stamp);
+          return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        };
+        const houseRows = unlocks.map(item => ({
+          at: item.created || '',
+          html: `<div class="request-row"><div><b>House · ${esc(item.listing?.title || 'Home')}</b><p>${esc(item.listing?.sector || 'Greater Noida')} · Broker fee ${money(item.listing?.brokerFee ?? Math.floor(Number(item.listing?.rent || 0) / 2))} · ${esc(item.status === 'approved' ? 'Approved' : item.status === 'rejected' ? 'Not accepted' : 'Receipt sent')}<br>${esc(when(item.created))}</p></div></div>`
+        }));
+        const kindName = { restaurant: 'Restaurant', shop: 'Shop', service: 'Service' };
+        const orderRows = (orders || []).map(item => ({
+          at: item.created || '',
+          html: `<div class="request-row"><div><b>${esc(kindName[item.kind] || 'Order')} · ${esc(item.itemName || 'Item')}</b><p>${esc(item.businessName || '')} · ${item.finalAmount == null ? 'Money not entered yet' : money(item.finalAmount)} · ${esc(item.status || '')}<br>${esc(when(item.created))}</p></div></div>`
+        }));
+        const rows = [...houseRows, ...orderRows].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+        historyEl.innerHTML = rows.map(row => row.html).join('') || '<div class="empty-state">Nothing here yet. A house, a meal, a shop purchase, or a service will show up after you do it.</div>';
       }
     } catch (error) {
       console.error('Error loading student area:', error);
@@ -372,9 +394,25 @@
   function renderListings(selector, items, options = {}) {
     const target = document.querySelector(selector); if (!target) return;
     if (!items.length) { target.innerHTML = '<div class="empty-state">No room listings here yet. Add the first property to get started.</div>'; return; }
-    target.innerHTML = items.map(item => `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc((options.owner || currentUser?.role === 'admin') && item.address ? item.address : (item.sector || item.city || 'Greater Noida'))}</p>${options.owner ? `<div class="listing-actions"><button class="small-button" data-edit-listing="${esc(item.id)}">Edit</button><button class="small-button danger" data-delete-listing="${esc(item.id)}">Remove</button></div>` : `<div class="listing-actions"><a class="primary-button" href="property.html?id=${encodeURIComponent(item.id)}">View home</a></div>`}</div></article>`).join('');
+    target.innerHTML = items.map(item => {
+      const paid = options.paidIds?.has(item.id);
+      const takenNote = !options.owner ? '' : item.taken
+        ? `<p class="taken-note">This room is taken. Students no longer see it.</p>`
+        : paid
+          ? `<p class="taken-alert">A student paid the broker fee. Mark the room taken if they moved in. Leave it open if someone else can still take it.</p>`
+          : '';
+      const takenButton = !options.owner ? '' : `<button class="small-button" type="button" data-mark-taken="${esc(item.id)}" data-taken="${item.taken ? '0' : '1'}">${item.taken ? 'Open this room' : 'This room is taken'}</button>`;
+      return `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc((options.owner || currentUser?.role === 'admin') && item.address ? item.address : (item.sector || item.city || 'Greater Noida'))}</p>${takenNote}${options.owner ? `<div class="listing-actions">${takenButton}<button class="small-button" data-edit-listing="${esc(item.id)}">Edit</button><button class="small-button danger" data-delete-listing="${esc(item.id)}">Remove</button></div>` : `<div class="listing-actions"><a class="primary-button" href="property.html?id=${encodeURIComponent(item.id)}">View home</a></div>`}</div></article>`;
+    }).join('');
     target.querySelectorAll('[data-property-id]').forEach(tile => { tile.addEventListener('click', event => { if (!event.target.closest('button')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }); tile.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } }); });
     target.querySelectorAll('[data-delete-listing]').forEach(button => button.addEventListener('click', async () => { if (!confirm('Remove this listing?')) return; try { await apiCall(`/listings/${button.dataset.deleteListing}`, { method: 'DELETE' }); refreshLandlord(); } catch (error) { alert(error.message); } }));
+    target.querySelectorAll('[data-mark-taken]').forEach(button => button.addEventListener('click', async event => {
+      event.stopPropagation();
+      try {
+        await apiCall(`/listings/${button.dataset.markTaken}/taken`, { method: 'PUT', body: JSON.stringify({ taken: button.dataset.taken === '1' }) });
+        refreshLandlord();
+      } catch (error) { alert(error.message); }
+    }));
     target.querySelectorAll('[data-edit-listing]').forEach(button => button.addEventListener('click', event => {
       event.stopPropagation();
       const item = (window.studentstayRooms || []).find(room => room.id === button.dataset.editListing);
@@ -490,7 +528,8 @@
 
       document.querySelector('#landlordStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${listings.length}</strong><small>Your rooms</small></div></div><div class="stat-card"><span class="stat-icon">♙</span><div><strong>${unlocks.length}</strong><small>Paid students</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Verified</strong><small>Landlord account</small></div></div>`;
       window.studentstayRooms = listings;
-      renderListings('#landlordListings', listings, { owner: true });
+      const paidIds = new Set(unlocks.filter(item => item.status === 'approved').map(item => item.listing?.id).filter(Boolean));
+      renderListings('#landlordListings', listings, { owner: true, paidIds });
       
       const rows = unlocks.map(req => `<div class="request-row"><div><b>${esc(req.student?.name || 'Student')}</b><p>${esc(req.student?.email || '')} · ${esc(req.student?.phone || 'No phone provided')}<br>${esc(req.listing?.title || 'Room')} · ${esc(req.listing?.sector || '')}</p></div><span class="status-pill">Paid</span></div>`).join('');
       document.querySelector('#landlordStudents').innerHTML = rows || '<div class="empty-state">No student has paid the broker fee for your rooms yet.</div>';
@@ -540,11 +579,13 @@
     const unlocks = (adminCache.unlocks || []).filter(item => item.status === 'approved');
     const remove = `<p><button class="small-button danger" type="button" data-delete-user="${esc(person.id)}" data-delete-role="${esc(person.role)}" data-delete-name="${esc(person.name)}">Delete this ${person.role === 'landlord' ? 'landlord and their houses' : 'student'}</button></p>`;
     if (person.role === 'student') {
-      const rented = unlocks.filter(item => item.studentId === person.id || (item.student?.email || '').toLowerCase() === (person.email || '').toLowerCase());
+      const paid = (adminCache.unlocks || []).filter(item => item.studentId === person.id || (item.student?.email || '').toLowerCase() === (person.email || '').toLowerCase());
+      const rented = paid.filter(item => item.status === 'approved');
       const homes = rented.map(item => listings.find(home => home.id === item.listing?.id) || item.listing || {});
-      if (lead) lead.textContent = `${rented.length} rented house${rented.length === 1 ? '' : 's'}.`;
-      view.innerHTML = `${remove}<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p></div><h3>Houses rented</h3>${houseShots(homes)}${rented.map(item => `<div class="request-row"><div><b>${esc(item.listing?.title || 'Home')}</b><p>${esc(item.listing?.sector || '')} · Rent ${money(item.listing?.rent)} a month</p></div><span class="status-pill">Rented</span></div>`).join('') || '<div class="empty-state">This student has not rented a house yet.</div>'}`;
+      if (lead) lead.textContent = `${paid.length} receipt${paid.length === 1 ? '' : 's'}.`;
+      view.innerHTML = `${remove}<div class="person-facts"><p><b>Email</b><br>${esc(person.email)}</p><p><b>Phone</b><br>${esc(person.phone || 'No phone')}</p><p><b>City</b><br>${esc(person.city || 'Not added')}</p><p><b>Address</b><br>${esc(person.address || 'Not provided')}</p></div><h3>Receipts</h3>${paid.map(receiptArticle).join('') || '<div class="empty-state">This student has not sent a receipt yet.</div>'}<h3>Houses rented</h3>${houseShots(homes)}${rented.map(item => `<div class="request-row"><div><b>${esc(item.listing?.title || 'Home')}</b><p>${esc(item.listing?.sector || '')} · Rent ${money(item.listing?.rent)} a month</p></div><span class="status-pill">Rented</span></div>`).join('') || '<div class="empty-state">This student has not rented a house yet.</div>'}`;
       bindDeletes(view);
+      bindReceiptActions(view);
       return;
     }
     const homes = listings.filter(item => item.ownerId === person.id);
@@ -555,7 +596,8 @@
     bindDeletes(view);
   }
   async function deleteAccount(id, role, name) {
-    const text = role === 'landlord' ? `Delete ${name}? Every house they posted will be deleted too.` : `Delete ${name}?`;
+    const ownsHouse = (adminCache?.listings || []).some(item => item.ownerId === id);
+    const text = role === 'landlord' || ownsHouse ? `Delete ${name}? Every house they posted will be deleted too.` : `Delete ${name}?`;
     if (!window.confirm(text)) return;
     try {
       await apiCall(`/admin/users/${id}`, { method: 'DELETE' });
@@ -581,6 +623,21 @@
         } catch (error) { alert(error.message); }
       };
     });
+  }
+  function receiptArticle(item) {
+    const shot = item.receiptUrl ? `<a class="receipt-shot" href="${esc(item.receiptUrl)}" target="_blank" rel="noopener"><img alt="Payment receipt" src="${esc(item.receiptUrl)}"></a>` : '';
+    const actions = item.status === 'pending' ? `<div class="receipt-actions"><button class="pay-now" type="button" data-unlock="${esc(item.id)}" data-status="approved">Approve</button><button class="receipt-reject" type="button" data-unlock="${esc(item.id)}" data-status="rejected">Reject</button></div>` : '';
+    const label = item.status === 'approved' ? 'Approved' : item.status === 'rejected' ? 'Not accepted' : 'Waiting';
+    return `<article class="activity-order${shot ? ' receipt-line' : ''}">${shot}<div><h3>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.name || 'Student')}</h3><p>${esc(item.listing?.sector || '')} · ${label} · Broker fee ${money(item.listing?.brokerFee)}</p>${actions}</div></article>`;
+  }
+  function bindReceiptActions(root) {
+    root.querySelectorAll('[data-unlock]').forEach(button => button.addEventListener('click', async () => {
+      try {
+        await apiCall(`/admin/unlocks/${button.dataset.unlock}`, { method: 'PUT', body: JSON.stringify({ status: button.dataset.status }) });
+        adminCache = null;
+        await refreshAdmin(document.querySelector('#userSearch')?.value || '');
+      } catch (error) { alert(error.message); }
+    }));
   }
   function showPerson(id) {
     openPersonId = id;
@@ -914,13 +971,20 @@
   function renderLandlords(people) {
     const box = document.querySelector('#landlordCards');
     if (!box) return;
+    const seen = new Set(people.map(person => person.id));
+    const owners = (adminCache?.listings || []).map(home => home.ownerId).filter(Boolean);
+    (adminCache?.users || []).forEach(user => {
+      if (seen.has(user.id) || !owners.includes(user.id)) return;
+      seen.add(user.id);
+      people.push(user);
+    });
     if (!people.length) { box.innerHTML = '<div class="empty-state">No landlords yet.</div>'; return; }
     const head = `<div class="directory-head"><span>Name</span><span>Location</span><span>Contact</span><span></span></div>`;
     box.innerHTML = `<div class="directory">${head}${people.map(person => {
       const homes = (adminCache?.listings || []).filter(item => item.ownerId === person.id);
       const sectors = [...new Set(homes.map(item => item.sector || item.city).filter(Boolean))];
       const location = person.address || sectors.join(', ') || person.city || 'Greater Noida';
-      return `<article class="directory-row"><div><b>${esc(person.name)}</b><p>${esc(person.email || 'No email')}</p></div><div>${esc(location)}</div><div>${esc(person.phone || 'No phone')}</div><div class="person-actions"><button class="small-button person-open" type="button" data-view-landlord="${esc(person.id)}">View</button><button class="small-button danger" type="button" data-delete-user="${esc(person.id)}" data-delete-role="landlord" data-delete-name="${esc(person.name)}">Delete</button></div></article>`;
+      return `<article class="directory-row"><div><b>${esc(person.name)}</b><p>${esc(person.email || 'No email')}</p></div><div>${esc(location)}</div><div>${esc(person.phone || 'No phone')}</div><div class="person-actions"><button class="small-button person-open" type="button" data-view-landlord="${esc(person.id)}">View</button><button class="small-button danger" type="button" data-delete-user="${esc(person.id)}" data-delete-role="${esc(person.role)}" data-delete-name="${esc(person.name)}">Delete</button></div></article>`;
     }).join('')}</div>`;
     bindDeletes(box);
   }
@@ -986,9 +1050,10 @@
     const people = new Set(approved.map(item => item.studentId || item.student?.email || item.id));
     const paid = approved.reduce((sum, item) => sum + Number(item.listing?.brokerFee || 0), 0);
     const sectors = [...new Set(homes.map(item => item.sector || item.city).filter(Boolean))].join(', ');
-    const list = unlocks.map(item => `<article class="activity-order"><h3>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.name || 'Student')}</h3><p>${esc(activityWhen(item.created))} · ${esc(item.listing?.sector || '')}</p><p>Student: ${reachLine(item.student?.name, item.student?.phone, item.student?.email)}</p><p>${item.status === 'approved' ? `Broker fee ${money(item.listing?.brokerFee)}` : 'Receipt waiting for approval'}</p></article>`).join('') || '<div class="empty-state">No students paid in these dates.</div>';
-    const houses = homes.map(item => `<p>${esc(item.title)} · ${esc(item.sector || item.city || '')} · ${money(item.rent)} / month</p>`).join('') || '<p>No houses posted.</p>';
-    body.innerHTML = `<div class="place-modal-head"><div><span class="eyebrow">LANDLORD</span><h2 id="placeViewTitle">${esc(person.name)}</h2><p>${esc(person.address || person.city || sectors || 'Greater Noida')}</p><p>Contact ${esc(person.phone || 'No phone')} · ${esc(person.email || 'No email')}</p></div><button class="outline-button" type="button" data-close-view>Close</button></div><h3>Houses</h3>${houses}${periodControls()}<div class="stat-row"><div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>Students who paid</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved fees</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Broker fees</small></div></div></div>${list}`;
+    const list = unlocks.map(item => receiptArticle(item)).join('') || '<div class="empty-state">No students paid in these dates.</div>';
+    const houses = homes.map(item => `<p>${esc(item.title)} · ${esc(item.sector || item.city || '')} · ${money(item.rent)} / month${item.taken ? ' · Taken' : ''}</p>`).join('') || '<p>No houses posted.</p>';
+    body.innerHTML = `<div class="place-modal-head"><div><span class="eyebrow">LANDLORD</span><h2 id="placeViewTitle">${esc(person.name)}</h2><p>${esc(person.address || person.city || sectors || 'Greater Noida')}</p><p>Contact ${esc(person.phone || 'No phone')} · ${esc(person.email || 'No email')}</p></div><button class="outline-button" type="button" data-close-view>Close</button></div><h3>Houses</h3>${houses}${periodControls()}<div class="stat-row"><div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>Students who paid</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved fees</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Broker fees</small></div></div></div><h3>Receipts</h3>${list}`;
+    bindReceiptActions(body);
   }
 
   function paintActivity() {

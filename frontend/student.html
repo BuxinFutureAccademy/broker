@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Student Dashboard · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="portal.css?v=6">
+  <link rel="stylesheet" href="portal.css?v=14">
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -26,6 +26,7 @@
       <a class="selected" href="#overview">▦ &nbsp; Overview</a>
       <a href="properties.html">⌂ &nbsp; Browse Homes</a>
       <a href="#requests">▣ &nbsp; Broker fee</a>
+      <a href="#history">☰ &nbsp; History</a>
       <a href="contact.html">✉ &nbsp; Contact</a>
       <a href="policy.html">▣ &nbsp; Privacy and policy</a>
       <a href="index.html">↗ &nbsp; View Website</a>
@@ -84,6 +85,16 @@
         <div id="studentRequests" class="request-list"></div>
       </section>
 
+      <section class="panel" id="history">
+        <div class="panel-heading">
+          <div>
+            <h2>History</h2>
+            <p>Houses you paid for, meals, shop purchases, and services.</p>
+          </div>
+        </div>
+        <div id="studentHistory" class="request-list"></div>
+      </section>
+
     </section>
   </main>
   <div class="reach">
@@ -91,6 +102,6 @@
     <a class="reach-mail" data-reach="mail" hidden>Email</a>
   </div>
 
-  <script src="portal-api.js?v=12"></script>
+  <script src="portal-api.js?v=16"></script>
 </body>
 </html>
