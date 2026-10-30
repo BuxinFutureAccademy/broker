@@ -614,6 +614,8 @@ def google_login():
     if not email or not sub:
         return jsonify({'error': 'Google did not share an email for this account.'}), 400
     user = User.query.filter_by(google_sub=sub).first() or User.query.filter(db.func.lower(User.email) == email).first()
+    if not user and data.get('acceptedPolicy') is not True:
+        return jsonify({'error': 'Read the Privacy and policy and tick the box on Create account before you open an account.'}), 400
     display_name = (profile.get('name') or email.split('@')[0] or 'Owner')[:100]
     user, error = open_google_account(user, role, sub, display_name, email)
     if error:
@@ -768,6 +770,8 @@ def signup():
     business_roles = ('restaurant', 'shop', 'service')
     if role not in ('student', 'landlord') + business_roles:
         return jsonify({'error': 'Choose student, landlord, restaurant, shop, or service.'}), 400
+    if data.get('acceptedPolicy') is not True:
+        return jsonify({'error': 'Read the Privacy and policy and tick the box before you open an account.'}), 400
     business_name = str(data.get('businessName') or data.get('business_name') or '').strip()[:120]
     category = str(data.get('category') or '').strip()[:80]
     if role in business_roles and (not business_name or not category or not str(data.get('phone') or '').strip()):

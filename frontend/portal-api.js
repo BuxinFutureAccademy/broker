@@ -229,11 +229,16 @@
         if (!slot || !window.google?.accounts?.id) return;
         google.accounts.id.initialize({
           client_id: providers.googleClientId,
-          callback: async response => {
+            callback: async response => {
             try {
               const picked = document.querySelector('#ownerPicker .role-choice.active')?.dataset.role;
               const googleRole = mode === 'owners' ? (picked || role) : 'student';
-              finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: googleRole }) }));
+              const acceptedPolicy = mode === 'signup' && !!document.querySelector('#policyAgree')?.checked;
+              if (mode === 'signup' && !acceptedPolicy) {
+                say('Read the Privacy and policy and tick the box before you open an account.');
+                return;
+              }
+              finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: googleRole, acceptedPolicy }) }));
             } catch (error) { say(error.message); }
           }
         });
@@ -269,6 +274,10 @@
       }
 
       try {
+        if (mode === 'signup' && !authForm.elements.policy?.checked) {
+          alert('Read the Privacy and policy and tick the box before you open an account.');
+          return;
+        }
         const response = mode === 'signup'
           ? await apiCall('/auth/signup', {
               method: 'POST',
@@ -281,7 +290,8 @@
                 city: String(form.get('city') || '').trim(),
                 address: String(form.get('address') || '').trim(),
                 businessName: String(form.get('businessName') || '').trim(),
-                category: String(form.get('category') || '').trim()
+                category: String(form.get('category') || '').trim(),
+                acceptedPolicy: true
               })
             })
           : await apiCall('/auth/login', {

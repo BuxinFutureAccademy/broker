@@ -6,7 +6,7 @@
   <title>Sign in · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
   <link rel="stylesheet" href="portal.css?v=6">
-  <link rel="stylesheet" href="access.css?v=15">
+  <link rel="stylesheet" href="access.css?v=17">
 </head>
 <body class="portal-body">
   <header class="topbar">
@@ -72,6 +72,13 @@
             <input name="address" placeholder="Full address">
           </label>
         </div>
+        <div class="policy-agree signup-only hidden">
+          <label>
+            <input id="policyAgree" name="policy" type="checkbox">
+            <span>I have read the Privacy and policy. I understand how payment works, and I will be honest.</span>
+          </label>
+          <a href="policy.html" target="_blank" rel="noopener">Read Privacy and policy</a>
+        </div>
         <button class="primary-button full" id="authSubmit">Sign in</button>
         <p class="auth-note" id="authNote">This sign-in is for people looking. Owners use the Owners tab.</p>
         <button class="forgot-link" type="button" id="forgotPassword">Forgot password?</button>
@@ -133,7 +140,7 @@
     </div>
   </div>
 
-  <script src="session.js?v=20"></script>
-  <script src="portal-api.js?v=23"></script>
+  <script src="session.js?v=21"></script>
+  <script src="portal-api.js?v=24"></script>
 </body>
 </html>

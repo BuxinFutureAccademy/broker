@@ -17,6 +17,11 @@ def auth(token):
 
 
 def main():
+    missing_policy = client.post('/api/auth/signup', json={
+        'name': 'No Policy', 'email': 'nopolicy@market.test', 'password': 'secret12', 'role': 'student'
+    })
+    assert missing_policy.status_code == 400, missing_policy.get_json()
+
     registered = client.post('/api/auth/signup', json={
         'name': 'Ada Owner',
         'email': 'ada@market.test',
@@ -27,6 +32,7 @@ def main():
         'phone': '+91 90000 00001',
         'city': 'Gamma 1',
         'address': 'Shop 4, Gamma 1',
+        'acceptedPolicy': True,
     })
     assert registered.status_code == 201, registered.get_json()
     assert registered.get_json()['user']['role'] == 'restaurant'
@@ -55,7 +61,7 @@ def main():
     assert public.get_json()['address'] if False else 'address' not in public.get_json()
 
     student = client.post('/api/auth/signup', json={
-        'name': 'Bo Student', 'email': 'bo@market.test', 'password': 'secret12', 'role': 'student'
+        'name': 'Bo Student', 'email': 'bo@market.test', 'password': 'secret12', 'role': 'student', 'acceptedPolicy': True
     })
     assert student.status_code == 201, student.get_json()
     student_token = student.get_json()['access_token']
@@ -68,7 +74,7 @@ def main():
     order_id = body['id']
 
     other = client.post('/api/auth/signup', json={
-        'name': 'Other', 'email': 'other@market.test', 'password': 'secret12', 'role': 'student'
+        'name': 'Other', 'email': 'other@market.test', 'password': 'secret12', 'role': 'student', 'acceptedPolicy': True
     })
     blocked = client.post(f'/api/market/orders/{order_id}/confirm', json={'result': 'completed'}, headers=auth(other.get_json()['access_token']))
     assert blocked.status_code == 403
@@ -112,7 +118,7 @@ def main():
     assert repeat.status_code == 400
 
     service_owner = client.post('/api/auth/signup', json={
-        'name': 'Service Owner', 'email': 'svc@market.test', 'password': 'secret12', 'role': 'service',
+        'name': 'Service Owner', 'email': 'svc@market.test', 'password': 'secret12', 'role': 'service', 'acceptedPolicy': True,
         'businessName': 'Campus Help', 'category': 'Help', 'phone': '+91 90000 00002', 'city': 'Alpha 1'
     })
     assert service_owner.status_code == 201, service_owner.get_json()

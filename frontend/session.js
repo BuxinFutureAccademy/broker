@@ -51,8 +51,17 @@
   if (current) {
     try { localStorage.setItem('studentstay_pool', current.href); } catch { /* keep going */ }
   }
+  const more = [
+    { href: 'contact.html', label: 'Contact us' },
+    { href: 'about.html', label: 'About us' },
+    { href: 'policy.html', label: 'Privacy and policy' }
+  ];
   const top = document.querySelector('.nav');
-  if (top) top.innerHTML = sections.map(section => `<a${here(section) ? ' class="active"' : ''} href="${section.href}">${section.label}</a>`).join('');
+  if (top) {
+    const main = sections.map(section => `<a${here(section) ? ' class="active"' : ''} href="${section.href}">${section.label}</a>`).join('');
+    const rest = more.map(item => `<a${page === item.href ? ' class="active"' : ''} href="${item.href}">${item.label}</a>`).join('');
+    top.innerHTML = main + rest;
+  }
   const nav = document.createElement('nav');
   nav.className = 'phone-nav';
   nav.setAttribute('aria-label', 'Phone');

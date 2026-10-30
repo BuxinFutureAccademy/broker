@@ -3,6 +3,10 @@
 .auth-tabs { gap: 12px; }
 .tab { font-size: 13px; }
 .role-picker.hidden, .auth-split.hidden, .alt-signin.hidden, .enter-choice.hidden, .signup-only.hidden, .business-only.hidden, .user-only.hidden, .forgot-link.hidden, .reset-panel.hidden, #resetCodeForm.hidden, #resetEmailForm.hidden { display: none; }
+.policy-agree{display:grid;gap:8px;margin:14px 0 2px;color:#294968;font-size:13px;line-height:1.45}
+.policy-agree label{display:flex;gap:10px;align-items:flex-start}
+.policy-agree input{width:18px;height:18px;margin-top:2px;flex:none}
+.policy-agree a{color:#0759d6;font-weight:700}
 .forgot-link { margin: 10px 0 0; padding: 0; border: 0; background: none; color: #0759d6; font: 700 13px inherit; cursor: pointer; }
 .reset-panel { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e3ebf5; }
 .reset-panel h3 { margin: 0 0 6px; color: #09264c; }
@@ -67,8 +71,7 @@
 .alt-button:hover { background: #f5f9ff; }
 .alt-button.hidden, #googleSlot.hidden { display: none; }
 
-@media (max-width: 650px) {
-  .role-picker {
-    grid-template-columns: repeat(2, 1fr);
-  }
+@media (max-width: 760px) {
+  body.portal-body { padding-bottom: 96px; }
+  .role-picker { grid-template-columns: repeat(2, 1fr); }
 }
