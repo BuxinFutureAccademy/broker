@@ -60,7 +60,7 @@
   if (top) {
     const main = sections.map(section => `<a${here(section) ? ' class="active"' : ''} href="${section.href}">${section.label}</a>`).join('');
     const rest = more.map(item => `<a${page === item.href ? ' class="active"' : ''} href="${item.href}">${item.label}</a>`).join('');
-    top.innerHTML = main + rest;
+    top.innerHTML = `<span class="nav-group">${main}</span><span class="nav-group">${rest}</span>`;
   }
   const nav = document.createElement('nav');
   nav.className = 'phone-nav';

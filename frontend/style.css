@@ -69,10 +69,21 @@
   .phone-nav a.on{color:#0759d6;background:#eaf2ff}
   .topbar{height:auto;min-height:58px;flex-wrap:wrap;align-items:center}
   .topbar .menu{display:none !important}
-  .topbar .nav{display:flex !important;position:static;flex:1 0 100%;order:4;height:44px;gap:2px;overflow-x:auto;padding:0 8px;background:#fff;border-top:1px solid #e6eef6;box-shadow:none;flex-direction:row}
-  .topbar .nav a{height:44px;padding:0 10px;font-weight:700;white-space:nowrap;font-size:13px}
-  .topbar .nav a.active:after{bottom:0}
+  .topbar .nav{display:flex !important;position:static;flex:1 0 100%;order:4;height:auto;gap:8px;overflow-x:auto;padding:8px 12px 10px;background:#fff;border-top:1px solid #e6eef6;box-shadow:none;flex-direction:row;border-radius:0}
+  .topbar .nav a{height:34px;padding:0 14px;border-radius:999px;background:#f3f7fb;font-weight:700;white-space:nowrap;font-size:13px;color:#3c5672}
+  .topbar .nav a.active,.topbar .nav a.active:hover{background:#0759d6;color:#fff}
+  .topbar .nav a.active:after{display:none}
+  .topbar .nav .nav-group+.nav-group{margin:0;padding:0;border:0}
 }
-.nav{gap:12px}
-.nav a{white-space:nowrap}
-@media(max-width:1280px){.brand strong{font-size:24px}.nav{gap:8px}.nav a{font-size:13px}}
+.nav a{flex:none;white-space:nowrap}
+.nav a.active:after{display:none}
+.nav-group{display:flex;align-items:center;gap:8px;flex:none}
+@media(min-width:761px){
+  .topbar{height:auto;min-height:76px;flex-wrap:wrap;align-items:center;row-gap:8px;column-gap:18px;padding-top:12px;padding-bottom:12px}
+  .nav{flex:1 0 100%;order:4;height:auto;justify-content:flex-start;gap:8px;padding:2px 0 0;border-radius:0;background:transparent;overflow-x:auto;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{height:36px;padding:0 16px;border-radius:999px;background:#f3f7fb;font-weight:700;font-size:14px;color:#3c5672}
+  .nav a:hover{background:#e7f0ff;color:#0759d6}
+  .nav a.active,.nav a.active:hover{background:#0759d6;color:#fff}
+  .nav-group+.nav-group{margin-left:6px;padding-left:14px;border-left:1px solid #d7e3ef}
+}
