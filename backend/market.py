@@ -373,8 +373,6 @@ def init_market():
         business = Business.query.get(item.business_id) if item else None
         if not item or not business or business.status != 'active' or not item.available:
             return jsonify({'error': 'That item is not available.'}), 400
-        if user.id == business.owner_id:
-            return jsonify({'error': 'You cannot request your own item.'}), 400
         quantity = clean_money(data.get('quantity') or 1) or 1
         if business.kind == 'service':
             quantity = 1

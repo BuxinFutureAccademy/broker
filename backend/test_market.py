@@ -121,6 +121,8 @@ def main():
     first_item = client.post(f'/api/market/businesses/{service_business}/items', json={'name': 'Haircut', 'price': 200}, headers=auth(service_token))
     second_item = client.post(f'/api/market/businesses/{service_business}/items', json={'name': 'Beard trim', 'price': 80}, headers=auth(service_token))
     assert first_item.status_code == 201 and second_item.status_code == 201
+    own_request = client.post('/api/market/orders', json={'itemId': first_item.get_json()['id']}, headers=auth(service_token))
+    assert own_request.status_code == 201, own_request.get_json()
     first = client.post('/api/market/orders', json={'itemId': first_item.get_json()['id']}, headers=auth(student_token))
     assert first.status_code == 201, first.get_json()
     blocked_second = client.post('/api/market/orders', json={'itemId': second_item.get_json()['id']}, headers=auth(student_token))
