@@ -37,13 +37,18 @@ def main():
 
     listed = client.get('/api/market/businesses?kind=restaurant')
     assert listed.status_code == 200
-    assert 'phone' not in listed.get_json()[0]
+    assert listed.get_json() == []
 
     item = client.post(f'/api/market/businesses/{business_id}/items', json={
         'name': 'Jollof', 'price': 300, 'category': 'Rice'
     }, headers=auth(vendor_token))
     assert item.status_code == 201, item.get_json()
     item_id = item.get_json()['id']
+
+    listed = client.get('/api/market/businesses?kind=restaurant')
+    assert listed.status_code == 200
+    assert 'phone' not in listed.get_json()[0]
+    assert listed.get_json()[0]['itemNames'] == ['Jollof']
 
     public = client.get(f'/api/market/businesses/{business_id}')
     assert 'phone' not in public.get_json()

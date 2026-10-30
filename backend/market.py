@@ -189,6 +189,8 @@ def init_market():
             if area and area not in (row.area or '').lower() and area not in (row.address or '').lower():
                 continue
             items = CatalogItem.query.filter_by(business_id=row.id, available=True).order_by(CatalogItem.created.desc()).all()
+            if not items:
+                continue
             blob = ' '.join([row.name, row.category, row.description or '', row.area or ''] + [item.name for item in items]).lower()
             if query and query not in blob:
                 continue

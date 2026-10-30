@@ -72,10 +72,11 @@
     return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" data-item-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(item.name)}"><span class="tag blue">${esc(row.name)}</span></div><div class="property-info"><h3>${esc(item.name)}</h3><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${money(item.price)}</div><div class="amenities"><span>${esc(row.category || 'Service')}</span><span>Open</span></div></div></article>`;
   };
   const cardsFor = (rows, kind, area, query) => {
-    if (kind !== 'service') return rows.filter(row => matchesPlace(row, area, query)).map(row => placeCard(row, kind));
+    const posted = rows.filter(row => Array.isArray(row.offers) ? row.offers.length > 0 : Number(row.itemCount) > 0);
+    if (kind !== 'service') return posted.filter(row => matchesPlace(row, area, query)).map(row => placeCard(row, kind));
     const cards = [];
     const needle = String(query || '').trim().toLowerCase();
-    rows.forEach(row => {
+    posted.forEach(row => {
       const offers = Array.isArray(row.offers) ? row.offers : null;
       if (!offers) {
         if (matchesPlace(row, area, query)) cards.push(placeCard(row, kind));
