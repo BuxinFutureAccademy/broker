@@ -636,7 +636,7 @@
         node.innerHTML = people.map(personCard).join('') || '<div class="empty-state">No matching accounts.</div>';
       };
       fill('#studentCards', 'student');
-      fill('#landlordCards', 'landlord');
+      renderLandlords(filtered.filter(item => item.role === 'landlord'));
       document.querySelectorAll('[data-person]').forEach(button => { button.onclick = () => showPerson(button.dataset.person); });
       bindDeletes(document);
       paintReports();
@@ -727,6 +727,7 @@
           } catch (error) { alert(error.message); }
         });
       }
+      if (viewState.target?.kind === 'landlord') paintView();
       const searchBox = document.querySelector('#userSearch');
       if (searchBox) {
         if (searchBox.value !== search) searchBox.value = search;
@@ -773,15 +774,168 @@
 
   let activityCache = null;
 
-  function paintActivity() {
-    const rateForm = document.querySelector('#commissionRate');
-    if (rateForm && activityCache && document.activeElement !== rateForm.elements.percent) {
-      rateForm.elements.percent.value = activityCache.commissionPercent ?? '';
+  const viewState = { mode: 'day', day: '', week: '', month: '', from: '', to: '', target: null };
+
+  const orderDate = value => {
+    if (!value) return null;
+    const text = String(value);
+    const stamp = /[zZ]|[+-]\d\d:?\d\d$/.test(text) ? text : `${text}Z`;
+    const date = new Date(stamp);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const dayKey = date => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const weekKey = date => {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() + 4 - day);
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+  };
+
+  const weekStart = value => {
+    const match = /^(\d{4})-W(\d{2})$/.exec(value || '');
+    if (!match) return new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - ((new Date().getDay() + 6) % 7));
+    const year = Number(match[1]);
+    const week = Number(match[2]);
+    const jan4 = new Date(year, 0, 4);
+    const day = jan4.getDay() || 7;
+    const monday = new Date(jan4);
+    monday.setDate(jan4.getDate() - day + 1 + (week - 1) * 7);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  };
+
+  const viewRange = () => {
+    const now = new Date();
+    if (!viewState.day) viewState.day = dayKey(now);
+    if (!viewState.week) viewState.week = weekKey(now);
+    if (!viewState.month) viewState.month = dayKey(now).slice(0, 7);
+    if (!viewState.from) viewState.from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    if (!viewState.to) viewState.to = dayKey(now);
+    if (viewState.mode === 'week') {
+      const start = weekStart(viewState.week);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      return { start, end };
     }
+    if (viewState.mode === 'month') {
+      const match = /^(\d{4})-(\d{2})$/.exec(viewState.month);
+      const year = match ? Number(match[1]) : now.getFullYear();
+      const month = match ? Number(match[2]) - 1 : now.getMonth();
+      return { start: new Date(year, month, 1), end: new Date(year, month + 1, 1) };
+    }
+    if (viewState.mode === 'range') {
+      const start = new Date(`${viewState.from}T00:00:00`);
+      const end = new Date(`${viewState.to}T00:00:00`);
+      end.setDate(end.getDate() + 1);
+      return { start, end };
+    }
+    const start = new Date(`${viewState.day}T00:00:00`);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  };
+
+  const inView = value => {
+    const date = orderDate(value);
+    if (!date) return false;
+    const { start, end } = viewRange();
+    return date >= start && date < end;
+  };
+
+  const tenPercent = amount => Math.floor((Number(amount || 0) * 10 + 50) / 100);
+
+  const periodControls = () => {
+    const modes = [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['range', 'Any dates']];
+    const buttons = modes.map(([mode, label]) => `<button type="button" data-period="${mode}" class="${viewState.mode === mode ? 'on' : ''}">${label}</button>`).join('');
+    const field = viewState.mode === 'week'
+      ? `<label>Week<input name="week" type="week" value="${esc(viewState.week)}"></label>`
+      : viewState.mode === 'month'
+        ? `<label>Month<input name="month" type="month" value="${esc(viewState.month)}"></label>`
+        : viewState.mode === 'range'
+          ? `<label>From<input name="from" type="date" value="${esc(viewState.from)}"></label><label>To<input name="to" type="date" value="${esc(viewState.to)}"></label>`
+          : `<label>Day<input name="day" type="date" value="${esc(viewState.day)}"></label>`;
+    return `<div class="period-switch">${buttons}</div><div class="period-fields">${field}</div>`;
+  };
+
+  function renderLandlords(people) {
+    const box = document.querySelector('#landlordCards');
+    if (!box) return;
+    if (!people.length) { box.innerHTML = '<div class="empty-state">No landlords yet.</div>'; return; }
+    const head = `<div class="directory-head"><span>Name</span><span>Location</span><span>Contact</span><span></span></div>`;
+    box.innerHTML = `<div class="directory">${head}${people.map(person => {
+      const homes = (adminCache?.listings || []).filter(item => item.ownerId === person.id);
+      const sectors = [...new Set(homes.map(item => item.sector || item.city).filter(Boolean))];
+      const location = person.address || sectors.join(', ') || person.city || 'Greater Noida';
+      return `<article class="directory-row"><div><b>${esc(person.name)}</b><p>${esc(person.email || 'No email')}</p></div><div>${esc(location)}</div><div>${esc(person.phone || 'No phone')}</div><div class="person-actions"><button class="small-button person-open" type="button" data-view-landlord="${esc(person.id)}">View</button><button class="small-button danger" type="button" data-delete-user="${esc(person.id)}" data-delete-role="landlord" data-delete-name="${esc(person.name)}">Delete</button></div></article>`;
+    }).join('')}</div>`;
+    bindDeletes(box);
+  }
+
+  function openView(target) {
+    viewState.target = target;
+    const modal = document.querySelector('#placeView');
+    if (modal) modal.hidden = false;
+    paintView();
+  }
+
+  function paintView() {
+    const body = document.querySelector('#placeViewBody');
+    const target = viewState.target;
+    if (!body || !target) return;
+    viewRange();
+    if (target.kind === 'landlord') paintLandlordView(body, target.id);
+    else paintPlaceView(body, target);
+  }
+
+  function paintPlaceView(body, target) {
+    const copy = Object.values(activityPages).find(item => item.kind === target.kind) || activityPages.restaurants;
+    const orders = (activityCache?.orders || []).filter(row => row.businessId === target.id);
+    const place = (activityCache?.places || []).find(row => row.id === target.id) || {
+      name: orders[0]?.businessName || 'Place',
+      area: orders[0]?.businessArea || '',
+      address: orders[0]?.businessAddress || '',
+      phone: orders[0]?.businessPhone || '',
+      whatsapp: orders[0]?.businessWhatsapp || '',
+      ownerName: orders[0]?.vendorName || '',
+      ownerPhone: orders[0]?.vendorPhone || '',
+      ownerEmail: orders[0]?.vendorEmail || '',
+      category: '',
+    };
+    const rows = orders.filter(order => order.status !== 'cancelled' && inView(order.created));
+    const people = new Set(rows.map(order => order.customerId || order.customerEmail || order.customerName || order.id));
+    const paid = rows.reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
+    const where = [place.area, place.address].filter(Boolean).join(' · ') || 'Greater Noida';
+    const list = rows.map(order => `<article class="activity-order"><h3>${esc(order.itemName)} · ${esc(order.reference || '')}</h3><p>${esc(activityWhen(order.created))}${order.quantity > 1 ? ` · ${esc(order.quantity)}` : ''}</p><p>Customer: ${reachLine(order.customerName, order.customerPhone, order.customerEmail)}</p><p>${order.finalAmount == null ? 'Money not received yet' : `Received ${money(order.finalAmount)}`} · ${esc(order.customerConfirm === 'completed' ? 'Customer confirmed' : order.customerConfirm === 'not_completed' ? 'Customer did not receive it' : order.customerConfirm === 'disputed' ? 'Customer sent a note' : 'Customer has not confirmed')}</p>${order.customerNote ? `<p>Note: ${esc(order.customerNote)}</p>` : ''}</article>`).join('') || '<div class="empty-state">No customers in these dates.</div>';
+    body.innerHTML = `<div class="place-modal-head"><div><span class="eyebrow">${esc(copy.place.toUpperCase())}</span><h2 id="placeViewTitle">${esc(place.name || 'Place')}</h2><p>${esc(where)}</p><p>Contact ${esc(place.phone || place.ownerPhone || 'No phone')}${place.whatsapp ? ` · WhatsApp ${esc(place.whatsapp)}` : ''}</p><p>${esc(copy.owner)}: ${reachLine(place.ownerName, place.ownerPhone, place.ownerEmail)}</p></div><button class="outline-button" type="button" data-close-view>Close</button></div>${periodControls()}<div class="stat-row"><div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>Customers</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${rows.length}</strong><small>Times</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Money received</small></div></div><div class="stat-card"><span class="stat-icon">%</span><div><strong>${money(tenPercent(paid))}</strong><small>10% commission</small></div></div></div>${list}`;
+  }
+
+  function paintLandlordView(body, id) {
+    const person = (adminCache?.users || []).find(item => item.id === id);
+    if (!person) { body.innerHTML = '<div class="empty-state">That landlord is not on the list.</div>'; return; }
+    const homes = (adminCache?.listings || []).filter(item => item.ownerId === person.id);
+    const unlocks = (adminCache?.unlocks || []).filter(item => (item.ownerId === person.id || homes.some(home => home.id === item.listing?.id)) && inView(item.created));
+    const approved = unlocks.filter(item => item.status === 'approved');
+    const people = new Set(approved.map(item => item.studentId || item.student?.email || item.id));
+    const paid = approved.reduce((sum, item) => sum + Number(item.listing?.brokerFee || 0), 0);
+    const sectors = [...new Set(homes.map(item => item.sector || item.city).filter(Boolean))].join(', ');
+    const list = unlocks.map(item => `<article class="activity-order"><h3>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.name || 'Student')}</h3><p>${esc(activityWhen(item.created))} · ${esc(item.listing?.sector || '')}</p><p>Student: ${reachLine(item.student?.name, item.student?.phone, item.student?.email)}</p><p>${item.status === 'approved' ? `Broker fee ${money(item.listing?.brokerFee)}` : 'Receipt waiting for approval'}</p></article>`).join('') || '<div class="empty-state">No students paid in these dates.</div>';
+    const houses = homes.map(item => `<p>${esc(item.title)} · ${esc(item.sector || item.city || '')} · ${money(item.rent)} / month</p>`).join('') || '<p>No houses posted.</p>';
+    body.innerHTML = `<div class="place-modal-head"><div><span class="eyebrow">LANDLORD</span><h2 id="placeViewTitle">${esc(person.name)}</h2><p>${esc(person.address || person.city || sectors || 'Greater Noida')}</p><p>Contact ${esc(person.phone || 'No phone')} · ${esc(person.email || 'No email')}</p></div><button class="outline-button" type="button" data-close-view>Close</button></div><h3>Houses</h3>${houses}${periodControls()}<div class="stat-row"><div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>Students who paid</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved fees</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Broker fees</small></div></div></div>${list}`;
+  }
+
+  function paintActivity() {
     Object.entries(activityPages).forEach(([id, copy]) => {
-      const stats = document.querySelector(`#${id}Stats`);
       const box = document.querySelector(`#${id}Activity`);
-      if (!stats || !box) return;
+      if (!box) return;
       if (!activityCache) {
         box.innerHTML = '<p class="market-note">Loading…</p>';
         return;
@@ -802,54 +956,19 @@
           ownerEmail: order.vendorEmail || '',
         });
       });
-      const todayOrders = orders.filter(order => activityToday(order.created));
-      const personKey = order => order.customerId || order.customerEmail || order.customerName || order.id;
-      const people = new Set(orders.map(personKey));
-      const peopleToday = new Set(todayOrders.map(personKey));
-      const received = orders.filter(order => order.finalAmount != null);
-      const paid = received.reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
-      stats.innerHTML = `<div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>People who ${copy.did}</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${todayOrders.length}</strong><small>Today · ${peopleToday.size} ${peopleToday.size === 1 ? 'person' : 'people'}</small></div></div><div class="stat-card"><span class="stat-icon">↻</span><div><strong>${orders.length}</strong><small>Times ${copy.did}</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Money received</small></div></div>`;
-      const places = [...listed.values()].sort((a, b) => {
-        const last = id => orders.find(order => order.businessId === id)?.created || '';
-        return String(last(b.id)).localeCompare(String(last(a.id))) || String(a.name).localeCompare(String(b.name));
-      });
+      const places = [...listed.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
       if (!places.length) {
         box.innerHTML = `<div class="empty-state">No ${id === 'shop' ? 'shops' : id} yet.</div>`;
         return;
       }
-      box.innerHTML = places.map(place => {
-        const rows = orders.filter(order => order.businessId === place.id);
-        const placePaid = rows.filter(order => order.finalAmount != null).reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
-        const placePeople = new Set(rows.map(personKey));
-        const placeToday = rows.filter(order => activityToday(order.created)).length;
-        const days = [];
-        rows.forEach(order => {
-          const label = activityDay(order.created);
-          let day = days.find(item => item.label === label);
-          if (!day) {
-            day = { label, rows: [] };
-            days.push(day);
-          }
-          day.rows.push(order);
-        });
-        const body = days.map(day => {
-          const dayPaid = day.rows.reduce((sum, order) => sum + Number(order.finalAmount || 0), 0);
-          const dayMoney = day.rows.some(order => order.finalAmount != null) ? `${money(dayPaid)} received` : 'none received yet';
-          return `<h3 class="activity-day">${esc(day.label)} · ${day.rows.length} ${day.rows.length === 1 ? 'time' : 'times'} · ${dayMoney}</h3>${day.rows.map(order => {
-          const receivedText = order.status === 'cancelled' ? 'Cancelled' : (order.finalAmount == null ? 'Has not received the money' : `Received ${money(order.finalAmount)}`);
-          const receivedClass = order.status === 'cancelled' ? '' : (order.finalAmount == null ? 'no' : 'yes');
-          let confirmText = 'Has not confirmed';
-          let confirmClass = 'no';
-          if (order.customerConfirm === 'completed') { confirmText = 'Confirmed received'; confirmClass = 'yes'; }
-          else if (order.customerConfirm === 'not_completed') { confirmText = 'Did not receive it'; confirmClass = 'bad'; }
-          else if (order.customerConfirm === 'disputed') { confirmText = 'Sent a note'; confirmClass = 'bad'; }
-          const where = [place.area, place.address].filter(Boolean).join(' · ');
-          return `<article class="activity-order"><h3>${esc(order.itemName)} · ${esc(order.reference || '')}</h3><p>${esc(activityWhen(order.created))}${order.quantity > 1 ? ` · ${esc(order.quantity)}` : ''} · Listed ${money(order.listedTotal || order.listedPrice)}</p><p>Customer: ${reachLine(order.customerName, order.customerPhone, order.customerEmail)}</p><p>${esc(copy.place[0].toUpperCase() + copy.place.slice(1))}: ${esc(order.businessName || place.name)}${where ? ` · ${esc(where)}` : ''}${place.phone ? ` · <a href="tel:${String(place.phone).replace(/[^\d+]/g, '')}">${esc(place.phone)}</a>` : ''}</p><div class="activity-flags"><span class="${receivedClass}">${esc(copy.place[0].toUpperCase() + copy.place.slice(1))}: ${esc(receivedText)}</span><span class="${confirmClass}">Customer: ${esc(confirmText)}</span></div>${order.customerNote ? `<p>Note: ${esc(order.customerNote)}</p>` : ''}${order.commissionAmount == null ? '' : `<p>Commission ${money(order.commissionAmount)} · ${esc(order.commissionStatus || 'recorded')}</p>`}</article>`;
-        }).join('')}`;
-        }).join('');
-        return `<article class="activity-place"><h2>${esc(place.name || 'Untitled')}</h2><p class="place-meta">${esc(copy.owner)}: ${reachLine(place.ownerName, place.ownerPhone, place.ownerEmail)}</p><p class="place-meta">${esc(place.category || '')}${place.area ? ` · ${esc(place.area)}` : ''}${place.phone ? ` · <a href="tel:${String(place.phone).replace(/[^\d+]/g, '')}">${esc(place.phone)}</a>` : ''}${place.whatsapp ? ` · WhatsApp ${esc(place.whatsapp)}` : ''}${place.address ? ` · ${esc(place.address)}` : ''}</p><p class="place-count">${placePeople.size} ${placePeople.size === 1 ? 'person' : 'people'} · ${rows.length} ${rows.length === 1 ? 'time' : 'times'} · ${placeToday} today · ${money(placePaid)} received</p>${body || '<div class="empty-state">No activity yet.</div>'}</article>`;
-      }).join('');
+      const head = `<div class="directory-head"><span>Name</span><span>Location</span><span>Contact</span><span></span></div>`;
+      box.innerHTML = `<div class="directory">${head}${places.map(place => {
+        const location = [place.area, place.address].filter(Boolean).join(' · ') || 'Greater Noida';
+        return `<article class="directory-row"><div><b>${esc(place.name || 'Untitled')}</b><p>${esc(place.category || copy.place)}</p></div><div>${esc(location)}</div><div>${esc(place.phone || place.ownerPhone || 'No phone')}</div><div><button class="small-button person-open" type="button" data-view-place="${esc(place.id)}" data-view-kind="${esc(copy.kind)}">View</button></div></article>`;
+      }).join('')}</div>`;
     });
+    const modal = document.querySelector('#placeView');
+    if (viewState.target && !modal?.contains(document.activeElement)) paintView();
   }
 
   async function loadActivity() {
@@ -870,13 +989,40 @@
       refreshAdmin();
       loadActivity();
       setInterval(loadActivity, 15000);
-      const rateForm = document.querySelector('#commissionRate');
-      rateForm?.addEventListener('submit', async event => {
-        event.preventDefault();
-        try {
-          await apiCall('/market/admin/commission', { method: 'PUT', body: JSON.stringify({ percent: new FormData(rateForm).get('percent') }) });
-          await loadActivity();
-        } catch (error) { alert(error.message); }
+      document.addEventListener('click', event => {
+        const place = event.target.closest('[data-view-place]');
+        if (place) {
+          openView({ id: place.dataset.viewPlace, kind: place.dataset.viewKind });
+          return;
+        }
+        const landlord = event.target.closest('[data-view-landlord]');
+        if (landlord) {
+          openView({ id: landlord.dataset.viewLandlord, kind: 'landlord' });
+          return;
+        }
+        const period = event.target.closest('[data-period]');
+        if (period) {
+          viewState.mode = period.dataset.period;
+          paintView();
+          return;
+        }
+        if (event.target.closest('[data-close-view]') || event.target.id === 'placeView') {
+          viewState.target = null;
+          const modal = document.querySelector('#placeView');
+          if (modal) modal.hidden = true;
+        }
+      });
+      document.querySelector('#placeView')?.addEventListener('change', event => {
+        const name = event.target.name;
+        if (!name || !(name in viewState)) return;
+        viewState[name] = event.target.value;
+        paintView();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        viewState.target = null;
+        const modal = document.querySelector('#placeView');
+        if (modal) modal.hidden = true;
       });
     }
   }

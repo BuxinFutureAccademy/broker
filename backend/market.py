@@ -48,13 +48,7 @@ def init_market():
         return User.query.get(get_jwt_identity())
 
     def commission_rate():
-        setting = MarketSetting.query.first()
-        if not setting:
-            setting = MarketSetting(commission_percent=10)
-            db.session.add(setting)
-            db.session.commit()
-        rate = int(setting.commission_percent or 0)
-        return max(0, min(rate, 100))
+        return 10
 
     def commission_amount(total, rate):
         return (int(total) * int(rate) + 50) // 100
@@ -573,14 +567,7 @@ def init_market():
         user = current_user()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Admin access required'}), 403
-        rate = clean_money((request.get_json() or {}).get('percent'))
-        if rate is None or rate > 100:
-            return jsonify({'error': 'Enter a commission percent from 0 to 100.'}), 400
-        setting = MarketSetting.query.first() or MarketSetting()
-        setting.commission_percent = rate
-        db.session.add(setting)
-        db.session.commit()
-        return jsonify({'commissionPercent': rate})
+        return jsonify({'error': 'The commission stays at 10% for restaurants, shops, and services.'}), 400
 
     @app.route('/api/market/admin/orders/<order_id>/commission', methods=['PUT'])
     @jwt_required()

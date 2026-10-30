@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin workspace · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="portal.css?v=10">
+  <link rel="stylesheet" href="portal.css?v=11">
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -52,13 +52,9 @@
           <div class="panel-heading">
             <div>
               <h2>Commission</h2>
-              <p>Recorded when a restaurant, shop, or service enters the amount received. It does not change sales already saved.</p>
+              <p>StudentStay keeps 10% of the amount a restaurant, shop, or service receives. That rate stays at 10%.</p>
             </div>
           </div>
-          <form id="commissionRate" class="report-filter">
-            <label>Percent<input name="percent" inputmode="numeric"></label>
-            <button class="primary-button" type="submit">Save rate</button>
-          </form>
         </section>
       </section>
 
@@ -144,11 +140,11 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Landlords</h1>
-            <p>Open a landlord to see their houses and who rented them. Delete removes the landlord and every house they posted.</p>
+            <p>Every landlord. Open View to see their houses, the students who paid, and the broker fees for a day, a week, a month, or any dates.</p>
           </div>
         </div>
         <section class="panel">
-          <div class="landlord-grid" id="landlordCards"></div>
+          <div id="landlordCards"></div>
         </section>
       </section>
 
@@ -169,10 +165,9 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Restaurants</h1>
-            <p>Every order. The student, their contact, the restaurant, whether the restaurant received the money, and whether the student confirmed.</p>
+            <p>Every restaurant. Open View for the customers and the money on a day, a week, a month, or any dates. The commission is 10%.</p>
           </div>
         </div>
-        <div class="stat-row" id="restaurantsStats"></div>
         <div id="restaurantsActivity"><p class="market-note">Loading restaurants…</p></div>
       </section>
 
@@ -181,10 +176,9 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Shop</h1>
-            <p>Every purchase. The student, their contact, the shop, whether the shop received the money, and whether the student confirmed.</p>
+            <p>Every shop. Open View for the customers and the money on a day, a week, a month, or any dates. The commission is 10%.</p>
           </div>
         </div>
-        <div class="stat-row" id="shopStats"></div>
         <div id="shopActivity"><p class="market-note">Loading shop…</p></div>
       </section>
 
@@ -193,14 +187,18 @@
           <div>
             <span class="eyebrow">ADMIN CONSOLE</span>
             <h1>Services</h1>
-            <p>Every request. The student, their contact, the service, whether the service received the money, and whether the student confirmed.</p>
+            <p>Every service. Open View for the customers and the money on a day, a week, a month, or any dates. The commission is 10%.</p>
           </div>
         </div>
-        <div class="stat-row" id="servicesStats"></div>
         <div id="servicesActivity"><p class="market-note">Loading services…</p></div>
       </section>
     </section>
   </main>
-  <script src="portal-api.js?v=10"></script>
+  <div id="placeView" class="place-modal" hidden>
+    <div class="place-modal-card" role="dialog" aria-modal="true" aria-labelledby="placeViewTitle">
+      <div id="placeViewBody"></div>
+    </div>
+  </div>
+  <script src="portal-api.js?v=11"></script>
 </body>
 </html>

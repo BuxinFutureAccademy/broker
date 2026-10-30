@@ -63,3 +63,24 @@
 .activity-flags .no{background:#fff4e5;color:#9a6200}
 .activity-flags .bad{background:#fde8e8;color:#9b1c1c}
 .market-note{color:#526a85}
+.directory{display:grid;gap:8px}
+.directory-head,.directory-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.2fr) minmax(0,1fr) auto;gap:12px;align-items:center}
+.directory-head{padding:0 14px;font-size:11px;font-weight:800;letter-spacing:.4px;color:#71849a;text-transform:uppercase}
+.directory-row{background:#fff;border:1px solid #e2eaf3;border-radius:12px;padding:12px 14px}
+.directory-row b{display:block}
+.directory-row p{margin:2px 0 0;color:#526a85;font-size:13px}
+.place-modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:18px;background:rgba(9,27,54,.46)}
+.place-modal[hidden]{display:none !important}
+.place-modal-card{width:min(760px,100%);max-height:min(88vh,880px);overflow:auto;background:#fff;border-radius:18px;padding:22px}
+.place-modal-card h2{margin:0 0 6px}
+.place-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.period-switch{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.period-switch button{height:36px;border:1px solid #d5e0ec;border-radius:999px;background:#fff;color:#24527f;font:700 13px inherit;padding:0 14px;cursor:pointer}
+.period-switch button.on{background:#0759d6;color:#fff;border-color:#0759d6}
+.period-fields{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.period-fields label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#526a85}
+.period-fields input{height:40px;border:1px solid #d5e0ec;border-radius:10px;padding:0 10px;font:16px inherit}
+@media(max-width:700px){
+  .directory-head{display:none}
+  .directory-row{grid-template-columns:1fr auto}
+}

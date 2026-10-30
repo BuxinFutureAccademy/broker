@@ -174,6 +174,8 @@ def main():
     assert 'customerPhone' in match
     place = next(row for row in restaurant_rows['places'] if row['name'] == 'Ada Kitchen')
     assert place['ownerPhone'] == '+91 90000 00001'
+    locked_rate = client.put('/api/market/admin/commission', json={'percent': 25}, headers=auth(admin.get_json()['access_token']))
+    assert locked_rate.status_code == 400, locked_rate.get_json()
     shop_only = client.get('/api/market/admin/orders?kind=shop', headers=auth(admin.get_json()['access_token']))
     assert shop_only.status_code == 200
     assert all(row['kind'] == 'shop' for row in shop_only.get_json()['orders'])
