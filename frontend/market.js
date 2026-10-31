@@ -145,7 +145,7 @@
 
   const contactLinks = (contact, reference, itemName) => {
     if (!contact) return '';
-    const intro = `Hello, my name is ______. My StudentStay request is ${reference} for ${itemName}.`;
+    const intro = `Hello, my name is ______. My Ekvora request is ${reference} for ${itemName}.`;
     const wa = dial(contact.whatsapp || contact.phone).replace(/^\+/, '');
     const parts = [];
     if (contact.phone) parts.push(`<a href="tel:${esc(dial(contact.phone))}">Call ${esc(contact.phone)}</a>`);
@@ -238,7 +238,7 @@
         back.href = pool.list || pool.home || 'index.html';
         back.textContent = `← Back to ${(pool.name || 'places').toLowerCase()}`;
       }
-      document.title = `${row.name} · StudentStay`;
+      document.title = `${row.name} · Ekvora`;
       stayIn(row.kind);
       const items = row.items || [];
       const cover = row.imageUrl || row.logoUrl || covers[row.kind] || photo('');
@@ -534,7 +534,7 @@
       setText('#ownerAvatar', (session.name || 'O').slice(0, 1).toUpperCase());
       const publicLink = document.querySelector('#ownerPublic');
       if (publicLink) publicLink.href = copy.publicPage;
-      document.title = `${copy.title} · StudentStay`;
+      document.title = `${copy.title} · Ekvora`;
       stayIn(session.role);
       setText('#ownerBrand', copy.brand);
       let placeRows = [];

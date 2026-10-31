@@ -460,7 +460,7 @@ def send_email(to, subject, template):
     message['Subject'] = subject
     message['From'] = app.config.get('MAIL_DEFAULT_SENDER') or username
     message['To'] = to
-    message.set_content('Your StudentStay code is in this email.')
+    message.set_content('Your Ekvora code is in this email.')
     message.add_alternative(template, subtype='html')
     host = app.config.get('MAIL_SERVER') or 'smtp.gmail.com'
     port = int(app.config.get('MAIL_PORT') or 587)
@@ -718,7 +718,7 @@ def send_phone_code():
     )
     db.session.add(row)
     db.session.commit()
-    sent, detail = send_sms(phone, f'Your StudentStay code is {code}. It expires in 5 minutes.')
+    sent, detail = send_sms(phone, f'Your Ekvora code is {code}. It expires in 5 minutes.')
     if not sent:
         PhoneCode.query.filter_by(phone=phone).delete()
         db.session.commit()
@@ -837,20 +837,20 @@ def signup():
     if role == 'landlord':
         send_email(
             data['email'],
-            'Welcome to StudentStay - Landlord Account',
-            f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your landlord account has been created successfully. You can now start listing your properties.</p><p>Best regards,<br>StudentStay Team</p>'
+            'Welcome to Ekvora - Landlord Account',
+            f'<h1>Welcome to Ekvora!</h1><p>Hi {data["name"]},</p><p>Your landlord account has been created successfully. You can now start listing your properties.</p><p>Best regards,<br>Ekvora Team</p>'
         )
     elif role in business_roles:
         send_email(
             data['email'],
-            'Welcome to StudentStay',
-            f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your {role} account is ready. Add your menu or services from your dashboard.</p><p>Best regards,<br>StudentStay Team</p>'
+            'Welcome to Ekvora',
+            f'<h1>Welcome to Ekvora!</h1><p>Hi {data["name"]},</p><p>Your {role} account is ready. Add your menu or services from your dashboard.</p><p>Best regards,<br>Ekvora Team</p>'
         )
     else:
         send_email(
             data['email'],
-            'Welcome to StudentStay',
-            f'<h1>Welcome to StudentStay!</h1><p>Hi {data["name"]},</p><p>Your account has been created successfully. Start browsing properties to find your perfect home.</p><p>Best regards,<br>StudentStay Team</p>'
+            'Welcome to Ekvora',
+            f'<h1>Welcome to Ekvora!</h1><p>Hi {data["name"]},</p><p>Your account has been created successfully. Start browsing properties to find your perfect home.</p><p>Best regards,<br>Ekvora Team</p>'
         )
     
     access_token = create_access_token(identity=new_user.id)
@@ -939,8 +939,8 @@ def forgot_password():
     db.session.commit()
     sent = send_email(
         user.email,
-        'Your StudentStay password code',
-        f'<p>Your StudentStay code is <b>{code}</b>.</p><p>It expires in 10 minutes. If you did not ask for this, ignore this email.</p>'
+        'Your Ekvora password code',
+        f'<p>Your Ekvora code is <b>{code}</b>.</p><p>It expires in 10 minutes. If you did not ask for this, ignore this email.</p>'
     )
     if not sent:
         PasswordReset.query.filter_by(email=email).delete()
@@ -1180,7 +1180,7 @@ def create_request():
         send_email(
             landlord.email,
             'New Student Request for Your Property',
-            f'<h1>New Student Request</h1><p>Hi {landlord.name},</p><p>A student has requested to rent your property: <strong>{listing.title}</strong></p><p>You can view all requests in your landlord dashboard.</p><p>Best regards,<br>StudentStay Team</p>'
+            f'<h1>New Student Request</h1><p>Hi {landlord.name},</p><p>A student has requested to rent your property: <strong>{listing.title}</strong></p><p>You can view all requests in your landlord dashboard.</p><p>Best regards,<br>Ekvora Team</p>'
         )
     
     return jsonify({'message': 'Request created successfully', 'id': new_request.id}), 201
@@ -1670,7 +1670,7 @@ def broker_contact():
     setting = PaymentSetting.query.first()
     admin = User.query.filter_by(role='admin').first()
     return {
-        'name': ((setting.contact_name if setting else '') or (admin.name if admin else '') or 'StudentStay'),
+        'name': ((setting.contact_name if setting else '') or (admin.name if admin else '') or 'Ekvora'),
         'phone': ((setting.contact_phone if setting else '') or (admin.phone if admin else '') or ''),
         'email': ((setting.contact_email if setting else '') or (admin.email if admin else '') or ''),
     }

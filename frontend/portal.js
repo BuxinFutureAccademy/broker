@@ -29,7 +29,7 @@
     const signupFields = [...document.querySelectorAll('.signup-only')];
     const updateAuth = () => {
       document.querySelector('#authTitle').textContent = mode === 'signup' ? `Join as a ${role}` : 'Welcome back';
-      document.querySelector('#authSubtitle').textContent = role === 'admin' ? 'Administrator sign in.' : 'Choose how you use StudentStay.';
+      document.querySelector('#authSubtitle').textContent = role === 'admin' ? 'Administrator sign in.' : 'Choose how you use Ekvora.';
       document.querySelector('#authSubmit').textContent = mode === 'signup' ? `Create ${role} account` : `Sign in as ${role[0].toUpperCase()}${role.slice(1)}`;
       document.querySelector('#authNote').textContent = role === 'admin' ? 'Admin access is reserved for the website manager.' : mode === 'signup' ? 'Your account is saved in this browser for this demo.' : 'New here? Choose Create account to get started.';
       nameField.closest('label').classList.toggle('hidden', mode !== 'signup');
@@ -82,7 +82,7 @@
     area.classList.remove('hidden');
     document.querySelector('#studentGreeting').textContent = `Hello, ${session.name.split(' ')[0]}`;
     const myRequests = getRequests().filter(request => request.studentId === session.id);
-    document.querySelector('#studentStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${getListings().length}</strong><small>Available homes</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${myRequests.length}</strong><small>Your requests</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Free</strong><small>StudentStay support</small></div></div>`;
+    document.querySelector('#studentStats').innerHTML = `<div class="stat-card"><span class="stat-icon">⌂</span><div><strong>${getListings().length}</strong><small>Available homes</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${myRequests.length}</strong><small>Your requests</small></div></div><div class="stat-card"><span class="stat-icon">✓</span><div><strong>Free</strong><small>Ekvora support</small></div></div>`;
     renderListings('#studentListings', getListings(), { request: true, studentId: session.id });
     const requests = myRequests.map(r => { const listing = getListings().find(item => item.id === r.listingId); return `<div class="request-row"><div><b>${esc(listing?.title || 'Listing removed')}</b><p>Requested ${new Date(r.created).toLocaleDateString()}</p></div><span class="status-pill">${esc(r.status)}</span></div>`; }).join('');
     document.querySelector('#studentRequests').innerHTML = requests || '<div class="empty-state">You have not requested a room yet.</div>';

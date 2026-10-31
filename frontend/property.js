@@ -11,11 +11,11 @@
   const dial = value => String(value || '').replace(/[^+\d]/g, '');
 
   const brokerCard = item => {
-    const name = item.brokerName || 'StudentStay';
+    const name = item.brokerName || 'Ekvora';
     const phone = item.brokerPhone || '';
     const email = item.brokerEmail || '';
     const area = item.sector || item.city || 'Greater Noida';
-    const intro = `Hello, my name is ______. I paid the StudentStay broker fee for ${item.title || 'a room'} in ${area}. I am sending my receipt. Please tell me the next step.`;
+    const intro = `Hello, my name is ______. I paid the Ekvora broker fee for ${item.title || 'a room'} in ${area}. I am sending my receipt. Please tell me the next step.`;
     const wa = dial(phone).replace(/^\+/, '');
     const go = (label, value, href, extra) => value
       ? `<a class="broker-go${extra || ''}" href="${esc(href)}"${extra ? ' target="_blank" rel="noopener"' : ''}>${label}<span>${esc(value)}</span></a>`
