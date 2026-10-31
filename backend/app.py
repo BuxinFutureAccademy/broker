@@ -405,7 +405,8 @@ def ensure_schema():
             db.session.execute(text('ALTER TABLE listing ADD COLUMN sector VARCHAR(80)'))
             db.session.commit()
         if 'taken' not in columns:
-            db.session.execute(text('ALTER TABLE listing ADD COLUMN taken BOOLEAN DEFAULT 0'))
+            default = 'FALSE' if db.engine.dialect.name == 'postgresql' else '0'
+            db.session.execute(text(f'ALTER TABLE listing ADD COLUMN taken BOOLEAN DEFAULT {default}'))
             db.session.commit()
     if 'payment_setting' in tables:
         columns = {column['name'] for column in inspector.get_columns('payment_setting')}
