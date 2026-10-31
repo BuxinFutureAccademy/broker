@@ -616,22 +616,282 @@
     if (!photos.length) return '';
     return `<div class="person-photos">${photos.map(photo => `<img alt="" src="${esc(photo)}">`).join('')}</div>`;
   }
-  function paintReports() {
-    const summary = document.querySelector('#reportSummary');
-    const rows = document.querySelector('#reportRows');
-    if (!summary || !rows || !adminCache) return;
-    const from = document.querySelector('#reportFrom')?.value || '';
-    const to = document.querySelector('#reportTo')?.value || '';
-    const approved = (adminCache.unlocks || []).filter(item => item.status === 'approved').filter(item => {
-      const day = String(item.created || '').slice(0, 10);
-      if (from && day < from) return false;
-      if (to && day > to) return false;
-      return true;
+  const reportSources = [
+    { id: 'house', label: 'Houses', cut: 'Broker fee' },
+    { id: 'restaurant', label: 'Restaurants', cut: '10% of the sale' },
+    { id: 'shop', label: 'Shop', cut: '10% of the sale' },
+    { id: 'service', label: 'Services', cut: '10% of the sale' },
+  ];
+  const reportState = { mode: 'day', day: '', week: '', month: '', from: '', to: '', source: 'all', pay: 'all' };
+
+  function reportRange() {
+    const now = new Date();
+    if (!reportState.day) reportState.day = dayKey(now);
+    if (!reportState.week) reportState.week = weekKey(now);
+    if (!reportState.month) reportState.month = dayKey(now).slice(0, 7);
+    if (!reportState.from) reportState.from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    if (!reportState.to) reportState.to = dayKey(now);
+    if (reportState.mode === 'week') {
+      const start = weekStart(reportState.week);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      return { start, end };
+    }
+    if (reportState.mode === 'month') {
+      const match = /^(\d{4})-(\d{2})$/.exec(reportState.month);
+      const year = match ? Number(match[1]) : now.getFullYear();
+      const month = match ? Number(match[2]) - 1 : now.getMonth();
+      return { start: new Date(year, month, 1), end: new Date(year, month + 1, 1) };
+    }
+    if (reportState.mode === 'range') {
+      let start = new Date(`${reportState.from}T00:00:00`);
+      let end = new Date(`${reportState.to}T00:00:00`);
+      if (Number.isNaN(start.getTime())) start = new Date(now.getFullYear(), now.getMonth(), 1);
+      if (Number.isNaN(end.getTime())) end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (start > end) { const swap = start; start = end; end = swap; }
+      end.setDate(end.getDate() + 1);
+      return { start, end };
+    }
+    const start = new Date(`${reportState.day}T00:00:00`);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+
+  function reportPeriodText() {
+    const { start, end } = reportRange();
+    const last = new Date(end.getTime() - 1);
+    if (reportState.mode === 'day') return writtenDay(start);
+    if (reportState.mode === 'month') return start.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    return `${writtenDay(start)} – ${writtenDay(last)}`;
+  }
+
+  function moveReport(step) {
+    reportRange();
+    if (reportState.mode === 'week') {
+      const start = weekStart(reportState.week);
+      start.setDate(start.getDate() + step * 7);
+      reportState.week = weekKey(start);
+    } else if (reportState.mode === 'month') {
+      const match = /^(\d{4})-(\d{2})$/.exec(reportState.month);
+      const date = new Date(match ? Number(match[1]) : new Date().getFullYear(), (match ? Number(match[2]) - 1 : new Date().getMonth()) + step, 1);
+      reportState.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    } else if (reportState.mode === 'range') {
+      const from = new Date(`${reportState.from}T00:00:00`);
+      const to = new Date(`${reportState.to}T00:00:00`);
+      const span = Math.max(1, Math.round((to - from) / 86400000) + 1);
+      from.setDate(from.getDate() + step * span);
+      to.setDate(to.getDate() + step * span);
+      reportState.from = dayKey(from);
+      reportState.to = dayKey(to);
+    } else {
+      const date = new Date(`${reportState.day}T00:00:00`);
+      date.setDate(date.getDate() + step);
+      reportState.day = dayKey(date);
+    }
+    paintReports(true);
+  }
+
+  function moneyLines() {
+    const houses = (adminCache?.unlocks || []).filter(item => item.status === 'approved' || item.status === 'pending').map(item => {
+      const rent = Number(item.listing?.rent || 0);
+      const profit = Number(item.listing?.brokerFee ?? Math.floor(rent / 2));
+      const owner = item.ownerName || item.listing?.ownerName || 'Landlord';
+      return {
+        id: item.id,
+        kind: 'house',
+        paid: item.status === 'approved',
+        waived: false,
+        created: item.created,
+        who: item.student?.name || 'Student',
+        detail: [item.listing?.title || 'Home', item.listing?.sector, owner].filter(Boolean).join(' · '),
+        baseLabel: 'House rent',
+        base: rent,
+        profit,
+        phone: item.student?.phone || '',
+        email: item.student?.email || '',
+        ownerId: item.ownerId || '',
+        studentId: item.studentId || '',
+        businessId: '',
+      };
     });
-    const total = approved.reduce((sum, item) => sum + Number(item.listing?.brokerFee || 0), 0);
-    summary.innerHTML = `<div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(total)}</strong><small>Approved broker fees</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved payments</small></div></div>`;
-    rows.innerHTML = approved.map(item => `<div class="request-row report-line"><div><b>${money(item.listing?.brokerFee)}</b><p>${esc(item.student?.name || 'Student')} · ${esc(item.listing?.title || 'Home')} · ${esc(item.listing?.sector || '')}<br>${esc(item.ownerName || item.listing?.ownerName || 'Landlord')} · ${item.created ? new Date(item.created).toLocaleDateString() : ''}</p></div><button class="small-button danger" type="button" data-delete-payment="${esc(item.id)}">Delete</button></div>`).join('') || '<div class="empty-state">No approved payments in those dates.</div>';
-    bindDeletes(rows);
+    const sales = (activityCache?.orders || []).filter(order => order.status !== 'cancelled' && order.commissionAmount != null).map(order => ({
+      id: order.id,
+      kind: order.kind,
+      paid: order.commissionStatus === 'paid',
+      waived: order.commissionStatus === 'waived',
+      created: order.created,
+      who: order.businessName || 'Place',
+      detail: [order.itemName, order.customerName ? `Customer ${order.customerName}` : ''].filter(Boolean).join(' · '),
+      baseLabel: 'They received',
+      base: Number(order.finalAmount || 0),
+      profit: Number(order.commissionAmount || 0),
+      phone: order.businessPhone || order.vendorPhone || '',
+      email: order.vendorEmail || '',
+      ownerId: '',
+      studentId: order.customerId || '',
+      businessId: order.businessId || '',
+    }));
+    return [...houses, ...sales];
+  }
+
+  function linesInReport(lines) {
+    const { start, end } = reportRange();
+    return lines.filter(row => {
+      const date = orderDate(row.created);
+      return date && date >= start && date < end;
+    });
+  }
+
+  function moneyLine(row) {
+    const source = reportSources.find(item => item.id === row.kind) || { label: 'Payment' };
+    const state = row.waived ? 'waived' : row.paid ? 'paid' : 'pending';
+    const stateLabel = row.waived ? 'Not charged' : row.paid ? 'Paid' : 'Pending';
+    const dialed = String(row.phone || '').replace(/[^\d+]/g, '');
+    const contact = [
+      dialed ? `<a href="tel:${dialed}">${esc(row.phone)}</a>` : 'No phone',
+      row.email ? `<a href="mailto:${esc(row.email)}">${esc(row.email)}</a>` : 'No email',
+    ].join(' · ');
+    const remove = row.kind === 'house' ? `<button class="money-remove" type="button" data-delete-payment="${esc(row.id)}">Remove</button>` : '';
+    return `<article class="money-line ${state}">
+      <div class="money-kind ${esc(row.kind)}">${esc(source.label)}</div>
+      <div class="money-who">
+        <b>${esc(row.who)}</b>
+        <p>${esc(row.detail)}</p>
+        <p>${contact} · ${esc(activityWhen(row.created))}</p>
+      </div>
+      <div class="money-figures">
+        <span>${esc(row.baseLabel)}<strong>${money(row.base)}</strong></span>
+        <span>My profit<strong>${money(row.profit)}</strong></span>
+      </div>
+      <div class="money-sign" role="group" aria-label="Sign ${esc(row.who)}">
+        <button type="button" data-report-sign="paid" data-report-id="${esc(row.id)}" data-report-kind="${esc(row.kind)}" aria-pressed="${row.paid ? 'true' : 'false'}">Paid</button>
+        <button type="button" data-report-sign="pending" data-report-id="${esc(row.id)}" data-report-kind="${esc(row.kind)}" aria-pressed="${!row.paid && !row.waived ? 'true' : 'false'}">Pending</button>
+      </div>
+      <div class="money-actions">
+        <span class="money-state ${state}">${stateLabel}</span>
+        <button class="money-open" type="button" data-report-open data-report-kind="${esc(row.kind)}" data-report-owner="${esc(row.ownerId)}" data-report-student="${esc(row.studentId)}" data-report-business="${esc(row.businessId)}">Open</button>
+        ${remove}
+      </div>
+    </article>`;
+  }
+
+  function paintReports(force) {
+    const board = document.querySelector('#reportBoard');
+    if (!board || !adminCache) return;
+    if (!force && board.contains(document.activeElement) && document.activeElement.matches('input')) return;
+    const all = moneyLines();
+    const dated = linesInReport(all);
+    const ranged = dated.filter(row => reportState.source === 'all' || row.kind === reportState.source);
+    const live = ranged.filter(row => !row.waived);
+    const collected = live.filter(row => row.paid).reduce((sum, row) => sum + row.profit, 0);
+    const waiting = live.filter(row => !row.paid).reduce((sum, row) => sum + row.profit, 0);
+    const spend = live.reduce((sum, row) => sum + row.base, 0);
+    const visible = ranged.filter(row => reportState.pay === 'all' || (reportState.pay === 'paid' ? row.paid : !row.paid && !row.waived));
+    const unpaid = ranged.filter(row => !row.paid && !row.waived).sort((a, b) => b.profit - a.profit);
+    const modes = [['day', 'Today'], ['week', 'This week'], ['month', 'This month'], ['range', 'Choose dates']];
+    const moveNames = { day: ['Previous day', 'Next day'], week: ['Previous week', 'Next week'], month: ['Previous month', 'Next month'], range: ['Earlier', 'Later'] };
+    const fields = reportState.mode === 'week'
+      ? `<label>Week<input name="reportWeek" type="week" value="${esc(reportState.week)}"></label>`
+      : reportState.mode === 'month'
+        ? `<label>Month<input name="reportMonth" type="month" value="${esc(reportState.month)}"></label>`
+        : reportState.mode === 'range'
+          ? `<label>From<input name="reportFrom" type="date" value="${esc(reportState.from)}"></label><label>To<input name="reportTo" type="date" value="${esc(reportState.to)}"></label>`
+          : `<label>Day<input name="reportDay" type="date" value="${esc(reportState.day)}"></label>`;
+    const sourceCards = reportSources.map(item => {
+      const rows = linesInReport(all).filter(row => row.kind === item.id && !row.waived);
+      const mine = rows.reduce((sum, row) => sum + row.profit, 0);
+      const due = rows.filter(row => !row.paid).reduce((sum, row) => sum + row.profit, 0);
+      const dueCount = rows.filter(row => !row.paid).length;
+      return `<button type="button" class="money-source${reportState.source === item.id ? ' on' : ''}" data-report-source="${item.id}"><span>${esc(item.label)}</span><strong>${money(mine)}</strong><small>${esc(item.cut)}</small><small>${dueCount ? `${dueCount} not paid · ${money(due)}` : 'All signed paid'}</small></button>`;
+    }).join('');
+    const payChips = [['all', 'All lines'], ['pending', 'Not paid yet'], ['paid', 'Paid']].map(([id, label]) => `<button type="button" class="${reportState.pay === id ? 'on' : ''}" data-report-pay="${id}">${label}</button>`).join('');
+    const dueList = unpaid.length && reportState.pay !== 'paid'
+      ? `<section class="money-due"><h2>Who has not paid</h2><div class="money-due-list">${unpaid.map(row => `<button type="button" data-report-open data-report-kind="${esc(row.kind)}" data-report-owner="${esc(row.ownerId)}" data-report-student="${esc(row.studentId)}" data-report-business="${esc(row.businessId)}"><b>${esc(row.who)}</b><span>${money(row.profit)} pending</span><small>${esc(row.detail)}</small></button>`).join('')}</div></section>`
+      : '';
+    const groups = new Map();
+    visible.forEach(row => {
+      const date = orderDate(row.created);
+      const key = date ? dayKey(date) : 'none';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    });
+    const days = [...groups.keys()].sort((a, b) => b.localeCompare(a)).map(key => {
+      const rows = groups.get(key).sort((a, b) => Number(a.paid) - Number(b.paid) || b.profit - a.profit);
+      const title = key === 'none' ? 'No date' : new Date(`${key}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      const dayPaid = rows.filter(row => row.paid && !row.waived).reduce((sum, row) => sum + row.profit, 0);
+      const dayDue = rows.filter(row => !row.paid && !row.waived).reduce((sum, row) => sum + row.profit, 0);
+      return `<section class="money-day"><div class="money-day-head"><h2>${esc(title)}</h2><p>Collected ${money(dayPaid)} · Still to collect ${money(dayDue)}</p></div>${rows.map(moneyLine).join('')}</section>`;
+    }).join('');
+    let empty = '';
+    if (!visible.length) {
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+      const monthRows = all.filter(row => {
+        const date = orderDate(row.created);
+        return date && date >= monthStart && date < monthEnd && !row.waived;
+      });
+      const monthProfit = monthRows.reduce((sum, row) => sum + row.profit, 0);
+      empty = `<div class="empty-state">${reportState.mode === 'day' && monthRows.length ? `Nothing is dated ${esc(reportPeriodText())}. This month has ${money(monthProfit)} on the books.` : 'No money in these dates.'}</div>`;
+    }
+    const loading = activityCache ? '' : '<p class="market-note">Restaurant, shop, and service money is still loading.</p>';
+    const scrollY = window.scrollY;
+    board.innerHTML = `<div class="money-report">
+      <div class="money-toolbar">
+        <div class="period-switch">${modes.map(([id, label]) => `<button type="button" class="${reportState.mode === id ? 'on' : ''}" data-report-mode="${id}">${label}</button>`).join('')}</div>
+        <div class="period-move"><button type="button" data-report-shift="-1">${moveNames[reportState.mode][0]}</button><button type="button" data-report-shift="1">${moveNames[reportState.mode][1]}</button></div>
+        <p class="period-summary">${esc(reportPeriodText())}. Broker fees, and 10% from restaurants, shops, and services.</p>
+        <div class="period-fields">${fields}</div>
+        <div class="period-switch money-pay">${payChips}</div>
+      </div>
+      <div class="money-hero">
+        <div class="money-collected"><span>Collected</span><strong>${money(collected)}</strong><small>Signed paid. This is in your account.</small></div>
+        <div class="money-side">
+          <div><span>Still to collect</span><strong>${money(waiting)}</strong><small>${unpaid.length} not signed paid</small></div>
+          <div><span>My profit</span><strong>${money(collected + waiting)}</strong><small>Broker fees plus 10%</small></div>
+          <div><span>Customer spend</span><strong>${money(spend)}</strong><small>House rent and sales. This is not all yours.</small></div>
+        </div>
+      </div>
+      <div class="money-sources"><button type="button" class="money-source${reportState.source === 'all' ? ' on' : ''}" data-report-source="all"><span>All</span><strong>${money(dated.filter(row => !row.waived).reduce((sum, row) => sum + row.profit, 0))}</strong><small>Every source</small><small>${dated.filter(row => !row.paid && !row.waived).length ? `${dated.filter(row => !row.paid && !row.waived).length} not paid` : 'Nothing pending'}</small></button>${sourceCards}</div>
+      ${loading}
+      ${dueList}
+      <section class="money-ledger"><h2>Daily lines</h2>${days || empty}</section>
+    </div>`;
+    bindDeletes(board);
+    window.scrollTo(0, scrollY);
+  }
+
+  async function signMoney(kind, id, status) {
+    if (kind === 'house') {
+      await apiCall(`/admin/unlocks/${id}`, { method: 'PUT', body: JSON.stringify({ status: status === 'paid' ? 'approved' : 'pending' }) });
+      adminCache = null;
+      await refreshAdmin();
+      return;
+    }
+    const saved = await apiCall(`/market/admin/orders/${id}/commission`, { method: 'PUT', body: JSON.stringify({ status: status === 'paid' ? 'paid' : 'pending' }) });
+    const row = (activityCache?.orders || []).find(item => item.id === id);
+    if (row) row.commissionStatus = saved?.commissionStatus || (status === 'paid' ? 'paid' : 'pending');
+    paintReports(true);
+  }
+
+  function openMoney(button) {
+    const kind = button.dataset.reportKind;
+    const owner = button.dataset.reportOwner || '';
+    const student = button.dataset.reportStudent || '';
+    const business = button.dataset.reportBusiness || '';
+    if (kind === 'house') {
+      if (owner) {
+        openView({ id: owner, kind: 'landlord' });
+        if (student) {
+          viewState.payer = student;
+          paintView();
+        }
+        return;
+      }
+      if (student) showPerson(student);
+      return;
+    }
+    if (business) openView({ id: business, kind });
   }
   function paintPerson() {
     const view = document.querySelector('#personView');
@@ -773,11 +1033,6 @@
       bindDeletes(document);
       paintReports();
       if (openPersonId) paintPerson();
-      const reportFilter = document.querySelector('#reportFilter');
-      if (reportFilter && !reportFilter.dataset.bound) {
-        reportFilter.dataset.bound = '1';
-        reportFilter.addEventListener('change', paintReports);
-      }
       const paymentForm = document.querySelector('#paymentForm');
       const qrPreview = document.querySelector('#qrPreview');
       if (paymentForm && payment) {
@@ -1209,6 +1464,8 @@
     try {
       activityCache = await apiCall('/market/admin/orders');
       paintActivity();
+      const placeWindow = document.querySelector('#placeView');
+      if (!placeWindow || placeWindow.hidden) paintReports();
     } catch (error) {
       Object.keys(activityPages).forEach(id => {
         const box = document.querySelector(`#${id}Activity`);
@@ -1224,6 +1481,39 @@
       loadActivity();
       setInterval(loadActivity, 15000);
       document.addEventListener('click', event => {
+        const reportMode = event.target.closest('[data-report-mode]');
+        if (reportMode) {
+          reportState.mode = reportMode.dataset.reportMode;
+          paintReports(true);
+          return;
+        }
+        const reportShift = event.target.closest('[data-report-shift]');
+        if (reportShift) {
+          moveReport(Number(reportShift.dataset.reportShift));
+          return;
+        }
+        const reportSource = event.target.closest('[data-report-source]');
+        if (reportSource) {
+          reportState.source = reportSource.dataset.reportSource || 'all';
+          paintReports(true);
+          return;
+        }
+        const reportPay = event.target.closest('[data-report-pay]');
+        if (reportPay) {
+          reportState.pay = reportPay.dataset.reportPay || 'all';
+          paintReports(true);
+          return;
+        }
+        const reportSign = event.target.closest('[data-report-sign]');
+        if (reportSign) {
+          signMoney(reportSign.dataset.reportKind, reportSign.dataset.reportId, reportSign.dataset.reportSign).catch(error => alert(error.message));
+          return;
+        }
+        const reportOpen = event.target.closest('[data-report-open]');
+        if (reportOpen) {
+          openMoney(reportOpen);
+          return;
+        }
         const remove = event.target.closest('[data-delete-place]');
         if (remove) {
           deletePlace(remove.dataset.deletePlace, remove.dataset.deleteKind, remove.dataset.deleteName);
@@ -1267,6 +1557,19 @@
           const modal = document.querySelector('#placeView');
           if (modal) modal.hidden = true;
         }
+      });
+      document.addEventListener('change', event => {
+        const name = event.target.name || '';
+        if (!name.startsWith('report')) return;
+        const value = event.target.value;
+        if (!value) return;
+        if (name === 'reportDay') reportState.day = value;
+        else if (name === 'reportWeek') reportState.week = value;
+        else if (name === 'reportMonth') reportState.month = value;
+        else if (name === 'reportFrom') reportState.from = value;
+        else if (name === 'reportTo') reportState.to = value;
+        else return;
+        paintReports(true);
       });
       document.querySelector('#placeView')?.addEventListener('change', event => {
         const name = event.target.name;

@@ -1844,7 +1844,7 @@ def decide_unlock(unlock_id):
     listing = Listing.query.get(row.listing_id)
     if listing and status == 'approved':
         listing.taken = True
-    elif listing and status == 'rejected':
+    elif listing and status in ('rejected', 'pending'):
         other = Unlock.query.filter(Unlock.listing_id == listing.id, Unlock.status == 'approved', Unlock.id != row.id).first()
         if not other:
             listing.taken = False

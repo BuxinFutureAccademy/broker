@@ -180,6 +180,12 @@ def main():
     assert place['ownerPhone'] == '+91 90000 00001'
     locked_rate = client.put('/api/market/admin/commission', json={'percent': 25}, headers=auth(admin.get_json()['access_token']))
     assert locked_rate.status_code == 400, locked_rate.get_json()
+    signed = client.put(f"/api/market/admin/orders/{match['id']}/commission", json={'status': 'paid'}, headers=auth(admin.get_json()['access_token']))
+    assert signed.status_code == 200, signed.get_json()
+    assert signed.get_json()['commissionStatus'] == 'paid'
+    waiting = client.put(f"/api/market/admin/orders/{match['id']}/commission", json={'status': 'pending'}, headers=auth(admin.get_json()['access_token']))
+    assert waiting.status_code == 200, waiting.get_json()
+    assert waiting.get_json()['commissionStatus'] == 'pending'
     shop_only = client.get('/api/market/admin/orders?kind=shop', headers=auth(admin.get_json()['access_token']))
     assert shop_only.status_code == 200
     assert all(row['kind'] == 'shop' for row in shop_only.get_json()['orders'])
@@ -223,6 +229,12 @@ def main():
     assert approved.status_code == 200, approved.get_json()
     assert all(row['id'] != room_id for row in client.get('/api/listings').get_json())
     assert any(row['id'] == room_id for row in client.get('/api/listings', headers=auth(renter_token)).get_json())
+    returned = client.put(f"/api/admin/unlocks/{receipt.get_json()['id']}", json={'status': 'pending'}, headers=auth(admin.get_json()['access_token']))
+    assert returned.status_code == 200, returned.get_json()
+    assert any(row['id'] == room_id for row in client.get('/api/listings').get_json())
+    approved = client.put(f"/api/admin/unlocks/{receipt.get_json()['id']}", json={'status': 'approved'}, headers=auth(admin.get_json()['access_token']))
+    assert approved.status_code == 200, approved.get_json()
+    assert all(row['id'] != room_id for row in client.get('/api/listings').get_json())
     removed_owner = client.delete(f'/api/admin/users/{landlord_id}', headers=auth(admin.get_json()['access_token']))
     assert removed_owner.status_code == 200, removed_owner.get_json()
     assert all(row['id'] != room_id for row in client.get('/api/listings', headers=auth(admin.get_json()['access_token'])).get_json())

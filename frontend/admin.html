@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin workspace · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="portal.css?v=14">
+  <link rel="stylesheet" href="portal.css?v=16">
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -107,19 +107,12 @@
       <section class="workspace" id="reports" hidden>
         <div class="page-heading">
           <div>
-            <span class="eyebrow">ADMIN CONSOLE</span>
-            <h1>Reports</h1>
-            <p>Money received. A payment is counted only after you approve the receipt. Delete one if it should not be counted.</p>
+            <span class="eyebrow">MONEY</span>
+            <h1>Report</h1>
+            <p>What you earned, where it came from, and who has not paid. Sign each line Paid when the money is in your account, or Pending when it is not.</p>
           </div>
         </div>
-        <section class="panel">
-          <form id="reportFilter" class="report-filter">
-            <label>From<input id="reportFrom" type="date"></label>
-            <label>To<input id="reportTo" type="date"></label>
-          </form>
-          <div id="reportSummary" class="stat-row"></div>
-          <div id="reportRows" class="request-list"></div>
-        </section>
+        <div id="reportBoard"></div>
       </section>
 
       <section class="workspace" id="students" hidden>
@@ -199,6 +192,6 @@
       <div id="placeViewBody"></div>
     </div>
   </div>
-  <script src="portal-api.js?v=18"></script>
+  <script src="portal-api.js?v=20"></script>
 </body>
 </html>

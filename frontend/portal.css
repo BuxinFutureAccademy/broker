@@ -96,3 +96,69 @@
   .directory-head{display:none}
   .directory-row{grid-template-columns:1fr auto}
 }
+.money-report{display:grid;gap:14px}
+.money-toolbar,.money-due,.money-day{background:#fff;border:1px solid #e2eaf3;border-radius:16px;padding:16px 18px}
+.money-ledger h2{margin:0 0 4px;font-size:18px}
+.money-hero{display:grid;grid-template-columns:minmax(220px,.9fr) 1.4fr;gap:12px}
+.money-collected{background:#0d1b2e;color:#fff;border-radius:18px;padding:22px 24px}
+.money-collected span{font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#ffb900}
+.money-collected strong{display:block;font-size:40px;line-height:1.05;margin:8px 0}
+.money-collected small,.money-side small{color:#60758d}
+.money-collected small{color:#c5d0de}
+.money-side{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.money-side div{background:#fff;border:1px solid #e2eaf3;border-radius:16px;padding:14px 16px}
+.money-side span{display:block;font-size:12px;font-weight:800;color:#526a85}
+.money-side strong{display:block;font-size:22px;margin:4px 0;color:#123154}
+.money-sources{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.money-source{text-align:left;border:1px solid #e2eaf3;background:#fff;border-radius:14px;padding:14px;cursor:pointer;display:grid;gap:3px;color:inherit;font:inherit}
+.money-source.on{border-color:#0759d6;box-shadow:inset 0 0 0 1px #0759d6}
+.money-source span{font-size:12px;font-weight:800;color:#526a85}
+.money-source strong{font-size:18px;color:#123154}
+.money-source small{color:#60758d;font-size:12px}
+.money-due h2,.money-day h2{margin:0;font-size:16px}
+.money-due-list{display:grid;gap:8px;margin-top:12px}
+.money-due-list button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;text-align:left;border:1px solid #ffe08a;background:#fffaf0;border-radius:12px;padding:12px;cursor:pointer;font:inherit;color:inherit}
+.money-due-list b{font-size:14px}
+.money-due-list span{font-weight:800;color:#966300}
+.money-due-list small{grid-column:1/-1;color:#526a85}
+.money-day + .money-day{margin-top:12px}
+.money-day-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:4px}
+.money-day-head p{margin:0;color:#526a85;font-size:13px}
+.money-line{display:grid;grid-template-columns:108px minmax(0,1.5fr) minmax(150px,.7fr) auto auto;gap:12px;align-items:center;border:1px solid #e7edf4;border-left:4px solid #c5d0de;border-radius:14px;padding:12px;margin-top:10px;background:#fff}
+.money-line.pending{border-left-color:#e0a100}
+.money-line.paid{border-left-color:#1f8a4c}
+.money-kind{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#0759d6}
+.money-kind.house{color:#966300}
+.money-kind.restaurant{color:#9a3412}
+.money-kind.shop{color:#0759d6}
+.money-kind.service{color:#0d7a3a}
+.money-who b{display:block;font-size:15px}
+.money-who p{margin:3px 0 0;color:#526a85;font-size:13px}
+.money-who a{color:#0759d6;font-weight:700}
+.money-figures{display:grid;gap:6px}
+.money-figures span{display:flex;justify-content:space-between;gap:8px;color:#526a85;font-size:12px}
+.money-figures strong{color:#123154;font-size:14px}
+.money-sign{display:flex;gap:6px}
+.money-sign button{height:36px;border-radius:999px;border:1px solid #d5e0ec;background:#fff;color:#24527f;font:700 13px inherit;padding:0 12px;cursor:pointer}
+.money-sign button[aria-pressed="true"][data-report-sign="paid"]{background:#e8f8ee;color:#0d7a3a;border-color:#b7e7c7}
+.money-sign button[aria-pressed="true"][data-report-sign="pending"]{background:#fff7e7;color:#966300;border-color:#ffe08a}
+.money-actions{display:grid;gap:6px;justify-items:end}
+.money-state{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+.money-state.paid{color:#0d7a3a}
+.money-state.pending{color:#966300}
+.money-state.waived{color:#60758d}
+.money-open{height:36px;border:0;border-radius:999px;background:#0759d6;color:#fff;font:700 13px inherit;padding:0 14px;cursor:pointer}
+.money-remove{border:0;background:none;color:#9b1c1c;font:700 12px inherit;cursor:pointer;padding:0}
+.money-pay{margin-top:8px}
+@media(max-width:980px){
+  .money-hero{grid-template-columns:1fr}
+  .money-sources{grid-template-columns:1fr 1fr}
+  .money-line{grid-template-columns:1fr 1fr}
+  .money-who,.money-figures{grid-column:1/-1}
+}
+@media(max-width:760px){
+  .money-side,.money-sources,.money-line,.money-day-head{grid-template-columns:1fr;display:grid}
+  .money-collected strong{font-size:32px}
+  .money-sign,.money-actions{justify-items:start}
+  .money-open,.money-sign button{min-height:40px}
+}

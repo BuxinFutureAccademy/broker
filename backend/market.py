@@ -6,7 +6,7 @@ VENDOR_MOVES = {
     'accepted': {'completed', 'cancelled'},
 }
 CONFIRMATIONS = {'completed', 'not_completed', 'disputed'}
-COMMISSION_STATUSES = {'pending_verification', 'confirmed', 'due', 'paid', 'disputed', 'waived'}
+COMMISSION_STATUSES = {'pending', 'pending_verification', 'confirmed', 'due', 'paid', 'disputed', 'waived'}
 
 
 def init_market():
