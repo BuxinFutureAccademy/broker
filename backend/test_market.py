@@ -239,6 +239,21 @@ def main():
     assert removed_owner.status_code == 200, removed_owner.get_json()
     assert all(row['id'] != room_id for row in client.get('/api/listings', headers=auth(admin.get_json()['access_token'])).get_json())
 
+    bad_price = client.post(f'/api/market/businesses/{business_id}/items', json={'name': 'Nope', 'price': '12a'}, headers=auth(vendor_token))
+    assert bad_price.status_code == 400, bad_price.get_json()
+    bad_qty = client.post(f'/api/market/businesses/{business_id}/items', json={'name': 'Nope', 'price': 100, 'stock': 'two'}, headers=auth(vendor_token))
+    assert bad_qty.status_code == 400, bad_qty.get_json()
+    photos = [f'https://cdn.example/{index}.jpg' for index in range(5)]
+    too_many = client.put(f'/api/market/items/{item_id}', json={'photoUrls': photos + ['https://cdn.example/extra.jpg']}, headers=auth(vendor_token))
+    assert too_many.status_code == 400, too_many.get_json()
+    five = client.put(f'/api/market/items/{item_id}', json={'photoUrls': photos, 'price': 300, 'stock': 4}, headers=auth(vendor_token))
+    assert five.status_code == 200, five.get_json()
+    assert five.get_json()['photoUrls'] == photos
+    assert five.get_json()['photoUrl'] == photos[0]
+    assert five.get_json()['stock'] == 4
+    shown = next(row for row in client.get(f'/api/market/businesses/{business_id}').get_json()['items'] if row['id'] == item_id)
+    assert shown['photoUrls'] == photos
+
     print('market checks passed')
 
 

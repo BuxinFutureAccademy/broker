@@ -1,5 +1,7 @@
 """Restaurants, shops, and services. Housing routes stay in app.py."""
 
+import json
+
 KINDS = ('restaurant', 'shop', 'service')
 VENDOR_MOVES = {
     'pending': {'accepted', 'completed', 'cancelled'},
@@ -70,14 +72,59 @@ def init_market():
             note=clean_text(note, 200)
         ))
 
+    def item_photo_list(item):
+        urls = []
+        raw = getattr(item, 'photos', None) or ''
+        if raw:
+            try:
+                parsed = json.loads(raw)
+            except (TypeError, ValueError):
+                parsed = []
+            if isinstance(parsed, list):
+                for entry in parsed:
+                    text = clean_text(entry, 500)
+                    if text and text not in urls:
+                        urls.append(text)
+        cover = clean_text(item.photo_url, 500)
+        if cover and cover not in urls:
+            urls.insert(0, cover)
+        return urls[:5]
+
+    def take_photos(data):
+        if 'photoUrls' in data:
+            raw = data.get('photoUrls') or []
+        elif 'photoUrl' in data:
+            one = clean_text(data.get('photoUrl'), 500)
+            raw = [one] if one else []
+        else:
+            return None, None
+        if isinstance(raw, str):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return None, 'You can add up to 5 photos.'
+        urls = []
+        for entry in raw:
+            text = clean_text(entry, 500)
+            if text and text not in urls:
+                urls.append(text)
+        if len(urls) > 5:
+            return None, 'You can add up to 5 photos.'
+        return urls, None
+
+    def store_photos(item, urls):
+        item.photos = json.dumps(urls)
+        item.photo_url = urls[0] if urls else ''
+
     def item_payload(item):
+        photos = item_photo_list(item)
         return {
             'id': item.id,
             'name': item.name,
             'description': item.description or '',
             'price': item.price or 0,
             'priceNote': item.price_note or '',
-            'photoUrl': item.photo_url or '',
+            'photoUrl': photos[0] if photos else '',
+            'photoUrls': photos,
             'category': item.category or '',
             'available': bool(item.available),
             'stock': item.stock,
@@ -198,7 +245,8 @@ def init_market():
                 'name': item.name,
                 'description': item.description or '',
                 'price': item.price or 0,
-                'photoUrl': item.photo_url or '',
+                'photoUrl': (item_photo_list(item) or [''])[0],
+                'photoUrls': item_photo_list(item),
             } for item in items]
             result.append(card)
         return jsonify(result)
@@ -282,15 +330,20 @@ def init_market():
         data = request.get_json() or {}
         name = clean_text(data.get('name'), 120)
         price = clean_money(data.get('price'))
-        if not name or price is None:
-            return jsonify({'error': 'Add a name and a price in rupees.'}), 400
+        if not name:
+            return jsonify({'error': 'Add a name.'}), 400
+        if price is None:
+            return jsonify({'error': 'Enter the price in numbers.'}), 400
         stock = data.get('stock')
         if stock in ('', None):
             stock_value = None
         else:
             stock_value = clean_money(stock)
             if stock_value is None:
-                return jsonify({'error': 'Stock must be a whole number.'}), 400
+                return jsonify({'error': 'Quantity must be a whole number.'}), 400
+        photos, photo_error = take_photos(data)
+        if photo_error:
+            return jsonify({'error': photo_error}), 400
         item = CatalogItem(
             id=str(uuid.uuid4()),
             business_id=business.id,
@@ -298,11 +351,11 @@ def init_market():
             description=clean_text(data.get('description'), 2000),
             price=price,
             price_note=clean_text(data.get('priceNote'), 80),
-            photo_url=clean_text(data.get('photoUrl'), 500),
             category=clean_text(data.get('category'), 80),
             available=bool(data.get('available', True)),
             stock=stock_value
         )
+        store_photos(item, photos or [])
         db.session.add(item)
         db.session.commit()
         return jsonify(item_payload(item)), 201
@@ -323,12 +376,15 @@ def init_market():
         if 'price' in data:
             price = clean_money(data.get('price'))
             if price is None:
-                return jsonify({'error': 'Add a price in rupees.'}), 400
+                return jsonify({'error': 'Enter the price in numbers.'}), 400
             item.price = price
         if 'priceNote' in data:
             item.price_note = clean_text(data.get('priceNote'), 80)
-        if 'photoUrl' in data:
-            item.photo_url = clean_text(data.get('photoUrl'), 500)
+        if 'photoUrls' in data or 'photoUrl' in data:
+            photos, photo_error = take_photos(data)
+            if photo_error:
+                return jsonify({'error': photo_error}), 400
+            store_photos(item, photos or [])
         if 'category' in data:
             item.category = clean_text(data.get('category'), 80)
         if 'available' in data:
@@ -339,7 +395,7 @@ def init_market():
             else:
                 stock_value = clean_money(data.get('stock'))
                 if stock_value is None:
-                    return jsonify({'error': 'Stock must be a whole number.'}), 400
+                    return jsonify({'error': 'Quantity must be a whole number.'}), 400
                 item.stock = stock_value
         db.session.commit()
         return jsonify(item_payload(item))

@@ -138,6 +138,76 @@
     return payload.url;
   }
 
+  const itemPhotos = item => {
+    const list = Array.isArray(item?.photoUrls) ? item.photoUrls.filter(Boolean) : [];
+    if (list.length) return list.slice(0, 5);
+    return item?.photoUrl ? [item.photoUrl] : [];
+  };
+
+  const wholeNumber = value => {
+    const text = String(value ?? '').trim();
+    return /^\d+$/.test(text) ? text : '';
+  };
+
+  const keepDigits = field => {
+    field.addEventListener('keydown', event => {
+      if (['e', 'E', '+', '-', '.'].includes(event.key)) event.preventDefault();
+    });
+    field.addEventListener('input', () => {
+      const next = field.value.replace(/\D/g, '');
+      if (next !== field.value) field.value = next;
+    });
+  };
+
+  const bindPhotos = (form, existing) => {
+    const input = form.querySelector('[name="photos"]');
+    const picks = form.querySelector('.photo-picks');
+    if (!input || !picks) return;
+    const chosen = (existing || []).slice(0, 5).map(url => ({ url }));
+    const paintPicks = () => {
+      picks.innerHTML = chosen.map((entry, index) => `<span class="photo-pick"><img alt="" src="${esc(entry.url || entry.preview)}"><button type="button" data-drop-photo="${index}" aria-label="Remove photo">×</button></span>`).join('');
+    };
+    paintPicks();
+    input.addEventListener('change', () => {
+      const files = [...input.files];
+      input.value = '';
+      let extra = false;
+      files.forEach(file => {
+        if (!String(file.type || '').startsWith('image/')) return;
+        if (chosen.length >= 5) { extra = true; return; }
+        chosen.push({ file, preview: URL.createObjectURL(file) });
+      });
+      if (extra) alert('You can add up to 5 photos.');
+      paintPicks();
+    });
+    picks.addEventListener('click', event => {
+      const button = event.target.closest('[data-drop-photo]');
+      if (!button) return;
+      const entry = chosen[Number(button.dataset.dropPhoto)];
+      if (entry?.preview) URL.revokeObjectURL(entry.preview);
+      chosen.splice(Number(button.dataset.dropPhoto), 1);
+      paintPicks();
+    });
+    form._photoChoice = chosen;
+    form._resetPhotos = () => {
+      chosen.forEach(entry => { if (entry.preview) URL.revokeObjectURL(entry.preview); });
+      chosen.splice(0, chosen.length);
+      (existing || []).slice(0, 5).forEach(url => chosen.push({ url }));
+      paintPicks();
+    };
+  };
+
+  const collectPhotos = async form => {
+    const chosen = (form._photoChoice || []).slice(0, 5);
+    if (!chosen.length) {
+      alert('Add at least one photo. You can add up to 5.');
+      return null;
+    }
+    const urls = [];
+    for (const entry of chosen) urls.push(entry.url || await uploadFile(entry.file));
+    return urls;
+  };
+
   const saveSession = payload => {
     localStorage.setItem('studentstay_token', payload.access_token);
     localStorage.setItem('studentstay_user', JSON.stringify(payload.user));
@@ -242,14 +312,17 @@
       stayIn(row.kind);
       const items = row.items || [];
       const cover = row.imageUrl || row.logoUrl || covers[row.kind] || photo('');
-      const photos = [...new Set([cover, ...items.map(item => item.photoUrl).filter(Boolean)])];
+      const photos = [...new Set([cover, ...items.flatMap(itemPhotos)])];
       const priced = items.filter(item => item.available !== false).map(item => Number(item.price || 0));
       const from = priced.length ? Math.min(...priced) : null;
       const thumbs = photos.map((src, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(src)}" alt=""></button>`).join('');
       const lines = items.length ? items.map(item => {
         const blocked = !item.available || item.stock === 0;
         const note = [item.stock == null ? '' : `${item.stock} in stock`, item.available ? '' : 'Unavailable'].filter(Boolean).join(' · ');
-        return `<article class="menu-offer" data-offer="${esc(item.id)}"><span class="photo"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"></span><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
+        const shots = itemPhotos(item);
+        const shot = shots[0] || covers[row.kind] || cover;
+        const extra = shots.length > 1 ? `<div class="offer-thumbs">${shots.map((src, index) => `<button type="button" data-offer-photo="${index}" class="${index === 0 ? 'active' : ''}" aria-label="Photo ${index + 1}"><img alt="" src="${esc(src)}"></button>`).join('')}</div>` : '';
+        return `<article class="menu-offer" data-offer="${esc(item.id)}"><span class="photo"><img class="offer-main" alt="" src="${esc(shot)}"></span><div><b>${esc(item.name)}</b>${extra}<p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
       }).join('') : '<p class="detail-notice">Nothing is listed yet.</p>';
       box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><div class="photo"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"></div><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p><article class="menu-live" id="menuLive" hidden></article>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something on the menu. The order stays there and updates while you wait. Confirm it before you order again.</p></section></aside></div>`;
       const mainPhoto = document.querySelector('#mainPhoto');
@@ -260,6 +333,20 @@
         focus.classList.add('offer-focus');
         focus.scrollIntoView({ block: 'center' });
       }
+      box.querySelectorAll('[data-offer-photo]').forEach(button => button.addEventListener('click', () => {
+        const offer = button.closest('.menu-offer');
+        const item = items.find(entry => entry.id === offer?.dataset.offer);
+        const src = itemPhotos(item)[Number(button.dataset.offerPhoto)];
+        const image = offer?.querySelector('.offer-main');
+        if (!src || !image) return;
+        const frame = image.closest('.photo');
+        frame?.classList.remove('ready');
+        image.src = src;
+        const show = () => frame?.classList.add('ready');
+        if (image.complete) show();
+        else image.addEventListener('load', show, { once: true });
+        offer.querySelectorAll('[data-offer-photo]').forEach(other => other.classList.toggle('active', other === button));
+      }));
       box.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
         const src = photos[Number(button.dataset.photoIndex)];
         if (src && mainPhoto) {
@@ -423,10 +510,15 @@
             if (profile?.imageUrl) preview.src = profile.imageUrl;
           }
         }
-        const stockField = copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" placeholder="How many you have"></label>` : '';
+        const qtyField = value => copy.stock ? `<label>Quantity<input name="stock" type="number" min="0" step="1" inputmode="numeric" ${value == null ? '' : `value="${esc(value)}"`} required></label>` : '';
+        const photoBox = `<div class="wide photo-field"><span>Photos</span><input name="photos" type="file" accept="image/*" multiple><small>Add up to 5 photos.</small><div class="photo-picks"></div></div>`;
         const items = profile?.items || [];
-        const itemRows = items.map(item => `<div class="owner-item"><img class="owner-thumb" alt="" src="${esc(item.photoUrl || covers[profile.kind] || '')}"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · ${item.stock} in stock`}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-edit="${esc(item.id)}">Edit</button><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div><form class="form-grid owner-edit" data-edit-form="${esc(item.id)}" hidden><label>Name<input name="name" value="${esc(item.name)}" required></label><label>Price (₹)<input name="price" inputmode="numeric" value="${esc(item.price)}" required></label>${copy.stock ? `<label>In stock<input name="stock" inputmode="numeric" value="${item.stock == null ? '' : esc(item.stock)}"></label>` : ''}<label class="wide">Description<textarea name="description" rows="2">${esc(item.description || '')}</textarea></label><label class="wide photo-field">Replace photo<input name="photo" type="file" accept="image/*"></label><button class="primary-button" type="submit">Save changes</button></form>`).join('');
-        const itemFields = `<label>Name<input name="name" placeholder="${esc(copy.item)} name" required></label><label>Price (₹)<input name="price" inputmode="numeric" placeholder="150" required></label>${stockField}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label><label class="wide photo-field">Photo<input name="photo" type="file" accept="image/*" required></label>`;
+        const itemRows = items.map(item => {
+          const shots = itemPhotos(item);
+          const thumb = shots[0] || covers[profile.kind] || '';
+          return `<div class="owner-item"><img class="owner-thumb" alt="" src="${esc(thumb)}"><div><b>${esc(item.name)}</b><p>${money(item.price)}${item.available ? '' : ' · Hidden'}${item.stock == null ? '' : ` · Qty ${esc(item.stock)}`}${shots.length > 1 ? ` · ${shots.length} photos` : ''}</p></div><div class="owner-item-actions"><button class="small-button" type="button" data-edit="${esc(item.id)}">Edit</button><button class="small-button" type="button" data-hide="${esc(item.id)}" data-available="${item.available ? '1' : '0'}">${item.available ? 'Hide' : 'Show'}</button><button class="small-button danger" type="button" data-remove="${esc(item.id)}">Remove</button></div></div><form class="form-grid owner-edit" data-edit-form="${esc(item.id)}" hidden><label>${esc(copy.nameLabel)}<input name="name" value="${esc(item.name)}" required></label><label>${esc(copy.priceLabel)}<input name="price" type="number" min="0" step="1" inputmode="numeric" value="${esc(item.price)}" required></label>${qtyField(item.stock == null ? '' : item.stock)}<label class="wide">Description<textarea name="description" rows="2">${esc(item.description || '')}</textarea></label>${photoBox}<button class="primary-button" type="submit">Save changes</button></form>`;
+        }).join('');
+        const itemFields = `<label>${esc(copy.nameLabel)}<input name="name" placeholder="${esc(copy.nameLabel)}" required></label><label>${esc(copy.priceLabel)}<input name="price" type="number" min="0" step="1" inputmode="numeric" placeholder="150" required></label>${qtyField(null)}<label class="wide">Description<textarea name="description" rows="2" placeholder="Short description"></textarea></label>${photoBox}`;
         const addForm = !profile
           ? `<p class="empty-state">Save your profile first. Then you can add ${esc(copy.items.toLowerCase())}.</p>`
           : `<button class="add-service" type="button" data-add-toggle><span>+</span>Add a ${esc(copy.item)}</button><form class="form-grid owner-item-form" data-item="${esc(profile.id)}" hidden>${itemFields}<div class="add-service-actions"><button class="primary-button" type="submit">Save ${esc(copy.item)}</button><button class="small-button" type="button" data-add-cancel>Cancel</button></div></form>`;
@@ -441,9 +533,16 @@
         });
         businesses.querySelector('[data-add-cancel]')?.addEventListener('click', () => {
           addSheet?.reset();
+          addSheet?._resetPhotos?.();
           if (addSheet) addSheet.hidden = true;
           if (addToggle) addToggle.hidden = false;
         });
+        if (addSheet) bindPhotos(addSheet, []);
+        businesses.querySelectorAll('[data-edit-form]').forEach(editor => {
+          const item = items.find(entry => entry.id === editor.dataset.editForm);
+          bindPhotos(editor, itemPhotos(item));
+        });
+        businesses.querySelectorAll('input[type="number"]').forEach(keepDigits);
         businesses.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', () => {
           const editor = businesses.querySelector(`[data-edit-form="${button.dataset.edit}"]`);
           if (editor) editor.hidden = !editor.hidden;
@@ -451,22 +550,29 @@
         businesses.querySelectorAll('[data-edit-form]').forEach(editor => editor.addEventListener('submit', async event => {
           event.preventDefault();
           const data = new FormData(editor);
+          const price = wholeNumber(data.get('price'));
+          const quantity = wholeNumber(data.get('stock'));
+          if (!price) { alert('Enter the price in numbers.'); return; }
+          if (copy.stock && quantity === '') { alert('Enter the quantity in numbers.'); return; }
           const item = (profile.items || []).find(entry => entry.id === editor.dataset.editForm);
           try {
-            const file = data.get('photo');
-            const photoUrl = file && file.size ? await uploadFile(file) : (item?.photoUrl || '');
-            await api(`/market/items/${editor.dataset.editForm}`, { method: 'PUT', body: JSON.stringify({ name: data.get('name'), price: data.get('price'), description: data.get('description'), stock: copy.stock ? (data.get('stock') || null) : item?.stock, photoUrl, available: item ? item.available : true }) });
+            const photoUrls = await collectPhotos(editor);
+            if (!photoUrls) return;
+            await api(`/market/items/${editor.dataset.editForm}`, { method: 'PUT', body: JSON.stringify({ name: data.get('name'), price: Number(price), description: data.get('description'), stock: copy.stock ? Number(quantity) : item?.stock, photoUrls, available: item ? item.available : true }) });
             load();
           } catch (error) { alert(error.message); }
         }));
         businesses.querySelectorAll('[data-item]').forEach(form => form.addEventListener('submit', async event => {
           event.preventDefault();
           const data = new FormData(form);
-          const file = data.get('photo');
-          if (!file || !file.size) { alert('Upload a photo.'); return; }
+          const price = wholeNumber(data.get('price'));
+          const quantity = wholeNumber(data.get('stock'));
+          if (!price) { alert('Enter the price in numbers.'); return; }
+          if (copy.stock && quantity === '') { alert('Enter the quantity in numbers.'); return; }
           try {
-            const photoUrl = await uploadFile(file);
-            await api(`/market/businesses/${form.dataset.item}/items`, { method: 'POST', body: JSON.stringify({ name: data.get('name'), price: data.get('price'), description: data.get('description'), stock: data.get('stock') || null, photoUrl, available: true }) });
+            const photoUrls = await collectPhotos(form);
+            if (!photoUrls) return;
+            await api(`/market/businesses/${form.dataset.item}/items`, { method: 'POST', body: JSON.stringify({ name: data.get('name'), price: Number(price), description: data.get('description'), stock: copy.stock ? Number(quantity) : null, photoUrls, available: true }) });
             load();
           } catch (error) { alert(error.message); }
         }));
@@ -510,9 +616,9 @@
         }));
       };
       const ownerCopy = {
-        restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'This page is your profile and your requests.', items: 'Menu', item: 'dish', hint: 'Tap + to add a dish. Every dish you save is listed here.', request: 'Type the amount you received, then press Received. The student confirms it before they can order another meal.', profile: 'Restaurant profile', profileHint: 'Edit the name, the sector, and the photo here. Add dishes with the + button.', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace', category: 'Meals' },
-        shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'This page is your profile and your requests.', items: 'Products', item: 'product', hint: 'Tap + to add a product. Every product you save is listed here.', request: 'Type the amount you received, then press Received. The student confirms it before they can buy another product.', profile: 'Shop profile', profileHint: 'Edit the name, the sector, and the photo here. Add products with the + button.', stock: true, publicPage: 'shop.html', brand: 'Shop workspace', category: 'Grocery' },
-        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'This page is your profile and your requests.', items: 'Services', item: 'service', hint: 'Tap + to add a service. Every service you save is listed here.', request: 'Type the amount you received, then press Received. The student confirms it before they can request another service.', profile: 'Service profile', profileHint: 'Edit the name, the sector, and the photo here. Add services with the + button.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
+        restaurant: { eyebrow: 'RESTAURANT', title: 'Your restaurant', blurb: 'This page is your profile and your requests.', items: 'Menu', item: 'dish', nameLabel: 'Dish name', priceLabel: 'Price (₹)', hint: 'Tap + to add a dish. Enter the price in numbers and add up to 5 photos.', request: 'Type the amount you received, then press Received. The student confirms it before they can order another meal.', profile: 'Restaurant profile', profileHint: 'Edit the name, the sector, and the photo here. Add dishes with the + button.', stock: false, publicPage: 'food.html', brand: 'Restaurant workspace', category: 'Meals' },
+        shop: { eyebrow: 'SHOP', title: 'Your shop', blurb: 'This page is your profile and your requests.', items: 'Products', item: 'product', nameLabel: 'Product name', priceLabel: 'Product price (₹)', hint: 'Tap + to add a product. Enter the price and the quantity in numbers, and add up to 5 photos.', request: 'Type the amount you received, then press Received. The student confirms it before they can buy another product.', profile: 'Shop profile', profileHint: 'Edit the name, the sector, and the photo here. Add products with the + button.', stock: true, publicPage: 'shop.html', brand: 'Shop workspace', category: 'Grocery' },
+        service: { eyebrow: 'SERVICE', title: 'Your service', blurb: 'This page is your profile and your requests.', items: 'Services', item: 'service', nameLabel: 'Service name', priceLabel: 'Price (₹)', hint: 'Tap + to add a service. Enter the price in numbers and add up to 5 photos.', request: 'Type the amount you received, then press Received. The student confirms it before they can request another service.', profile: 'Service profile', profileHint: 'Edit the name, the sector, and the photo here. Add services with the + button.', stock: false, publicPage: 'service.html', brand: 'Service workspace', category: 'Help' }
       };
       const copy = ownerCopy[session.role] || ownerCopy.restaurant;
       const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };

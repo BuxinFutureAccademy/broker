@@ -182,6 +182,7 @@ class CatalogItem(db.Model):
     price = db.Column(db.Integer, nullable=False, default=0)
     price_note = db.Column(db.String(80), default='')
     photo_url = db.Column(db.Text, default='')
+    photos = db.Column(db.Text, default='')
     category = db.Column(db.String(80), default='')
     available = db.Column(db.Boolean, default=True)
     stock = db.Column(db.Integer)
@@ -414,6 +415,11 @@ def ensure_schema():
             if name not in columns:
                 db.session.execute(text(f'ALTER TABLE payment_setting ADD COLUMN {name} {kind}'))
                 db.session.commit()
+    if 'catalog_item' in tables:
+        columns = {column['name'] for column in inspector.get_columns('catalog_item')}
+        if 'photos' not in columns:
+            db.session.execute(text('ALTER TABLE catalog_item ADD COLUMN photos TEXT'))
+            db.session.commit()
     if 'market_order' in tables:
         columns = {column['name'] for column in inspector.get_columns('market_order')}
         if 'customer_note' not in columns:
