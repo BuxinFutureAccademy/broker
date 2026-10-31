@@ -32,11 +32,10 @@
     grid.querySelectorAll('.detail-link').forEach(tile => { const open = () => { if (tile.dataset.propertyId) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }; tile.addEventListener('click', event => { if (!event.target.closest('.heart')) open(); }); tile.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }); });
     grid.querySelectorAll('.heart').forEach(button => button.addEventListener('click', () => button.classList.toggle('saved')));
   };
-  if (grid) display(cityParam);
   fetch('https://broker-961c.onrender.com/api/listings').then(response => response.ok ? response.json() : []).then(items => {
     cards = Array.isArray(items) ? items : [];
     paintCities(cards);
     if (grid) display(search?.value || cityParam);
-  }).catch(() => {});
+  }).catch(() => { if (grid) display(search?.value || cityParam); });
   document.querySelector('#catalogSearch')?.addEventListener('submit', event => { event.preventDefault(); const query = search.value.trim(); history.replaceState(null, '', query ? `?city=${encodeURIComponent(query)}` : location.pathname); display(query); });
 })();

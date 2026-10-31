@@ -113,11 +113,18 @@
       } catch { payment = { amount: 0, qrUrl: '', note: '' }; }
       aside = payCard(item);
     }
-    target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt=""></button>`).join('')}</div></div>${map}</section><aside><section class="detail-content"><span class="detail-badge">${esc(item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(showHouse ? fullAddress : area)}</p><div class="detail-price">${money(item.rent)} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || '')}</p>${item.available ? `<p class="detail-notice">Available from ${esc(item.available)}</p>` : ''}</section>${aside}</aside></div>`;
+    target.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><div class="photo"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=1000&q=80')}" alt="${esc(item.title)}"></div><div class="detail-thumbs">${photos.map((photo, index) => `<button class="${index === 0 ? 'active' : ''}" type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}"><img src="${esc(photo)}" alt=""></button>`).join('')}</div></div>${map}</section><aside><section class="detail-content"><span class="detail-badge">${esc(item.type || 'For Students')}</span><h1>${esc(item.title)}</h1><p class="detail-location">⌖ ${esc(showHouse ? fullAddress : area)}</p><div class="detail-price">${money(item.rent)} <small>/ month</small></div><div class="detail-divider"></div><h2>About this home</h2><p class="detail-description">${esc(item.description || '')}</p>${item.available ? `<p class="detail-notice">Available from ${esc(item.available)}</p>` : ''}</section>${aside}</aside></div>`;
     const mainPhoto = document.querySelector('#mainPhoto');
     document.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
       const photo = photos[Number(button.dataset.photoIndex)];
-      if (photo && mainPhoto) mainPhoto.src = photo;
+      if (photo && mainPhoto) {
+        const frame = mainPhoto.closest('.photo');
+        frame?.classList.remove('ready');
+        mainPhoto.src = photo;
+        const show = () => frame?.classList.add('ready');
+        if (mainPhoto.complete) show();
+        else mainPhoto.addEventListener('load', show, { once: true });
+      }
     }));
     document.querySelector('#openPay')?.addEventListener('click', () => openPay(item, payment || { amount: 0, qrUrl: '', note: '' }));
     if (location.hash === '#contact') document.querySelector('#contact')?.scrollIntoView({ block: 'center' });

@@ -12,12 +12,11 @@
     grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state">No homes posted in Greater Noida yet.</div>';
     bindHearts();
   };
-  paint([]);
   fetch(`${API_BASE}/listings`).then(response => response.ok ? response.json() : []).then(items => {
     listings = Array.isArray(items) ? items : [];
     displayed = listings;
     paint(listings);
-  }).catch(() => {});
+  }).catch(() => paint([]));
   const filterCards = () => {
     if (!grid) return;
     const sectorInput = document.querySelector('.city-field select')?.value || '';

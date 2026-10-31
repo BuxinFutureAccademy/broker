@@ -249,9 +249,9 @@
       const lines = items.length ? items.map(item => {
         const blocked = !item.available || item.stock === 0;
         const note = [item.stock == null ? '' : `${item.stock} in stock`, item.available ? '' : 'Unavailable'].filter(Boolean).join(' · ');
-        return `<article class="menu-offer" data-offer="${esc(item.id)}"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
+        return `<article class="menu-offer" data-offer="${esc(item.id)}"><span class="photo"><img alt="" src="${esc(item.photoUrl || covers[row.kind] || cover)}"></span><div><b>${esc(item.name)}</b><p>${esc(item.description || '')}</p><div class="detail-price">${money(item.price)}${item.priceNote ? ` <small>${esc(item.priceNote)}</small>` : ''}</div>${note ? `<p class="detail-notice">${esc(note)}</p>` : ''}${blocked ? '' : `<button class="pay-now" type="button" data-buy="${esc(item.id)}">${action}</button>`}<div class="buy-result" data-result="${esc(item.id)}"></div></div></article>`;
       }).join('') : '<p class="detail-notice">Nothing is listed yet.</p>';
-      box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p><article class="menu-live" id="menuLive" hidden></article>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something on the menu. The order stays there and updates while you wait. Confirm it before you order again.</p></section></aside></div>`;
+      box.innerHTML = `<div class="detail-layout"><section><div class="detail-gallery"><div class="photo"><img class="detail-main-image" id="mainPhoto" src="${esc(photos[0])}" alt="${esc(row.name)}"></div><div class="detail-thumbs">${thumbs}</div></div><section class="map-panel"><h2>${esc(menu)}</h2><p>${esc(row.area || 'Greater Noida')}</p><article class="menu-live" id="menuLive" hidden></article>${lines}</section></section><aside><section class="detail-content"><span class="detail-badge">${esc(row.category || pool.name || 'Place')}</span><h1>${esc(row.name)}</h1><p class="detail-location">⌖ ${esc(row.area || 'Greater Noida')}</p><div class="detail-price">${from == null ? 'Price on request' : `${money(from)} <small>from</small>`}</div><div class="detail-divider"></div><h2>${esc(about)}</h2><p class="detail-description">${esc(row.description || 'Open this place to see what is offered.')}</p>${row.hours ? `<p class="detail-notice">Hours: ${esc(row.hours)}</p>` : ''}</section><section class="pay-card"><small>${esc(String(pool.name || 'Place').toUpperCase())}</small><h2>${esc(action)}</h2><p>Choose something on the menu. The order stays there and updates while you wait. Confirm it before you order again.</p></section></aside></div>`;
       const mainPhoto = document.querySelector('#mainPhoto');
       const focusId = new URLSearchParams(location.search).get('item');
       const safeId = focusId ? (window.CSS?.escape ? CSS.escape(focusId) : focusId.replace(/[^a-zA-Z0-9-]/g, '')) : '';
@@ -262,7 +262,14 @@
       }
       box.querySelectorAll('[data-photo-index]').forEach(button => button.addEventListener('click', () => {
         const src = photos[Number(button.dataset.photoIndex)];
-        if (src && mainPhoto) mainPhoto.src = src;
+        if (src && mainPhoto) {
+          const frame = mainPhoto.closest('.photo');
+          frame?.classList.remove('ready');
+          mainPhoto.src = src;
+          const show = () => frame?.classList.add('ready');
+          if (mainPhoto.complete) show();
+          else mainPhoto.addEventListener('load', show, { once: true });
+        }
         box.querySelectorAll('[data-photo-index]').forEach(other => other.classList.toggle('active', other === button));
       }));
       const liveCard = () => document.querySelector('#menuLive');

@@ -87,3 +87,30 @@
   .nav a.active,.nav a.active:hover{background:#0759d6;color:#fff}
   .nav-group+.nav-group{margin-left:6px;padding-left:14px;border-left:1px solid #d7e3ef}
 }
+@keyframes sk-shine{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.sk-line,.sk-price,.sk-block,.sk-hero,.photo:not(.ready),.receipt-shot:not(.ready),.qr-frame:not(.ready),.detail-thumbs button:not(.ready){background-color:#e6eef6;background-image:linear-gradient(90deg,#e6eef6 0%,#f7fafc 42%,#e6eef6 80%);background-size:220% 100%;animation:sk-shine 1.15s ease-in-out infinite}
+.sk-line,.sk-price,.sk-block{display:block;border-radius:8px}
+.sk-line{height:14px;margin:10px 0;width:86%}
+.sk-line.short{width:52%}
+.sk-price{height:22px;width:42%;margin:12px 0}
+.sk-block{border-radius:12px}
+.sk-icon{width:43px;height:43px;border-radius:12px;flex:none}
+.sk-card .photo,.sk-hero{min-height:168px}
+.sk-row{padding:14px 0;border-top:1px solid #eaf0f6}
+.sk-row:first-child{border-top:0}
+.sk-stat{min-height:78px}
+.sk-report{display:grid;gap:12px}
+.sk-report .sk-hero{min-height:120px;border-radius:18px}
+.sk-detail{min-height:320px}
+.sk-detail .sk-hero{min-height:280px;border-radius:14px}
+.listing-tile .photo{height:145px;min-height:0;overflow:hidden}
+.listing-tile .photo img{width:100%;height:100%;object-fit:cover}
+.detail-gallery .photo{min-height:0;height:auto;overflow:hidden;border-radius:9px}
+.person-photos .photo{width:140px;height:100px;min-height:0;flex:none;overflow:hidden;border-radius:10px}
+.person-photos .photo img,.menu-offer .photo img{width:100%;height:100%;object-fit:cover}
+.menu-offer .photo{width:96px;height:76px;min-height:0;overflow:hidden;border-radius:10px}
+html.sk-arm .photo:not(.ready) img,html.sk-arm .receipt-shot:not(.ready) img,html.sk-arm .qr-frame:not(.ready) img,html.sk-arm .detail-thumbs button:not(.ready) img{opacity:0}
+html.sk-arm .photo.ready img,html.sk-arm .receipt-shot.ready img,html.sk-arm .qr-frame.ready img,html.sk-arm .detail-thumbs button.ready img{opacity:1;transition:opacity .22s ease}
+@media(prefers-reduced-motion:reduce){
+  .sk-line,.sk-price,.sk-block,.sk-hero,.photo:not(.ready),.receipt-shot:not(.ready),.qr-frame:not(.ready),.detail-thumbs button:not(.ready){animation:none}
+}
