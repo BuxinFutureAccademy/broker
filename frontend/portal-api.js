@@ -280,14 +280,14 @@
         }
         const response = mode === 'signup'
           ? await apiCall('/auth/signup', {
-              method: 'POST',
-              body: JSON.stringify({
+            method: 'POST',
+            body: JSON.stringify({
                 name: String(form.get('name') || '').trim(),
-                email,
-                password,
-                role,
-                phone: String(form.get('phone') || '').trim(),
-                city: String(form.get('city') || '').trim(),
+              email,
+              password,
+              role,
+              phone: String(form.get('phone') || '').trim(),
+              city: String(form.get('city') || '').trim(),
                 address: String(form.get('address') || '').trim(),
                 businessName: String(form.get('businessName') || '').trim(),
                 category: String(form.get('category') || '').trim(),
@@ -295,7 +295,7 @@
               })
             })
           : await apiCall('/auth/login', {
-              method: 'POST',
+            method: 'POST',
               body: JSON.stringify({ email, password, role: mode === 'owners' ? role : 'student' })
             });
 
@@ -485,14 +485,14 @@
         try {
           const photos = files.length ? await Promise.all(files.map(uploadImage)) : [];
           const payload = {
-            title: String(data.get('title')).trim(),
-            type: String(data.get('type')),
-            rent: Number(data.get('rent')),
-            available: String(data.get('available')),
-            address: String(data.get('address')).trim(),
+              title: String(data.get('title')).trim(),
+              type: String(data.get('type')),
+              rent: Number(data.get('rent')),
+              available: String(data.get('available')),
+              address: String(data.get('address')).trim(),
             sector: String(data.get('sector') || '').trim(),
             city: 'Greater Noida',
-            description: String(data.get('description')).trim(),
+              description: String(data.get('description')).trim(),
             photos: photos.map(photo => photo.url)
           };
           if (editingId) {
@@ -624,11 +624,18 @@
       };
     });
   }
-  function receiptArticle(item) {
+  function receiptArticle(item, options = {}) {
     const shot = item.receiptUrl ? `<a class="receipt-shot" href="${esc(item.receiptUrl)}" target="_blank" rel="noopener"><img alt="Payment receipt" src="${esc(item.receiptUrl)}"></a>` : '';
-    const actions = item.status === 'pending' ? `<div class="receipt-actions"><button class="pay-now" type="button" data-unlock="${esc(item.id)}" data-status="approved">Approve</button><button class="receipt-reject" type="button" data-unlock="${esc(item.id)}" data-status="rejected">Reject</button></div>` : '';
     const label = item.status === 'approved' ? 'Approved' : item.status === 'rejected' ? 'Not accepted' : 'Waiting';
-    return `<article class="activity-order${shot ? ' receipt-line' : ''}">${shot}<div><h3>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.name || 'Student')}</h3><p>${esc(item.listing?.sector || '')} · ${label} · Broker fee ${money(item.listing?.brokerFee)}</p>${actions}</div></article>`;
+    const place = [item.listing?.sector, options.full ? item.listing?.address : ''].filter(Boolean).join(' · ');
+    const buttons = [];
+    if (item.status === 'pending') {
+      buttons.push(`<button class="pay-now" type="button" data-unlock="${esc(item.id)}" data-status="approved">Approve</button>`);
+      buttons.push(`<button class="receipt-reject" type="button" data-unlock="${esc(item.id)}" data-status="rejected">Reject</button>`);
+    }
+    if (options.view && item.studentId) buttons.push(`<button class="small-button" type="button" data-view-payer="${esc(item.studentId)}">View</button>`);
+    const actions = buttons.length ? `<div class="receipt-actions">${buttons.join('')}</div>` : '';
+    return `<article class="activity-order${shot ? ' receipt-line' : ''}">${shot}<div><h3>${esc(item.listing?.title || 'Home')} · ${esc(item.student?.name || 'Student')}</h3><p>${esc(place)} · ${label} · Broker fee ${money(item.listing?.brokerFee)} · ${esc(activityWhen(item.created))}</p>${actions}</div></article>`;
   }
   function bindReceiptActions(root) {
     root.querySelectorAll('[data-unlock]').forEach(button => button.addEventListener('click', async () => {
@@ -671,7 +678,7 @@
     try {
       if (!adminCache) {
         const [users, stats, listings, unlocks, payment] = await Promise.all([
-          apiCall('/admin/users'),
+        apiCall('/admin/users'),
           apiCall('/admin/stats'),
           apiCall('/listings'),
           apiCall('/admin/unlocks'),
@@ -831,7 +838,7 @@
 
   let activityCache = null;
 
-  const viewState = { mode: 'day', day: '', week: '', month: '', from: '', to: '', target: null };
+  const viewState = { mode: 'day', day: '', week: '', month: '', from: '', to: '', target: null, payer: null };
 
   const orderDate = value => {
     if (!value) return null;
@@ -1005,6 +1012,7 @@
 
   function openView(target) {
     viewState.target = target;
+    viewState.payer = null;
     const modal = document.querySelector('#placeView');
     if (modal) modal.hidden = false;
     paintView();
@@ -1041,7 +1049,43 @@
     body.innerHTML = `<div class="place-modal-head"><div><span class="eyebrow">${esc(copy.place.toUpperCase())}</span><h2 id="placeViewTitle">${esc(place.name || 'Place')}</h2><p>${esc(where)}</p><p>Contact ${esc(place.phone || place.ownerPhone || 'No phone')}${place.whatsapp ? ` · WhatsApp ${esc(place.whatsapp)}` : ''}</p><p>${esc(copy.owner)}: ${reachLine(place.ownerName, place.ownerPhone, place.ownerEmail)}</p></div><button class="outline-button" type="button" data-close-view>Close</button></div>${periodControls()}<div class="stat-row"><div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>Customers</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${rows.length}</strong><small>Times</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Money received</small></div></div><div class="stat-card"><span class="stat-icon">%</span><div><strong>${money(tenPercent(paid))}</strong><small>10% commission</small></div></div></div>${list}`;
   }
 
+  function paintPayerView(body, studentId) {
+    const user = (adminCache?.users || []).find(item => item.id === studentId);
+    const unlocks = (adminCache?.unlocks || []).filter(item => item.studentId === studentId || (user && (item.student?.email || '').toLowerCase() === (user.email || '').toLowerCase()));
+    const name = user?.name || unlocks[0]?.student?.name || 'Student';
+    const phone = user?.phone || unlocks[0]?.student?.phone || 'No phone';
+    const email = user?.email || unlocks[0]?.student?.email || 'No email';
+    const rented = unlocks.filter(item => item.status === 'approved');
+    const head = `<div class="place-modal-head"><div><span class="eyebrow">WHO PAID</span><h2>${esc(name)}</h2><p>${esc(phone)} · ${esc(email)}</p></div><div class="person-actions"><button class="outline-button" type="button" data-back-payer>Back</button><button class="outline-button" type="button" data-close-view>Close</button></div></div>`;
+    if (!activityCache) {
+      body.innerHTML = `${head}<p class="market-note">Loading houses, restaurants, shops, and services…</p>`;
+      apiCall('/market/admin/orders').then(data => {
+        activityCache = data;
+        paintActivity();
+        if (viewState.payer === studentId) paintView();
+      }).catch(error => {
+        if (viewState.payer === studentId) body.insertAdjacentHTML('beforeend', `<p class="market-note">${esc(error.message)}</p>`);
+      });
+      return;
+    }
+    const mail = String(email || '').toLowerCase();
+    const orders = (activityCache.orders || []).filter(order => order.customerId === studentId || (mail && mail !== 'no email' && String(order.customerEmail || '').toLowerCase() === mail));
+    const confirmText = order => order.customerConfirm === 'completed' ? 'Customer confirmed' : order.customerConfirm === 'not_completed' ? 'Customer did not receive it' : order.customerConfirm === 'disputed' ? 'Customer sent a note' : 'Customer has not confirmed';
+    const ordersFor = (kind, label, empty) => {
+      const rows = orders.filter(order => order.kind === kind);
+      const html = rows.map(order => `<article class="activity-order"><h3>${esc(label)} · ${esc(order.itemName || 'Item')}</h3><p>${esc(order.businessName || '')} · ${esc(activityWhen(order.created))}</p><p>${order.finalAmount == null ? 'Money not entered yet' : `Received ${money(order.finalAmount)}`} · ${esc(order.status || '')} · ${esc(confirmText(order))}</p>${order.customerNote ? `<p>Note: ${esc(order.customerNote)}</p>` : ''}</article>`).join('') || `<div class="empty-state">${empty}</div>`;
+      return `<h3>${label}</h3>${html}`;
+    };
+    const homes = rented.map(item => `<div class="request-row"><div><b>${esc(item.listing?.title || 'Home')}</b><p>${esc([item.listing?.sector, item.listing?.address].filter(Boolean).join(' · '))} · Rent ${money(item.listing?.rent)} a month · Broker fee ${money(item.listing?.brokerFee)}</p></div><span class="status-pill">Rented</span></div>`).join('') || '<div class="empty-state">This person has not rented a house.</div>';
+    body.innerHTML = `${head}<h3>Houses rented</h3>${homes}<h3>Deposits</h3>${unlocks.map(item => receiptArticle(item, { full: true })).join('') || '<div class="empty-state">No broker fee yet.</div>'}${ordersFor('restaurant', 'Restaurant', 'No restaurant orders.')}${ordersFor('shop', 'Shop', 'No shop purchases.')}${ordersFor('service', 'Service', 'No service requests.')}`;
+    bindReceiptActions(body);
+  }
+
   function paintLandlordView(body, id) {
+    if (viewState.payer) {
+      paintPayerView(body, viewState.payer);
+      return;
+    }
     const person = (adminCache?.users || []).find(item => item.id === id);
     if (!person) { body.innerHTML = '<div class="empty-state">That landlord is not on the list.</div>'; return; }
     const homes = (adminCache?.listings || []).filter(item => item.ownerId === person.id);
@@ -1050,7 +1094,7 @@
     const people = new Set(approved.map(item => item.studentId || item.student?.email || item.id));
     const paid = approved.reduce((sum, item) => sum + Number(item.listing?.brokerFee || 0), 0);
     const sectors = [...new Set(homes.map(item => item.sector || item.city).filter(Boolean))].join(', ');
-    const list = unlocks.map(item => receiptArticle(item)).join('') || '<div class="empty-state">No students paid in these dates.</div>';
+    const list = unlocks.map(item => receiptArticle(item, { view: true })).join('') || '<div class="empty-state">No students paid in these dates.</div>';
     const houses = homes.map(item => `<p>${esc(item.title)} · ${esc(item.sector || item.city || '')} · ${money(item.rent)} / month${item.taken ? ' · Taken' : ''}</p>`).join('') || '<p>No houses posted.</p>';
     body.innerHTML = `<div class="place-modal-head"><div><span class="eyebrow">LANDLORD</span><h2 id="placeViewTitle">${esc(person.name)}</h2><p>${esc(person.address || person.city || sectors || 'Greater Noida')}</p><p>Contact ${esc(person.phone || 'No phone')} · ${esc(person.email || 'No email')}</p></div><button class="outline-button" type="button" data-close-view>Close</button></div><h3>Houses</h3>${houses}${periodControls()}<div class="stat-row"><div class="stat-card"><span class="stat-icon">👤</span><div><strong>${people.size}</strong><small>Students who paid</small></div></div><div class="stat-card"><span class="stat-icon">▣</span><div><strong>${approved.length}</strong><small>Approved fees</small></div></div><div class="stat-card"><span class="stat-icon">₹</span><div><strong>${money(paid)}</strong><small>Broker fees</small></div></div></div><h3>Receipts</h3>${list}`;
     bindReceiptActions(body);
@@ -1127,6 +1171,17 @@
           openView({ id: landlord.dataset.viewLandlord, kind: 'landlord' });
           return;
         }
+        const payer = event.target.closest('[data-view-payer]');
+        if (payer) {
+          viewState.payer = payer.dataset.viewPayer;
+          paintView();
+          return;
+        }
+        if (event.target.closest('[data-back-payer]')) {
+          viewState.payer = null;
+          paintView();
+          return;
+        }
         const shift = event.target.closest('[data-shift]');
         if (shift) {
           movePeriod(Number(shift.dataset.shift));
@@ -1140,6 +1195,7 @@
         }
         if (event.target.closest('[data-close-view]') || event.target.id === 'placeView') {
           viewState.target = null;
+          viewState.payer = null;
           const modal = document.querySelector('#placeView');
           if (modal) modal.hidden = true;
         }
@@ -1160,6 +1216,7 @@
       document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
         viewState.target = null;
+        viewState.payer = null;
         const modal = document.querySelector('#placeView');
         if (modal) modal.hidden = true;
       });
