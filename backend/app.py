@@ -429,6 +429,10 @@ def ensure_schema():
             db.session.commit()
         except Exception:
             db.session.rollback()
+    rented = [row[0] for row in db.session.query(Unlock.listing_id).filter(Unlock.status == 'approved').distinct().all()]
+    if rented and 'listing' in tables:
+        Listing.query.filter(Listing.id.in_(rented)).update({Listing.taken: True}, synchronize_session=False)
+        db.session.commit()
 
 # Initialize database
 with app.app_context():
@@ -621,7 +625,7 @@ def google_login():
         return jsonify({'error': 'Google did not share an email for this account.'}), 400
     user = User.query.filter_by(google_sub=sub).first() or User.query.filter(db.func.lower(User.email) == email).first()
     if not user and data.get('acceptedPolicy') is not True:
-        return jsonify({'error': 'Read the Privacy and policy and tick the box on Create account before you open an account.'}), 400
+        return jsonify({'error': 'Read the Privacy and policy and accept it before this new account opens.', 'code': 'policy_required'}), 400
     display_name = (profile.get('name') or email.split('@')[0] or 'Owner')[:100]
     user, error = open_google_account(user, role, sub, display_name, email)
     if error:
@@ -676,6 +680,15 @@ def open_google_account(user, role, sub, display_name, email):
     apply_sign_in_role(user, role)
     db.session.commit()
     return user, None
+
+@app.route('/api/auth/email', methods=['POST'])
+def email_exists():
+    data = request.get_json() or {}
+    email = str(data.get('email') or '').strip().lower()
+    if '@' not in email:
+        return jsonify({'error': 'Enter an email address.'}), 400
+    found = User.query.filter(db.func.lower(User.email) == email).first()
+    return jsonify({'exists': found is not None})
 
 @app.route('/api/auth/phone/send', methods=['POST'])
 def send_phone_code():
@@ -784,7 +797,7 @@ def signup():
         return jsonify({'error': 'Add the business name, category, and phone number.'}), 400
 
     # Check if user already exists
-    if User.query.filter_by(email=data['email']).first():
+    if User.query.filter(db.func.lower(User.email) == str(data.get('email') or '').strip().lower()).first():
         return jsonify({'error': 'Email already registered'}), 400
     
     # Create new user
@@ -858,7 +871,8 @@ def signup():
 def login():
     data = request.get_json()
     
-    user = User.query.filter_by(email=data['email']).first()
+    email = str(data.get('email') or '').strip().lower()
+    user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
     
     if not user:
         return jsonify({'error': 'Invalid credentials'}), 401
@@ -993,7 +1007,7 @@ def get_listings():
     rows = []
     for listing in Listing.query.order_by(Listing.created.desc()).all():
         if listing.taken:
-            keeps = viewer and (viewer.role == 'admin' or viewer.id == listing.owner_id or (viewer.role == 'student' and (listing.id in approved or listing.id in pending)))
+            keeps = viewer and (viewer.role == 'admin' or viewer.id == listing.owner_id or (viewer.role == 'student' and listing.id in approved))
             if not keeps:
                 continue
         rows.append(serialize_listing(listing, viewer, approved, pending))
@@ -1084,7 +1098,10 @@ def mark_listing_taken(listing_id):
         return jsonify({'error': 'Only the landlord can mark a room taken'}), 403
     if not listing or listing.owner_id != user.id:
         return jsonify({'error': 'That room was not found'}), 404
-    listing.taken = bool((request.get_json() or {}).get('taken'))
+    want = bool((request.get_json() or {}).get('taken'))
+    if not want and Unlock.query.filter_by(listing_id=listing.id, status='approved').first():
+        return jsonify({'error': 'A broker fee was approved, so this room stays off the site.'}), 400
+    listing.taken = want
     db.session.commit()
     return jsonify(serialize_listing(listing, user))
 
@@ -1311,17 +1328,35 @@ def delete_user_account(user_id):
         return jsonify({'error': 'Account not found'}), 404
     if person.role == 'admin' or person.id == admin.id:
         return jsonify({'error': 'The admin account stays.'}), 400
-    for listing in Listing.query.filter_by(owner_id=person.id).all():
-        Unlock.query.filter_by(listing_id=listing.id).delete()
-        Request.query.filter_by(listing_id=listing.id).delete()
-        db.session.delete(listing)
-    Unlock.query.filter_by(student_id=person.id).delete()
-    Request.query.filter_by(student_id=person.id).delete()
-    BrokerProfile.query.filter_by(user_id=person.id).delete()
-    BrokerLocation.query.filter_by(user_id=person.id).delete()
-    BrokerPortfolio.query.filter_by(broker_id=person.id).delete()
-    db.session.delete(person)
-    db.session.commit()
+    try:
+        listing_ids = [row.id for row in Listing.query.filter_by(owner_id=person.id).all()]
+        if listing_ids:
+            Unlock.query.filter(Unlock.listing_id.in_(listing_ids)).delete(synchronize_session=False)
+            Request.query.filter(Request.listing_id.in_(listing_ids)).delete(synchronize_session=False)
+            Listing.query.filter(Listing.id.in_(listing_ids)).delete(synchronize_session=False)
+        Unlock.query.filter_by(student_id=person.id).delete(synchronize_session=False)
+        Request.query.filter_by(student_id=person.id).delete(synchronize_session=False)
+        BrokerProfile.query.filter_by(user_id=person.id).delete(synchronize_session=False)
+        BrokerLocation.query.filter_by(user_id=person.id).delete(synchronize_session=False)
+        BrokerPortfolio.query.filter_by(broker_id=person.id).delete(synchronize_session=False)
+        DonorProfile.query.filter_by(user_id=person.id).delete(synchronize_session=False)
+        Donation.query.filter_by(donor_id=person.id).delete(synchronize_session=False)
+        business_ids = [row.id for row in Business.query.filter_by(owner_id=person.id).all()]
+        order_query = MarketOrder.query.filter((MarketOrder.customer_id == person.id) | (MarketOrder.owner_id == person.id))
+        if business_ids:
+            order_query = MarketOrder.query.filter((MarketOrder.customer_id == person.id) | (MarketOrder.owner_id == person.id) | (MarketOrder.business_id.in_(business_ids)))
+        order_ids = [row.id for row in order_query.all()]
+        if order_ids:
+            MarketAudit.query.filter(MarketAudit.order_id.in_(order_ids)).delete(synchronize_session=False)
+            MarketOrder.query.filter(MarketOrder.id.in_(order_ids)).delete(synchronize_session=False)
+        if business_ids:
+            CatalogItem.query.filter(CatalogItem.business_id.in_(business_ids)).delete(synchronize_session=False)
+            Business.query.filter(Business.id.in_(business_ids)).delete(synchronize_session=False)
+        db.session.delete(person)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'That account could not be deleted. Try again.'}), 400
     return jsonify({'message': 'Deleted'})
 
 @app.route('/api/admin/stats', methods=['GET'])
@@ -1806,6 +1841,13 @@ def decide_unlock(unlock_id):
         return jsonify({'error': 'Choose approve or reject'}), 400
     row.status = status
     row.note = data.get('note') or ''
+    listing = Listing.query.get(row.listing_id)
+    if listing and status == 'approved':
+        listing.taken = True
+    elif listing and status == 'rejected':
+        other = Unlock.query.filter(Unlock.listing_id == listing.id, Unlock.status == 'approved', Unlock.id != row.id).first()
+        if not other:
+            listing.taken = False
     db.session.commit()
     return jsonify(unlock_payload(row))
 

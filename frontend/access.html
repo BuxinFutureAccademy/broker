@@ -6,7 +6,7 @@
   <title>Sign in · StudentStay</title>
   <link rel="stylesheet" href="style.css?v=9">
   <link rel="stylesheet" href="portal.css?v=6">
-  <link rel="stylesheet" href="access.css?v=17">
+  <link rel="stylesheet" href="access.css?v=18">
 </head>
 <body class="portal-body">
   <header class="topbar">
@@ -139,8 +139,28 @@
       </div>
     </div>
   </div>
+  <div id="policyGate" class="policy-gate hidden" role="dialog" aria-modal="true" aria-labelledby="policyGateTitle">
+    <div class="policy-gate-card">
+      <span class="enter-kicker">Before a new account</span>
+      <h2 id="policyGateTitle">Read the Privacy and policy</h2>
+      <p>A new email has to accept this before the account opens. An email that is already here just signs in.</p>
+      <div class="policy-scroll">
+        <h3>Houses</h3>
+        <p>A house shows photos and the sector. The street, the map, and the landlord’s phone stay hidden. The broker fee is half of one month’s rent. You pay one QR, upload the receipt, and the admin approves it. Then you contact the broker. Approval does not open the street or the landlord’s number.</p>
+        <h3>Restaurants, shops, and services</h3>
+        <p>You place one order of each kind at a time. The owner types the amount they received. You confirm that you received it, that you did not, or you send a note. You pay that place. StudentStay keeps 10% of the amount the owner entered.</p>
+        <h3>Honesty</h3>
+        <p>Owners and buyers tell the truth about the money and about whether the order arrived. A receipt that is not a real payment is the same. StudentStay can remove a dishonest owner’s place, a dishonest landlord’s houses, or a dishonest buyer’s account.</p>
+        <p><a href="policy.html" target="_blank" rel="noopener">Open the full Privacy and policy</a></p>
+      </div>
+      <div class="policy-actions">
+        <button class="outline-button" type="button" data-policy-cancel>Not now</button>
+        <button class="primary-button" type="button" data-policy-accept>I accept</button>
+      </div>
+    </div>
+  </div>
 
   <script src="session.js?v=22"></script>
-  <script src="portal-api.js?v=25"></script>
+  <script src="portal-api.js?v=27"></script>
 </body>
 </html>

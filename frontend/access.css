@@ -2,11 +2,21 @@
 
 .auth-tabs { gap: 12px; }
 .tab { font-size: 13px; }
-.role-picker.hidden, .auth-split.hidden, .alt-signin.hidden, .enter-choice.hidden, .signup-only.hidden, .business-only.hidden, .user-only.hidden, .forgot-link.hidden, .reset-panel.hidden, #resetCodeForm.hidden, #resetEmailForm.hidden { display: none; }
+.role-picker.hidden, .auth-split.hidden, .alt-signin.hidden, .enter-choice.hidden, .signup-only.hidden, .business-only.hidden, .user-only.hidden, .forgot-link.hidden, .reset-panel.hidden, #resetCodeForm.hidden, #resetEmailForm.hidden, .policy-gate.hidden { display: none; }
 .policy-agree{display:grid;gap:8px;margin:14px 0 2px;color:#294968;font-size:13px;line-height:1.45}
 .policy-agree label{display:flex;gap:10px;align-items:flex-start}
 .policy-agree input{width:18px;height:18px;margin-top:2px;flex:none}
 .policy-agree a{color:#0759d6;font-weight:700}
+.policy-gate{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:22px;background:rgba(9,27,54,.46);backdrop-filter:blur(6px)}
+.policy-gate-card{width:min(560px,100%);max-height:min(680px,calc(100vh - 40px));display:flex;flex-direction:column;background:#fff;border-radius:22px;padding:24px 22px 18px;box-shadow:0 24px 60px rgba(9,38,76,.22)}
+.policy-gate-card h2{margin:0 0 6px;color:#09264c;font-size:26px;letter-spacing:-.4px}
+.policy-gate-card > p{margin:0 0 12px;color:#5b7290;font-size:15px}
+.policy-scroll{overflow:auto;padding-right:4px;color:#294968;font-size:14px;line-height:1.5}
+.policy-scroll h3{margin:14px 0 4px;color:#09264c;font-size:16px}
+.policy-scroll p{margin:0 0 8px}
+.policy-scroll a{color:#0759d6;font-weight:700}
+.policy-actions{display:flex;gap:10px;margin-top:14px}
+.policy-actions button{flex:1;height:48px}
 .forgot-link { margin: 10px 0 0; padding: 0; border: 0; background: none; color: #0759d6; font: 700 13px inherit; cursor: pointer; }
 .reset-panel { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e3ebf5; }
 .reset-panel h3 { margin: 0 0 6px; color: #09264c; }
@@ -74,4 +84,6 @@
 @media (max-width: 760px) {
   body.portal-body { padding-bottom: 96px; }
   .role-picker { grid-template-columns: repeat(2, 1fr); }
+  .policy-gate { padding: 12px 12px 108px; align-items: end; }
+  .policy-gate-card { max-height: calc(100vh - 128px); }
 }

@@ -46,11 +46,15 @@
           throw new Error('Backend is waking up. Please wait 30 seconds and try again.');
         }
         let message = 'Could not complete that. Please try again.';
+        let code = '';
         try {
           const error = JSON.parse(text);
           if (error.error) message = error.error;
+          if (error.code) code = error.code;
         } catch { /* the server did not return JSON */ }
-        throw new Error(message);
+        const failure = new Error(message);
+        failure.code = code;
+        throw failure;
       }
 
       return response.json();
@@ -132,12 +136,51 @@
       roleButtons.forEach(button => button.classList.toggle('active', button.dataset.role === role));
     };
 
+    let policyAccepted = false;
+    let policyWait = null;
+    const askPolicy = () => {
+      if (policyAccepted) return Promise.resolve(true);
+      if (policyWait) return policyWait;
+      const modal = document.querySelector('#policyGate');
+      if (!modal) return Promise.resolve(false);
+      modal.classList.remove('hidden');
+      policyWait = new Promise(resolve => {
+        const accept = modal.querySelector('[data-policy-accept]');
+        const cancel = modal.querySelector('[data-policy-cancel]');
+        const finishChoice = ok => {
+          modal.classList.add('hidden');
+          accept?.removeEventListener('click', onAccept);
+          cancel?.removeEventListener('click', onCancel);
+          policyWait = null;
+          if (ok) {
+            policyAccepted = true;
+            if (authForm.elements.policy) authForm.elements.policy.checked = true;
+          }
+          resolve(ok);
+        };
+        const onAccept = () => finishChoice(true);
+        const onCancel = () => finishChoice(false);
+        accept?.addEventListener('click', onAccept);
+        cancel?.addEventListener('click', onCancel);
+      });
+      return policyWait;
+    };
+    const ensurePolicyForSignup = async () => {
+      if (mode !== 'signup' || policyAccepted) return;
+      const ok = await askPolicy();
+      if (ok) return;
+      mode = 'signin';
+      if (role === 'student') role = 'landlord';
+      updateAuth();
+    };
+
     tabs.forEach(button => button.addEventListener('click', () => {
       mode = button.dataset.mode;
       if (mode !== 'signup' && role === 'student') role = 'landlord';
       updateAuth();
       if (mode === 'signin' && currentUser && token && currentUser.role === 'student') document.querySelector('#enterChoice')?.classList.remove('hidden');
       else document.querySelector('#enterChoice')?.classList.add('hidden');
+      ensurePolicyForSignup();
     }));
     roleButtons.forEach(button => button.addEventListener('click', () => { role = button.dataset.role; updateAuth(); }));
     const params = new URLSearchParams(location.search);
@@ -148,6 +191,7 @@
     if (mode === 'signup' && !requestedRole) role = 'student';
     if (location.hash === '#student') showStudentArea();
     updateAuth();
+    ensurePolicyForSignup();
     const resetPanel = document.querySelector('#resetPanel');
     const resetEmailForm = document.querySelector('#resetEmailForm');
     const resetCodeForm = document.querySelector('#resetCodeForm');
@@ -232,13 +276,19 @@
             callback: async response => {
             try {
               const picked = document.querySelector('#ownerPicker .role-choice.active')?.dataset.role;
-              const googleRole = mode === 'owners' ? (picked || role) : 'student';
-              const acceptedPolicy = mode === 'signup' && !!document.querySelector('#policyAgree')?.checked;
-              if (mode === 'signup' && !acceptedPolicy) {
-                say('Read the Privacy and policy and tick the box before you open an account.');
-                return;
+              const googleRole = mode === 'owners' ? (picked || role) : mode === 'signup' ? role : 'student';
+              const send = accepted => apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: googleRole, acceptedPolicy: !!accepted }) });
+              try {
+                finish(await send(policyAccepted));
+              } catch (error) {
+                if (error.code !== 'policy_required') throw error;
+                const ok = await askPolicy();
+                if (!ok) {
+                  say('This Google email is new. Accept the Privacy and policy before the account opens.');
+                  return;
+                }
+                finish(await send(true));
               }
-              finish(await apiCall('/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential, role: googleRole, acceptedPolicy }) }));
             } catch (error) { say(error.message); }
           }
         });
@@ -274,32 +324,50 @@
       }
 
       try {
-        if (mode === 'signup' && !authForm.elements.policy?.checked) {
-          alert('Read the Privacy and policy and tick the box before you open an account.');
-          return;
-        }
-        const response = mode === 'signup'
-          ? await apiCall('/auth/signup', {
+        if (mode === 'signup') {
+          if (!(await askPolicy())) return;
+          finish(await apiCall('/auth/signup', {
             method: 'POST',
             body: JSON.stringify({
-                name: String(form.get('name') || '').trim(),
+              name: String(form.get('name') || '').trim(),
               email,
               password,
               role,
               phone: String(form.get('phone') || '').trim(),
               city: String(form.get('city') || '').trim(),
-                address: String(form.get('address') || '').trim(),
-                businessName: String(form.get('businessName') || '').trim(),
-                category: String(form.get('category') || '').trim(),
-                acceptedPolicy: true
-              })
+              address: String(form.get('address') || '').trim(),
+              businessName: String(form.get('businessName') || '').trim(),
+              category: String(form.get('category') || '').trim(),
+              acceptedPolicy: true
             })
-          : await apiCall('/auth/login', {
+          }));
+          return;
+        }
+        const found = await apiCall('/auth/email', { method: 'POST', body: JSON.stringify({ email }) });
+        if (!found?.exists) {
+          if (!(await askPolicy())) {
+            alert('This email is not an account yet. Accept the Privacy and policy before it can open.');
+            return;
+          }
+          if (mode === 'owners') {
+            mode = 'signup';
+            updateAuth();
+            const note = document.querySelector('#authNote');
+            if (note) note.textContent = 'This email is new. Add your name. The Privacy and policy is accepted. Then open the account.';
+            return;
+          }
+          const raw = email.split('@')[0] || 'Student';
+          const name = raw.replace(/[._-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()).slice(0, 100) || 'Student';
+          finish(await apiCall('/auth/signup', {
             method: 'POST',
-              body: JSON.stringify({ email, password, role: mode === 'owners' ? role : 'student' })
-            });
-
-        finish(response);
+            body: JSON.stringify({ name, email, password, role: 'student', city: 'Greater Noida', acceptedPolicy: true })
+          }));
+          return;
+        }
+        finish(await apiCall('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password, role: mode === 'owners' ? role : 'student' })
+        }));
       } catch (error) {
         alert(error.message);
       }
@@ -334,7 +402,7 @@
       if (listingCountEl) listingCountEl.textContent = listings.length;
       if (requestCountEl) requestCountEl.textContent = unlocks.length;
 
-      renderListings('#studentListings', listings, { request: true, studentId: currentUser.id });
+      renderListings('#studentListings', listings.filter(item => !item.taken), { request: true, studentId: currentUser.id });
 
       const feeCard = item => {
         const title = esc(item.listing?.title || 'Home');
@@ -397,11 +465,11 @@
     target.innerHTML = items.map(item => {
       const paid = options.paidIds?.has(item.id);
       const takenNote = !options.owner ? '' : item.taken
-        ? `<p class="taken-note">This room is taken. Students no longer see it.</p>`
+        ? `<p class="taken-note">${paid ? 'A broker fee was approved. This room is off the site. The student who paid can still open it.' : 'This room is taken. Students no longer see it.'}</p>`
         : paid
-          ? `<p class="taken-alert">A student paid the broker fee. Mark the room taken if they moved in. Leave it open if someone else can still take it.</p>`
+          ? `<p class="taken-alert">A student paid the broker fee. It leaves the site when the admin approves that fee.</p>`
           : '';
-      const takenButton = !options.owner ? '' : `<button class="small-button" type="button" data-mark-taken="${esc(item.id)}" data-taken="${item.taken ? '0' : '1'}">${item.taken ? 'Open this room' : 'This room is taken'}</button>`;
+      const takenButton = !options.owner || (item.taken && paid) ? '' : `<button class="small-button" type="button" data-mark-taken="${esc(item.id)}" data-taken="${item.taken ? '0' : '1'}">${item.taken ? 'Open this room' : 'This room is taken'}</button>`;
       return `<article class="listing-tile detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><img src="${esc(img(item))}" alt="${esc(item.title)}"><div class="listing-tile-body"><h3>${esc(item.title)}</h3><p>${esc(item.type)} · ${esc(item.sector || item.city || 'Greater Noida')}</p><div class="listing-price">${money(item.rent)} <small>/ month</small></div><p>${esc(item.description)}</p><p>⌖ ${esc((options.owner || currentUser?.role === 'admin') && item.address ? item.address : (item.sector || item.city || 'Greater Noida'))}</p>${takenNote}${options.owner ? `<div class="listing-actions">${takenButton}<button class="small-button" data-edit-listing="${esc(item.id)}">Edit</button><button class="small-button danger" data-delete-listing="${esc(item.id)}">Remove</button></div>` : `<div class="listing-actions"><a class="primary-button" href="property.html?id=${encodeURIComponent(item.id)}">View home</a></div>`}</div></article>`;
     }).join('');
     target.querySelectorAll('[data-property-id]').forEach(tile => { tile.addEventListener('click', event => { if (!event.target.closest('button')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }); tile.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } }); });

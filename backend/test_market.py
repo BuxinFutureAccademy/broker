@@ -21,6 +21,8 @@ def main():
         'name': 'No Policy', 'email': 'nopolicy@market.test', 'password': 'secret12', 'role': 'student'
     })
     assert missing_policy.status_code == 400, missing_policy.get_json()
+    missing_email = client.post('/api/auth/email', json={'email': 'ada@market.test'})
+    assert missing_email.status_code == 200 and missing_email.get_json()['exists'] is False
 
     registered = client.post('/api/auth/signup', json={
         'name': 'Ada Owner',
@@ -35,6 +37,8 @@ def main():
         'acceptedPolicy': True,
     })
     assert registered.status_code == 201, registered.get_json()
+    known_email = client.post('/api/auth/email', json={'email': 'Ada@market.test'})
+    assert known_email.status_code == 200 and known_email.get_json()['exists'] is True
     assert registered.get_json()['user']['role'] == 'restaurant'
     vendor_token = registered.get_json()['access_token']
     mine = client.get('/api/market/mine', headers=auth(vendor_token))
@@ -191,6 +195,37 @@ def main():
     assert removed.status_code == 200, removed.get_json()
     after = client.get('/api/market/admin/orders?kind=restaurant', headers=auth(admin.get_json()['access_token']))
     assert all(row['id'] != place_id for row in after.get_json()['places'])
+
+    landlord = client.post('/api/auth/signup', json={
+        'name': 'House Owner', 'email': 'houses@market.test', 'password': 'secret12', 'role': 'landlord',
+        'phone': '+91 90000 00077', 'city': 'Alpha 1', 'acceptedPolicy': True,
+    })
+    assert landlord.status_code == 201, landlord.get_json()
+    landlord_token = landlord.get_json()['access_token']
+    landlord_id = landlord.get_json()['user']['id']
+    listed_room = client.post('/api/listings', json={
+        'title': 'Rented Room', 'type': 'Room', 'rent': 10000, 'address': 'Lane 1',
+        'sector': 'Alpha 1', 'city': 'Greater Noida', 'description': 'A quiet room', 'available': 'now',
+    }, headers=auth(landlord_token))
+    assert listed_room.status_code == 201, listed_room.get_json()
+    room_id = listed_room.get_json()['id']
+    renter = client.post('/api/auth/signup', json={
+        'name': 'Renter', 'email': 'renter@market.test', 'password': 'secret12', 'role': 'student', 'acceptedPolicy': True,
+    })
+    assert renter.status_code == 201, renter.get_json()
+    renter_token = renter.get_json()['access_token']
+    receipt = client.post('/api/unlocks', json={'listingId': room_id, 'receiptUrl': 'https://example.com/receipt.png'}, headers=auth(renter_token))
+    assert receipt.status_code == 201, receipt.get_json()
+    assert any(row['id'] == room_id for row in client.get('/api/listings').get_json())
+    meal = client.post('/api/market/orders', json={'itemId': item_id, 'quantity': 1}, headers=auth(landlord_token))
+    assert meal.status_code == 201, meal.get_json()
+    approved = client.put(f"/api/admin/unlocks/{receipt.get_json()['id']}", json={'status': 'approved'}, headers=auth(admin.get_json()['access_token']))
+    assert approved.status_code == 200, approved.get_json()
+    assert all(row['id'] != room_id for row in client.get('/api/listings').get_json())
+    assert any(row['id'] == room_id for row in client.get('/api/listings', headers=auth(renter_token)).get_json())
+    removed_owner = client.delete(f'/api/admin/users/{landlord_id}', headers=auth(admin.get_json()['access_token']))
+    assert removed_owner.status_code == 200, removed_owner.get_json()
+    assert all(row['id'] != room_id for row in client.get('/api/listings', headers=auth(admin.get_json()['access_token'])).get_json())
 
     print('market checks passed')
 
