@@ -26,12 +26,22 @@
     return true;
   };
   let hub = 'houses';
-  document.querySelectorAll('[data-hub]').forEach(button => button.addEventListener('click', () => {
-    hub = button.dataset.hub;
-    document.querySelectorAll('[data-hub]').forEach(item => item.classList.toggle('on', item === button));
-    ['type', 'rent'].forEach(name => { const label = document.querySelector(`[name="${name}"]`)?.closest('label'); if (label) label.hidden = hub !== 'houses'; });
-    const date = document.querySelector('.date-field');
-    if (date) date.hidden = hub !== 'houses';
+  const pages = { houses: 'properties.html', items: 'shop.html', food: 'food.html', services: 'service.html' };
+  document.querySelectorAll('[data-hub]').forEach(button => button.addEventListener('click', event => {
+    const page = pages[button.dataset.hub];
+    if (!page) return;
+    event.preventDefault();
+    const q = (document.querySelector('[name="q"]')?.value || '').trim();
+    const sector = document.querySelector('[name="sector"]')?.value || '';
+    const area = /any sector/i.test(sector) ? '' : sector;
+    const params = new URLSearchParams();
+    if (button.dataset.hub === 'houses') {
+      if (q || area) params.set('city', q || area);
+    } else {
+      if (q) params.set('q', q);
+      if (area) params.set('area', area);
+    }
+    location.href = params.toString() ? `${page}?${params}` : page;
   }));
   const filterCards = () => {
     if (!grid) return;

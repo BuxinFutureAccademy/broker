@@ -14,7 +14,7 @@
 
   box.classList.add('signed-in');
   box.innerHTML = `
-    <a class="icon-btn" href="orders.html" aria-label="Requests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21h4"/></svg></a>
+    <a class="icon-btn" href="notifications.html" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21h4"/></svg></a>
     <a class="icon-btn" href="${dashboard}" aria-label="Account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.5-3 3.5-4 7-4s5.5 1 7 4"/></svg></a>
     <a class="account-chip" href="${dashboard}">
       <span class="user-avatar">${initial}</span>
@@ -73,12 +73,10 @@
   const youOn = page === 'access.html' || (signed && page === account);
   const you = `<a${youOn ? ' class="on"' : ''} href="${account}"><b>●</b><span>${signed ? 'You' : 'Sign in'}</span></a>`;
   if (document.body.classList.contains('market-app')) {
-    const exploreMap = { 'food.html': 'restaurants.html', 'restaurants.html': 'restaurants.html', 'shop.html': 'shops.html', 'shops.html': 'shops.html', 'service.html': 'services.html', 'services.html': 'services.html' };
-    const explore = exploreMap[page] || (page === 'business.html' && poolHome === 'food.html' ? 'restaurants.html' : page === 'business.html' && poolHome === 'shop.html' ? 'shops.html' : page === 'business.html' && poolHome === 'service.html' ? 'services.html' : 'properties.html');
     const icon = (path, label, href, on) => `<a class="${on ? 'on' : ''}" href="${href}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="${path}"/></svg><span>${label}</span></a>`;
     nav.innerHTML = [
       icon('M4 11 12 4l8 7v9H4z', 'Home', 'index.html', page === 'index.html'),
-      icon('M11 5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm8.5 13.5-3.2-3.2', 'Explore', explore, ['properties.html', 'property.html', 'food.html', 'restaurants.html', 'shop.html', 'shops.html', 'service.html', 'services.html', 'business.html'].includes(page)),
+      icon('M11 5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm8.5 13.5-3.2-3.2', 'Explore', 'explore.html', page === 'explore.html'),
       icon('M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z', 'Favorites', 'saved.html', page === 'saved.html'),
       `<button type="button" class="tab-more${youOn ? ' on' : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><span>More</span></button>`
     ].join('');
@@ -102,6 +100,17 @@
 })();
 
 (() => {
+  if (document.body.classList.contains('market-app') && !document.querySelector('#reachFloat')) {
+    const float = document.createElement('div');
+    float.className = 'reach';
+    float.id = 'reachFloat';
+    float.innerHTML = '<a class="reach-wa" data-reach="wa" hidden>WhatsApp</a><a class="reach-mail" data-reach="mail" hidden>Email</a>';
+    document.body.appendChild(float);
+  }
+  document.querySelectorAll('a.icon-btn[aria-label="Contact"]').forEach(link => {
+    link.href = 'notifications.html';
+    link.setAttribute('aria-label', 'Notifications');
+  });
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
   fetch('https://broker-961c.onrender.com/api/payment').then(response => response.ok ? response.json() : null).then(payment => {
     if (!payment) return;
@@ -191,7 +200,9 @@
         const image = card.querySelector('img')?.getAttribute('src') || '';
         const price = card.querySelector('.price')?.textContent || '';
         const href = card.dataset.propertyId ? `property.html?id=${encodeURIComponent(id)}` : `business.html?id=${encodeURIComponent(card.dataset.businessId || id)}${card.dataset.itemId ? `&item=${encodeURIComponent(card.dataset.itemId)}` : ''}`;
-        rows.unshift({ id, title, image, price, href });
+        const pageName = (location.pathname.split('/').pop() || '').toLowerCase();
+        const kind = card.dataset.kind || (card.dataset.propertyId ? 'Home' : pageName.includes('food') || pageName.includes('restaurant') ? 'Food' : pageName.includes('shop') ? 'Item' : pageName.includes('service') ? 'Service' : 'Saved');
+        rows.unshift({ id, title, image, price, href, kind });
       }
       write(rows);
     }, 0);
@@ -200,4 +211,31 @@
     mark();
     new MutationObserver(mark).observe(document.body, { childList: true, subtree: true });
   }
+})();
+
+(() => {
+  const token = localStorage.getItem('studentstay_token');
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('studentstay_user') || 'null'); } catch { user = null; }
+  const bell = document.querySelector('a.icon-btn[aria-label="Notifications"]');
+  const here = (location.pathname.split('/').pop() || '').toLowerCase();
+  if (!token || !user || !bell || here === 'notifications.html') return;
+  const paths = user.role === 'student'
+    ? ['/market/my-orders', '/requests/student', '/unlocks/student']
+    : user.role === 'landlord'
+      ? ['/requests/landlord']
+      : ['restaurant', 'shop', 'service'].includes(user.role)
+        ? ['/market/vendor/orders']
+        : [];
+  if (!paths.length) return;
+  const seen = new Set((() => { try { return JSON.parse(localStorage.getItem('ekvora_notes_seen') || '[]'); } catch { return []; } })());
+  const stamp = row => `${row.id}:${row.status || ''}`;
+  Promise.all(paths.map(path => fetch(`https://broker-961c.onrender.com/api${path}`, { headers: { Authorization: `Bearer ${token}` } }).then(response => response.ok ? response.json() : []).catch(() => []))).then(groups => {
+    const fresh = groups.flat().filter(row => row && row.id && !seen.has(stamp(row)));
+    if (!fresh.length) return;
+    const dot = document.createElement('i');
+    dot.className = 'note-dot';
+    dot.textContent = fresh.length > 9 ? '9+' : String(fresh.length);
+    bell.appendChild(dot);
+  });
 })();

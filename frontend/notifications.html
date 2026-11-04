@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notifications · EkVora</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="ekvora.css?v=7">
+</head>
+<body class="market-app theme-home">
+  <header class="topbar">
+    <a class="brand" href="index.html"><span><strong>Ek<span>Vora</span></strong><small>Homes • Food • Items • Services</small></span></a>
+    <nav class="nav"><a href="index.html">Houses</a><a href="food.html">Restaurants</a><a href="shop.html">Shop</a><a href="service.html">Services</a><a href="contact.html">Contact us</a><a href="about.html">About us</a><a href="policy.html">Privacy and policy</a></nav>
+    <div class="account"><a class="icon-btn" href="notifications.html" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21h4"/></svg></a><a class="icon-btn" href="access.html" aria-label="Account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.5-3 3.5-4 7-4s5.5 1 7 4"/></svg></a><button class="login" onclick="location.href='access.html'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
+    <button class="menu" aria-label="Open menu">☰</button>
+  </header>
+  <main class="hub">
+    <section class="block">
+      <div class="block-head"><h2>Notifications</h2></div>
+      <div class="note-list" id="noteList"><div class="empty-state">Loading your updates…</div></div>
+    </section>
+  </main>
+  <script src="session.js?v=27"></script>
+  <script src="notifications.js?v=1"></script>
+</body>
+</html>

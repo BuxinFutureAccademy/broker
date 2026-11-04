@@ -183,6 +183,7 @@ def init_market():
             'commissionAmount': order.commission_amount,
             'commissionStatus': order.commission_status or '',
             'created': order.created.isoformat() if order.created else None,
+            'updated': order.updated.isoformat() if order.updated else (order.created.isoformat() if order.created else None),
         }
         if include_contact and business:
             data['contact'] = contact_payload(business)

@@ -19,7 +19,7 @@
 
   let cards = [];
   const grid = document.querySelector('#allProperties');
-  const cityParam = new URLSearchParams(location.search).get('city') || '';
+  const cityParam = new URLSearchParams(location.search).get('city') || new URLSearchParams(location.search).get('q') || '';
   const search = document.querySelector('#propertyQuery');
   if (search && cityParam) search.value = cityParam;
   let typeChip = '';
