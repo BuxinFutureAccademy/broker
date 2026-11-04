@@ -74,7 +74,10 @@
     if (date) date.hidden = name !== 'houses';
     if (move && phone() && pager) pager.scrollTo({ left: order.indexOf(name) * pager.clientWidth, behavior: 'smooth' });
   };
-  document.querySelectorAll('[data-feed]').forEach(button => button.addEventListener('click', () => applyFeed(button.dataset.feed, true)));
+  document.querySelectorAll('[data-feed]').forEach(button => button.addEventListener('click', () => {
+    if (button.tagName === 'A') return;
+    applyFeed(button.dataset.feed, true);
+  }));
   let scrollTimer;
   pager?.addEventListener('scroll', () => {
     if (!phone()) return;
@@ -109,12 +112,15 @@
     const phone = payment.contactPhone || '';
     const email = payment.contactEmail || '';
     const name = payment.contactName || 'Admin';
+    const note = link.querySelector('small');
     if (phone) {
       link.href = `tel:${dial(phone)}`;
-      link.textContent = `${name} · ${phone}`;
+      if (note) note.textContent = `${name} · ${phone}`;
+      else link.textContent = `${name} · ${phone}`;
     } else if (email) {
       link.href = `mailto:${email}`;
-      link.textContent = email;
+      if (note) note.textContent = email;
+      else link.textContent = email;
     }
     const wa = dial(phone).replace(/^\+/, '');
     const intro = 'Hello Ekvora, my name is ______. I am an international student looking for a room in Greater Noida. How can you help me?';

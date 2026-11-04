@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=17" />
   <link rel="stylesheet" href="catalog.css?v=9" />
-  <link rel="stylesheet" href="ekvora.css?v=9" />
+  <link rel="stylesheet" href="ekvora.css?v=10" />
 </head>
 <body class="market-app theme-home">
   <header class="topbar">
@@ -46,10 +46,10 @@
         <button class="search-btn" type="submit">Search Now</button>
       </div>
       <div class="hub-tabs home-switch" role="tablist">
-        <button type="button" class="on" data-feed="houses">Rooms</button>
-        <button type="button" data-feed="items">Items</button>
-        <button type="button" data-feed="food">Food</button>
-        <button type="button" data-feed="services">Services</button>
+        <a class="on" data-feed="houses" href="properties.html">Rooms</a>
+        <a data-feed="items" href="shop.html">Items</a>
+        <a data-feed="food" href="food.html">Food</a>
+        <a data-feed="services" href="service.html">Services</a>
       </div>
     </form>
 
@@ -82,32 +82,21 @@
       </div>
     </section>
 
-    <section class="why" id="about">
-      <h2>Why Choose EkVora?</h2>
-      <div class="why-row">
-        <article><span class="why-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 5 6v6c0 4 3 6.5 7 8 4-1.5 7-4 7-8V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>Trusted</b><small>Checked places</small></span></article>
-        <article><span class="why-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3 5 14h7l-1 7 8-11h-7z"/></svg></span><span><b>Fast</b><small>Simple to use</small></span></article>
-        <article><span class="why-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/><path d="M4 18c.6-2 2.2-3 4-3s3.4 1 4 3M12 18c.6-2 2.2-3 4-3s3.4 1 4 3"/></svg></span><span><b>Community</b><small>Made for students</small></span></article>
-        <article><span class="why-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13a8 8 0 0 1 16 0"/><path d="M4 13v4a2 2 0 0 0 2 2h1v-6H4zM20 13v4a2 2 0 0 1-2 2h-1v-6h3z"/></svg></span><span><b>Support</b><small>Help when you need it</small></span></article>
-      </div>
-    </section>
-
     <section class="join">
       <div><p>Connect • Trade • Grow</p><h2>Build a Better Life Together</h2></div>
       <a href="access.html?mode=signup">Join Now</a>
     </section>
 
-    <section class="help-band" id="help">
-      <div class="section-heading">
-        <div>
-          <h2>Contact</h2>
-          <p>Ask about a room, a request, or your account.</p>
-        </div>
-        <a href="about.html">About us →</a> <a id="siteContact" href="contact.html">Open contact →</a>
+    <section class="home-contact" id="help">
+      <div class="home-contact-copy">
+        <p>We are here</p>
+        <h2>Contact us</h2>
+        <span>Ask about a room, an order, or your account.</span>
       </div>
-      <div class="reach-row">
-        <a class="reach-wa" data-reach="wa" hidden>WhatsApp</a>
-        <a class="reach-mail" data-reach="mail" hidden>Email</a>
+      <div class="home-contact-actions">
+        <a class="touch touch-call" id="siteContact" href="contact.html"><b>Call</b><small>Phone</small></a>
+        <a class="touch touch-wa" data-reach="wa" hidden><b>WhatsApp</b><small>Chat</small></a>
+        <a class="touch touch-mail" data-reach="mail" hidden><b>Email</b><small>Write</small></a>
       </div>
     </section>
   </main>
@@ -117,7 +106,7 @@
   </div>
   <script src="skeleton.js?v=1"></script>
   <script src="sample-data.js?v=4"></script>
-  <script src="script.js?v=16"></script>
+  <script src="script.js?v=17"></script>
   <script src="session.js?v=27"></script>
 </body>
 </html>

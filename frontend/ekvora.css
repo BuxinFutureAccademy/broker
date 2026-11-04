@@ -350,6 +350,28 @@ body.market-app .join {
 body.market-app .join h2 { color: var(--navy); font-size: 15px; margin: 0; }
 body.market-app .join p { color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: 0.2px; margin: 0 0 3px; }
 body.market-app .join a { padding: 8px 12px; font-size: 12px; }
+body.market-app .home-contact {
+  margin: 14px 12px 20px; padding: 16px 14px; border-radius: 20px; color: #fff;
+  background: linear-gradient(160deg, #102B50 0%, #0755D9 72%);
+  box-shadow: 0 14px 32px rgba(16, 43, 80, 0.16);
+}
+body.market-app .home-contact-copy p {
+  margin: 0 0 2px; font-size: 11px; font-weight: 800; letter-spacing: 0.4px;
+  text-transform: uppercase; color: #FFBE0B;
+}
+body.market-app .home-contact h2 { margin: 0 0 4px; font-size: 22px; color: #fff; }
+body.market-app .home-contact-copy span { display: block; max-width: 280px; font-size: 13px; line-height: 1.4; color: rgba(255,255,255,.9); }
+body.market-app .home-contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+body.market-app .home-contact .touch {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; min-height: 58px;
+  padding: 10px 12px; border-radius: 14px; background: #fff; color: #102B50; text-decoration: none;
+}
+body.market-app .home-contact .touch[hidden] { display: none !important; }
+body.market-app .home-contact .touch-call { grid-column: 1 / -1; }
+body.market-app .home-contact .touch b { font-size: 14px; line-height: 1.1; }
+body.market-app .home-contact .touch small { font-size: 12px; font-weight: 600; color: #64748B; overflow-wrap: anywhere; }
+body.market-app .home-contact .touch-wa b { color: #0F7A63; }
+body.market-app .home-contact .touch-mail b { color: #C2410C; }
 body.market-app .note-dot {
   position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 999px; background: #E11D48; color: #fff; font-size: 9px; font-style: normal; font-weight: 800;
@@ -377,6 +399,8 @@ body.market-app .explore-row .property-card .photo { height: 92px; min-height: 0
   .feed-pager > section { display: none; }
   .feed-pager > section.is-on { display: block; }
   .home-rail { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  body.market-app .home-contact { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-left: 0; margin-right: 0; }
+  body.market-app .home-contact-actions { margin-top: 0; min-width: 360px; }
 }
 @media (max-width: 899px) {
   body.theme-home .hub { display: flex; flex-direction: column; }
@@ -390,9 +414,9 @@ body.market-app .explore-row .property-card .photo { height: 92px; min-height: 0
   body.theme-home .home-services { display: none; }
   body.theme-home .sheet { order: 1; margin: 8px 8px 0; max-width: calc(100% - 16px); overflow: hidden; }
   body.theme-home .feed-pager { order: 2; }
-  body.theme-home .why { order: 3; }
-  body.theme-home .join { order: 4; }
-  body.theme-home .help-band { order: 5; }
+  body.theme-home .join { order: 3; }
+  body.theme-home .home-contact { order: 4; margin: 10px 8px 16px; padding: 14px 12px; }
+  body.theme-home .home-contact h2 { font-size: 18px; }
   body.theme-home .seek { margin-top: 0; }
   body.theme-home .filter-pop { display: none; }
   body.theme-home .sheet.filters-open .filter-pop { display: block; }
