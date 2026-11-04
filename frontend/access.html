@@ -6,7 +6,7 @@
   <title>Sign in · Ekvora</title>
   <link rel="stylesheet" href="style.css?v=10">
   <link rel="stylesheet" href="portal.css?v=6">
-  <link rel="stylesheet" href="access.css?v=23">
+  <link rel="stylesheet" href="access.css?v=24">
   <link rel="stylesheet" href="ekvora.css?v=10">
 </head>
 <body class="market-app portal-body">
@@ -43,8 +43,9 @@
           <label class="wide signup-only business-only hidden">Business name
             <input name="businessName" placeholder="The name customers will see">
           </label>
-          <label class="wide signup-only business-only hidden">Category
-            <input name="category" placeholder="Meals, grocery, barber">
+          <label class="wide signup-only business-only hidden" id="categoryField">Category
+            <input class="category-typed" name="category" placeholder="Meals">
+            <select class="category-listed hidden" disabled></select>
           </label>
           <label class="wide">Email address
             <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
@@ -154,6 +155,6 @@
   </div>
 
   <script src="session.js?v=27"></script>
-  <script src="portal-api.js?v=31"></script>
+  <script src="portal-api.js?v=33"></script>
 </body>
 </html>

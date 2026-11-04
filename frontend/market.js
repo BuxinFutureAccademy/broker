@@ -531,6 +531,10 @@
           profileForm.dataset.id = profile ? profile.id : '';
           const setField = (name, value) => { if (profileForm.elements[name]) profileForm.elements[name].value = value || ''; };
           setField('name', profile?.name);
+          const category = profileForm.elements.category;
+          if (category && category.tagName === 'SELECT' && profile?.category && ![...category.options].some(option => option.value === profile.category)) {
+            category.insertAdjacentHTML('beforeend', `<option>${esc(profile.category)}</option>`);
+          }
           setField('category', profile?.category);
           setField('phone', profile?.phone);
           setField('whatsapp', profile?.whatsapp);
@@ -673,7 +677,19 @@
       setText('#ownerProfileEyebrow', copy.eyebrow);
       setText('#ownerBrand', copy.brand);
       const categoryField = document.querySelector('#profileForm [name="category"]');
-      if (categoryField) categoryField.placeholder = copy.category;
+      const categoryChoices = {
+        shop: ['Grocery', 'Electronics', 'Clothes', 'Books', 'Pharmacy', 'Household', 'Stationery', 'Cosmetics', 'Furniture'],
+        service: ['Laundry', 'Hair and beauty', 'Cleaning', 'Phone repair', 'Tailoring', 'Printing', 'Tutoring', 'Delivery', 'AC and repair', 'Bike repair']
+      };
+      if (categoryField && categoryChoices[session.role] && categoryField.tagName !== 'SELECT') {
+        const select = document.createElement('select');
+        select.name = 'category';
+        select.required = true;
+        select.innerHTML = `<option value="">Choose a category</option>${categoryChoices[session.role].map(item => `<option>${esc(item)}</option>`).join('')}`;
+        categoryField.replaceWith(select);
+      } else if (categoryField && !categoryChoices[session.role]) {
+        categoryField.placeholder = copy.category;
+      }
       setText('#ownerName', session.name || 'Owner');
       setText('#ownerAvatar', (session.name || 'O').slice(0, 1).toUpperCase());
       const publicLink = document.querySelector('#ownerPublic');

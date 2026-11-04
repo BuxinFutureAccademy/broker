@@ -139,7 +139,31 @@
       if (authForm.elements.phone) authForm.elements.phone.required = creating && (role === 'landlord' || businessRole());
       if (authForm.elements.city) authForm.elements.city.required = creating && role === 'landlord';
       if (authForm.elements.businessName) authForm.elements.businessName.required = creating && businessRole();
-      if (authForm.elements.category) authForm.elements.category.required = creating && businessRole();
+      const shopCategories = ['Grocery', 'Electronics', 'Clothes', 'Books', 'Pharmacy', 'Household', 'Stationery', 'Cosmetics', 'Furniture'];
+      const serviceCategories = ['Laundry', 'Hair and beauty', 'Cleaning', 'Phone repair', 'Tailoring', 'Printing', 'Tutoring', 'Delivery', 'AC and repair', 'Bike repair'];
+      const listed = creating && (role === 'shop' || role === 'service');
+      const typedCategory = authForm.querySelector('.category-typed');
+      const listedCategory = authForm.querySelector('.category-listed');
+      if (listedCategory && listed) {
+        const choices = role === 'shop' ? shopCategories : serviceCategories;
+        const current = listedCategory.value;
+        listedCategory.innerHTML = `<option value="">Choose a category</option>${choices.map(item => `<option>${item}</option>`).join('')}`;
+        if ([...listedCategory.options].some(option => option.value === current)) listedCategory.value = current;
+      }
+      if (typedCategory) {
+        typedCategory.classList.toggle('hidden', listed);
+        typedCategory.hidden = listed;
+        typedCategory.disabled = listed || !creating;
+        typedCategory.required = creating && role === 'restaurant';
+        typedCategory.name = listed ? '' : 'category';
+      }
+      if (listedCategory) {
+        listedCategory.classList.toggle('hidden', !listed);
+        listedCategory.hidden = !listed;
+        listedCategory.disabled = !listed;
+        listedCategory.required = listed;
+        listedCategory.name = listed ? 'category' : '';
+      }
       const googleNote = document.querySelector('#altNote');
       if (googleNote) {
         googleNote.textContent = '';
