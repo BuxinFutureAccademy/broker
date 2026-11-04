@@ -106,16 +106,27 @@
     let role = 'landlord';
     const tabs = [...document.querySelectorAll('.tab')];
     const roleButtons = [...document.querySelectorAll('#ownerPicker .role-choice')];
-    const ownerLabels = { student: 'User', landlord: 'Landlord', restaurant: 'Restaurant owner', shop: 'Shop owner', service: 'Service owner' };
     const businessRole = () => ['restaurant', 'shop', 'service'].includes(role);
     const updateAuth = () => {
       const creating = mode === 'signup';
       const owner = mode === 'owners' || creating;
-      const label = ownerLabels[role] || 'Landlord';
-      document.querySelector('#authTitle').textContent = creating ? 'Create an account' : owner ? 'Owners' : 'Sign in';
-      document.querySelector('#authSubtitle').textContent = creating ? (role === 'student' ? 'This user signs in on the Sign in tab, then chooses a house, food, a shop, or a service.' : 'Select one. Then add your name. This account stays that one type.') : owner ? 'Sign in as a landlord, restaurant owner, shop owner, or service owner.' : 'Sign in with one account. Then choose where to enter.';
-      document.querySelector('#authSubmit').textContent = creating ? `Create ${label} account` : owner ? `Sign in as ${label}` : 'Sign in';
-      document.querySelector('#authNote').textContent = creating ? (role === 'student' ? 'After this, the user signs in on the Sign in tab.' : 'Select one type, then your name.') : owner ? 'Owners sign in here. New people use Create account.' : 'This sign-in is for a user. Owners use the Owners tab.';
+      const title = document.querySelector('#authTitle');
+      const nextTitle = creating ? 'Create an account' : mode === 'owners' ? 'Owners' : 'Sign in';
+      if (title && title.textContent !== nextTitle) {
+        title.textContent = nextTitle;
+        title.classList.remove('title-in');
+        void title.offsetWidth;
+        title.classList.add('title-in');
+      }
+      document.querySelector('.auth-card')?.setAttribute('data-auth', mode);
+      const subtitle = document.querySelector('#authSubtitle');
+      if (subtitle) {
+        subtitle.textContent = '';
+        subtitle.hidden = true;
+      }
+      document.querySelector('#authSubmit').textContent = creating ? 'Create account' : 'Sign in';
+      const note = document.querySelector('#authNote');
+      if (note && !note.dataset.hold) note.textContent = '';
       document.querySelector('#ownerPicker')?.classList.toggle('hidden', !owner);
       document.querySelector('.user-only')?.classList.toggle('hidden', !creating);
       document.querySelector('#forgotPassword')?.classList.toggle('hidden', creating);
@@ -130,7 +141,10 @@
       if (authForm.elements.businessName) authForm.elements.businessName.required = creating && businessRole();
       if (authForm.elements.category) authForm.elements.category.required = creating && businessRole();
       const googleNote = document.querySelector('#altNote');
-      if (googleNote) googleNote.textContent = owner ? 'Pick your owner type, then continue with Google.' : 'You can also sign in with Google. Then choose where to enter.';
+      if (googleNote) {
+        googleNote.textContent = '';
+        googleNote.hidden = true;
+      }
       authForm.elements.password.autocomplete = creating ? 'new-password' : 'current-password';
       tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === mode));
       roleButtons.forEach(button => button.classList.toggle('active', button.dataset.role === role));

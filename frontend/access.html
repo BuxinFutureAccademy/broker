@@ -6,8 +6,8 @@
   <title>Sign in · Ekvora</title>
   <link rel="stylesheet" href="style.css?v=10">
   <link rel="stylesheet" href="portal.css?v=6">
-  <link rel="stylesheet" href="access.css?v=18">
-  <link rel="stylesheet" href="ekvora.css?v=8">
+  <link rel="stylesheet" href="access.css?v=23">
+  <link rel="stylesheet" href="ekvora.css?v=10">
 </head>
 <body class="market-app portal-body">
   <header class="topbar">
@@ -19,32 +19,21 @@
   </header>
 
   <main class="access-shell">
-    <section class="access-intro">
-      <span class="eyebrow">WELCOME TO EKVORA</span>
-      <h1>A better stay<br>starts here.</h1>
-      <p>Find a student-friendly home, welcome new tenants, or manage your Ekvora community.</p>
-      <div class="access-points">
-        <span>✓ Verified stays</span>
-        <span>✓ Contact the broker</span>
-        <span>✓ Support for students</span>
-      </div>
-    </section>
-
-    <section class="auth-card">
+    <section class="auth-card" data-auth="signin">
       <div class="auth-tabs">
+        <span class="tab-glide" aria-hidden="true"></span>
         <button class="tab active" data-mode="signin">Sign in</button>
         <button class="tab" data-mode="owners">Owners</button>
-        <button class="tab" data-mode="signup">Create account</button>
       </div>
-      <h2 id="authTitle">Welcome back</h2>
-      <p class="muted" id="authSubtitle">Sign in with one account. Then choose where to enter.</p>
+      <h2 id="authTitle">Sign in</h2>
+      <p class="muted" id="authSubtitle" hidden></p>
       <div id="signedInNote" class="signed-in-note hidden"></div>
       <div class="role-picker hidden" id="ownerPicker" role="group" aria-label="Account type">
         <button class="role-choice user-only hidden" type="button" data-role="student">● <span>User</span></button>
-        <button class="role-choice" type="button" data-role="landlord">⌂ <span>Landlord</span></button>
-        <button class="role-choice" type="button" data-role="restaurant">🍴 <span>Restaurant owner</span></button>
-        <button class="role-choice" type="button" data-role="shop">▣ <span>Shop owner</span></button>
-        <button class="role-choice" type="button" data-role="service">✂ <span>Service owner</span></button>
+        <button class="role-choice" type="button" data-role="landlord">Landlord</button>
+        <button class="role-choice" type="button" data-role="restaurant">Restaurant</button>
+        <button class="role-choice" type="button" data-role="shop">Shop</button>
+        <button class="role-choice" type="button" data-role="service">Service</button>
       </div>
       <form id="authForm">
         <div class="form-grid">
@@ -81,12 +70,15 @@
           <a href="policy.html" target="_blank" rel="noopener">Read Privacy and policy</a>
         </div>
         <button class="primary-button full" id="authSubmit">Sign in</button>
-        <p class="auth-note" id="authNote">This sign-in is for people looking. Owners use the Owners tab.</p>
-        <button class="forgot-link" type="button" id="forgotPassword">Forgot password?</button>
+        <p class="auth-note" id="authNote"></p>
+        <div class="auth-links">
+          <button class="forgot-link" type="button" id="forgotPassword">Forgot password?</button>
+          <button class="tab account-link" type="button" data-mode="signup">Create an account</button>
+        </div>
       </form>
       <div id="resetPanel" class="reset-panel hidden">
         <h3>Reset your password</h3>
-        <p id="resetCopy">Enter the email on the account. A code will be sent there. This works for a user and an owner.</p>
+        <p id="resetCopy">Enter the email on the account. A code will be sent there.</p>
         <form id="resetEmailForm" class="form-grid">
           <label class="wide">Email
             <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
@@ -111,7 +103,7 @@
       <div class="alt-signin">
         <div id="googleSlot"></div>
         <button class="alt-button" type="button" id="googleFallback">Continue with Google</button>
-        <p class="auth-note" id="altNote">You can also sign in with Google. Then choose where to enter.</p>
+        <p class="auth-note" id="altNote" hidden></p>
       </div>
     </section>
   </main>
@@ -162,6 +154,6 @@
   </div>
 
   <script src="session.js?v=27"></script>
-  <script src="portal-api.js?v=29"></script>
+  <script src="portal-api.js?v=31"></script>
 </body>
 </html>
