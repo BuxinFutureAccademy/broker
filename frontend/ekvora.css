@@ -246,11 +246,11 @@ body.market-app .tag { display: none; }
   .chip-row { gap: 6px; padding: 8px 8px 2px; }
   .chip-row button { height: 28px; padding: 0 9px; font-size: 11px; }
   .seek { height: 38px; margin-top: 8px; border-radius: 10px; }
-  .seek input { font-size: 13px; }
-  .filter-row { gap: 6px; margin-top: 6px; }
-  body.market-app .search-field { min-height: 40px; height: auto; padding: 4px 8px; border-radius: 10px; }
+  .seek input { font-size: 16px; }
+  .filter-row { gap: 6px; margin-top: 6px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  body.market-app .search-field { min-width: 0; max-width: 100%; min-height: 40px; height: auto; padding: 4px 8px; border-radius: 10px; overflow: hidden; }
   body.market-app .search-field small { font-size: 9px; }
-  body.market-app .search-field select, body.market-app .search-field input { font-size: 12px; }
+  body.market-app .search-field select, body.market-app .search-field input { font-size: 16px; min-width: 0; max-width: 100%; }
   .search-now, body.market-app .search-btn { height: 38px; margin-top: 8px; border-radius: 10px; font-size: 14px; }
 
   .block { padding: 12px 10px 0; }
@@ -380,9 +380,15 @@ body.market-app .explore-row .property-card .photo { height: 92px; min-height: 0
 }
 @media (max-width: 899px) {
   body.theme-home .hub { display: flex; flex-direction: column; }
-  body.theme-home .hero-photo,
+  body.theme-home .hero-photo {
+    display: flex; order: 0; height: 120px; min-height: 0; margin: 8px 8px 0;
+  }
+  body.theme-home .hero-photo .hero-copy { padding: 8px 12px 10px; }
+  body.theme-home .hero-photo h1 { font-size: 15px; margin: 0; line-height: 1.15; }
+  body.theme-home .hero-photo h2,
+  body.theme-home .audience,
   body.theme-home .home-services { display: none; }
-  body.theme-home .sheet { order: 1; margin: 8px 8px 0; }
+  body.theme-home .sheet { order: 1; margin: 8px 8px 0; max-width: calc(100% - 16px); overflow: hidden; }
   body.theme-home .feed-pager { order: 2; }
   body.theme-home .why { order: 3; }
   body.theme-home .join { order: 4; }
