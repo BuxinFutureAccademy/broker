@@ -140,7 +140,7 @@ body.theme-services .search-now, body.theme-services .search-btn { background: v
 .block-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
 .block-head h2 { margin: 0; font-size: 22px; }
 .block-head a { color: var(--blue); font-weight: 700; text-decoration: none; font-size: 14px; }
-.service-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.service-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .service-tile {
   display: flex; flex-direction: column; gap: 4px; min-height: 132px; border-radius: 18px; padding: 16px;
   text-decoration: none; color: var(--navy); font-weight: 800;
@@ -215,6 +215,88 @@ body.market-app .tag { display: none; }
 }
 .primary-button { border-radius: 12px; background: var(--blue); }
 
+@media (max-width: 899px) {
+  body.market-app { padding-bottom: 64px; }
+  body.market-app .topbar { height: 54px; padding: 0 10px; }
+  body.market-app .logo-mark { width: 26px; height: 26px; }
+  body.market-app .brand { gap: 6px; }
+  body.market-app .brand strong { font-size: 17px; }
+  body.market-app .brand small { font-size: 8px; }
+  body.market-app .icon-btn { width: 30px; height: 30px; }
+  body.market-app .icon-btn svg { width: 15px; height: 15px; }
+  .app-tabbar { height: 54px; padding: 4px 4px 6px; }
+  .app-tabbar a, .app-tabbar .tab-more { font-size: 10px; gap: 1px; }
+  .app-tabbar a svg, .app-tabbar .tab-more svg { width: 18px; height: 18px; }
+
+  .hero-photo { min-height: 168px; margin: 8px 8px 0; border-radius: 16px; }
+  .hero-photo .hero-copy { padding: 12px 12px 36px; }
+  .hero-photo h1 { font-size: 18px; margin-bottom: 4px; line-height: 1.15; }
+  .hero-photo h2 { font-size: 11px; }
+  .audience { margin-top: 8px; padding: 4px 8px; font-size: 10px; gap: 4px; }
+
+  .sheet { margin: -18px 8px 0; border-radius: 16px; padding: 8px; }
+  .hub-tabs { gap: 4px; padding: 0 0 4px; overflow: visible; }
+  .hub-tabs button {
+    flex: 1 1 0; height: auto; min-height: 28px; padding: 5px 3px;
+    font-size: 10px; line-height: 1.15; white-space: normal; text-align: center; justify-content: center;
+  }
+  .chip-row { gap: 6px; padding: 8px 8px 2px; }
+  .chip-row button { height: 28px; padding: 0 9px; font-size: 11px; }
+  .seek { height: 38px; margin-top: 8px; border-radius: 10px; }
+  .seek input { font-size: 13px; }
+  .filter-row { gap: 6px; margin-top: 6px; }
+  body.market-app .search-field { min-height: 40px; height: auto; padding: 4px 8px; border-radius: 10px; }
+  body.market-app .search-field small { font-size: 9px; }
+  body.market-app .search-field select, body.market-app .search-field input { font-size: 12px; }
+  .search-now, body.market-app .search-btn { height: 38px; margin-top: 8px; border-radius: 10px; font-size: 14px; }
+
+  .block { padding: 12px 10px 0; }
+  .block-head { margin-bottom: 8px; }
+  .block-head h2 { font-size: 16px; }
+  .block-head a { font-size: 12px; }
+  .service-grid { gap: 6px; }
+  .service-tile {
+    min-height: 0; gap: 2px; padding: 8px 5px; border-radius: 12px;
+    font-size: 11px; line-height: 1.15;
+  }
+  .service-tile small {
+    font-size: 9px; line-height: 1.2;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .service-tile .mark { width: 24px; height: 24px; border-radius: 7px; margin-bottom: 4px; }
+  body.market-app .service-tile .mark svg { width: 14px; height: 14px; }
+
+  .why { margin: 10px 8px 0; padding: 10px 8px; border-radius: 14px; }
+  .why h2 { font-size: 14px; margin-bottom: 8px; }
+  .why-row { gap: 4px; font-size: 9px; line-height: 1.15; }
+  body.market-app .why-row span { width: 20px; height: 20px; margin: 0 auto 3px; }
+  body.market-app .why-row svg { width: 12px; height: 12px; }
+  .join { margin: 8px 8px 0; padding: 10px; border-radius: 14px; gap: 8px; }
+  .join h2 { font-size: 14px; }
+  .join p { font-size: 11px; }
+  .join a { padding: 7px 10px; font-size: 12px; }
+
+  .section-banner { margin: 8px 8px 0; min-height: 96px; padding: 10px 12px; border-radius: 14px; }
+  .section-banner h1 { margin: 8px 0 4px; font-size: 18px; }
+  .section-banner p { font-size: 11px; }
+  .back-chip { font-size: 12px; }
+  .discover { padding: 6px 8px 16px; }
+  .page-search { margin: 8px; }
+  .page-search .market-search, #catalogSearch { padding: 8px; gap: 6px; border-radius: 14px; }
+  #catalogSearch input, .market-search input, .market-search select { height: 38px; font-size: 13px; }
+
+  body.market-app .property-grid { gap: 8px; }
+  body.market-app .property-card .photo { height: 104px; min-height: 0; }
+  body.theme-houses .property-card, body.theme-home .property-card { grid-template-columns: 88px 1fr; min-height: 88px; }
+  body.theme-houses .property-card .photo, body.theme-home .property-card .photo { height: 100%; min-height: 88px; }
+  body.market-app .property-info { padding: 7px 8px 8px; }
+  body.market-app .property-info h3 { font-size: 13px; }
+  body.market-app .property-info p { font-size: 11px; }
+  body.market-app .price { font-size: 13px; margin-top: 4px; }
+  body.market-app .heart { width: 24px; height: 24px; top: 6px; right: 6px; font-size: 12px; }
+  .help-band, .reach { margin: 6px 8px 10px; }
+}
+
 @media (min-width: 900px) {
   body.market-app { padding-bottom: 32px; }
   .app-tabbar { display: none; }
@@ -225,7 +307,11 @@ body.market-app .tag { display: none; }
   .hero-photo h1 { font-size: 48px; }
   .sheet { margin: -48px 0 0; }
   .filter-row { grid-template-columns: repeat(4, 1fr); }
-  .service-grid { grid-template-columns: repeat(4, 1fr); }
+  .service-grid { gap: 12px; }
+  .service-tile { min-height: 132px; padding: 16px; font-size: 16px; border-radius: 18px; }
+  .service-tile small { font-size: 13px; -webkit-line-clamp: unset; }
+  .service-tile .mark { width: 42px; height: 42px; }
+  body.market-app .service-tile .mark svg { width: 22px; height: 22px; }
   body.market-app .property-grid { grid-template-columns: repeat(4, 1fr); padding: 0; }
   body.theme-houses .property-grid, body.theme-home .property-grid { grid-template-columns: 1fr 1fr; }
   .block, .section-banner, .page-search, .why, .join { margin-left: 0; margin-right: 0; }
