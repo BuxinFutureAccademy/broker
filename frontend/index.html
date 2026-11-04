@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=17" />
   <link rel="stylesheet" href="catalog.css?v=9" />
-  <link rel="stylesheet" href="ekvora.css?v=7" />
+  <link rel="stylesheet" href="ekvora.css?v=8" />
 </head>
 <body class="market-app theme-home">
   <header class="topbar">
@@ -35,23 +35,44 @@
     </section>
 
     <form class="sheet" id="searchForm">
-      <div class="hub-tabs" role="tablist">
-        <a class="on" data-hub="houses" href="properties.html">Rent a Room</a>
-        <a data-hub="items" href="shop.html">Buy Items</a>
-        <a data-hub="food" href="food.html">Order Food</a>
-        <a data-hub="services" href="service.html">Get a Service</a>
-      </div>
       <label class="seek"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg><input name="q" aria-label="Search" placeholder="Search for rooms, food, items or services..."></label>
-      <div class="filter-row">
-        <label class="search-field city-field"><span><small>Location</small><select name="sector" aria-label="Sector"><option>Any sector</option><option>Alpha 1</option><option>Alpha 2</option><option>Beta 1</option><option>Beta 2</option><option>Gamma 1</option><option>Gamma 2</option><option>Delta 1</option><option>Delta 2</option><option>Knowledge Park 1</option><option>Knowledge Park 2</option><option>Knowledge Park 3</option><option>Pari Chowk</option><option>Omega 1</option><option>Chi</option><option>Phi</option><option>Swarn Nagari</option></select></span></label>
-        <label class="search-field"><span><small>Property Type</small><select name="type" aria-label="Property type"><option>Any Type</option><option>Private Room</option><option>Shared Room</option><option>Apartment</option></select></span></label>
-        <label class="search-field date-field"><span><small>Move In Date</small><input aria-label="Move in date" type="date"></span></label>
-        <label class="search-field"><span><small>Price Range</small><select name="rent" aria-label="Price range"><option value="">Any Price</option><option value="low">Under ₹5,000</option><option value="mid">₹5,000 – ₹12,000</option><option value="high">Over ₹12,000</option></select></span></label>
+      <div class="filter-pop">
+        <div class="filter-row">
+          <label class="search-field city-field"><span><small>Location</small><select name="sector" aria-label="Sector"><option>Any sector</option><option>Alpha 1</option><option>Alpha 2</option><option>Beta 1</option><option>Beta 2</option><option>Gamma 1</option><option>Gamma 2</option><option>Delta 1</option><option>Delta 2</option><option>Knowledge Park 1</option><option>Knowledge Park 2</option><option>Knowledge Park 3</option><option>Pari Chowk</option><option>Omega 1</option><option>Chi</option><option>Phi</option><option>Swarn Nagari</option></select></span></label>
+          <label class="search-field"><span><small>Property Type</small><select name="type" aria-label="Property type"><option>Any Type</option><option>Private Room</option><option>Shared Room</option><option>Apartment</option></select></span></label>
+          <label class="search-field date-field"><span><small>Move In Date</small><input aria-label="Move in date" type="date"></span></label>
+          <label class="search-field"><span><small>Price Range</small><select name="rent" aria-label="Price range"><option value="">Any Price</option><option value="low">Under ₹5,000</option><option value="mid">₹5,000 – ₹12,000</option><option value="high">Over ₹12,000</option></select></span></label>
+        </div>
+        <button class="search-btn" type="submit">Search Now</button>
       </div>
-      <button class="search-btn" type="submit">Search Now</button>
+      <div class="hub-tabs home-switch" role="tablist">
+        <button type="button" class="on" data-feed="houses">Rooms</button>
+        <button type="button" data-feed="items">Items</button>
+        <button type="button" data-feed="food">Food</button>
+        <button type="button" data-feed="services">Services</button>
+      </div>
     </form>
 
-    <section class="block">
+    <div class="feed-pager" id="feedPager">
+      <section class="discover is-on" data-pane="houses" id="properties">
+        <div class="block-head"><h2>Rooms</h2><a href="properties.html">View All →</a></div>
+        <div class="home-rail" id="homeProperties"></div>
+      </section>
+      <section class="discover" data-pane="items">
+        <div class="block-head"><h2>Items</h2><a href="shop.html">View All →</a></div>
+        <div class="home-rail" id="homeItems"></div>
+      </section>
+      <section class="discover" data-pane="food">
+        <div class="block-head"><h2>Food</h2><a href="food.html">View All →</a></div>
+        <div class="home-rail" id="homeFood"></div>
+      </section>
+      <section class="discover" data-pane="services">
+        <div class="block-head"><h2>Services</h2><a href="service.html">View All →</a></div>
+        <div class="home-rail" id="homeServices"></div>
+      </section>
+    </div>
+
+    <section class="block home-services">
       <div class="block-head"><h2>Our Services</h2><a href="properties.html">View All →</a></div>
       <div class="service-grid">
         <a class="service-tile room" href="properties.html"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11 12 4l8 7v9H4z"/></svg></span><b>Rooms</b><small>Rent</small></a>
@@ -76,11 +97,6 @@
       <a href="access.html?mode=signup">Join Now</a>
     </section>
 
-    <section class="discover" id="properties">
-      <div class="block-head"><h2>Homes</h2><a href="properties.html">View All →</a></div>
-      <div class="property-grid" id="homeProperties"></div>
-    </section>
-
     <section class="help-band" id="help">
       <div class="section-heading">
         <div>
@@ -101,7 +117,7 @@
   </div>
   <script src="skeleton.js?v=1"></script>
   <script src="sample-data.js?v=4"></script>
-  <script src="script.js?v=15"></script>
+  <script src="script.js?v=16"></script>
   <script src="session.js?v=27"></script>
 </body>
 </html>

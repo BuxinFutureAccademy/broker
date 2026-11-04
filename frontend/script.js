@@ -3,20 +3,30 @@
   const read = key => { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   let listings = [];
-  let displayed = [];
-  const grid = document.querySelector('#homeProperties') || document.querySelector('.property-grid');
-  const card = item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75')}" alt="${esc(item.title)}"><button class="heart" type="button" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>${esc(item.sector || 'Greater Noida')} · ${esc(item.type || 'Room')}</p><p>⌖ Greater Noida</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div></div></article>`;
-  const bindHearts = () => grid?.querySelectorAll('.heart').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const saved = button.classList.toggle('saved'); button.setAttribute('aria-pressed', String(saved)); }));
-  const paint = items => {
-    if (!grid) return;
-    grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state">No homes posted in Greater Noida yet.</div>';
-    bindHearts();
+  const places = { items: [], food: [], services: [] };
+  const rails = {
+    houses: document.querySelector('#homeProperties'),
+    items: document.querySelector('#homeItems'),
+    food: document.querySelector('#homeFood'),
+    services: document.querySelector('#homeServices')
   };
-  fetch(`${API_BASE}/listings`).then(response => response.ok ? response.json() : []).then(items => {
-    listings = Array.isArray(items) ? items : [];
-    displayed = listings;
-    paint(listings);
-  }).catch(() => paint([]));
+  const covers = {
+    items: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=700&q=70',
+    food: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=700&q=70',
+    services: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=700&q=70'
+  };
+  const card = item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" data-kind="Home" tabindex="0" role="link"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75')}" alt="${esc(item.title)}"><button class="heart" type="button" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>${esc(item.sector || 'Greater Noida')} · ${esc(item.type || 'Room')}</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div></div></article>`;
+  const placeCard = (row, kind) => `<article class="property-card detail-link" data-business-id="${esc(row.id)}" data-kind="${esc(kind)}" tabindex="0" role="link"><div class="photo"><img src="${esc(row.imageUrl || row.logoUrl || covers[kind])}" alt="${esc(row.name)}"><button class="heart" type="button" aria-label="Save">♥</button></div><div class="property-info"><h3>${esc(row.name)}</h3><p>${esc(row.area || row.category || 'Greater Noida')}</p><div class="price">${row.fromPrice == null ? '' : `From ₹${Number(row.fromPrice).toLocaleString('en-IN')}`}</div></div></article>`;
+  const paint = (name, html, empty) => {
+    const rail = rails[name];
+    if (!rail) return;
+    rail.innerHTML = html || `<div class="empty-state">${empty}</div>`;
+  };
+  const queryText = () => (document.querySelector('[name="q"]')?.value || '').trim().toLowerCase();
+  const areaText = () => {
+    const sector = document.querySelector('[name="sector"]')?.value || '';
+    return /any sector/i.test(sector) ? '' : sector.toLowerCase();
+  };
   const rentOk = amount => {
     const band = document.querySelector('[name="rent"]')?.value || '';
     const value = Number(amount || 0);
@@ -25,52 +35,73 @@
     if (band === 'high') return value > 12000;
     return true;
   };
-  let hub = 'houses';
-  const pages = { houses: 'properties.html', items: 'shop.html', food: 'food.html', services: 'service.html' };
-  document.querySelectorAll('[data-hub]').forEach(button => button.addEventListener('click', event => {
-    const page = pages[button.dataset.hub];
-    if (!page) return;
-    event.preventDefault();
-    const q = (document.querySelector('[name="q"]')?.value || '').trim();
-    const sector = document.querySelector('[name="sector"]')?.value || '';
-    const area = /any sector/i.test(sector) ? '' : sector;
-    const params = new URLSearchParams();
-    if (button.dataset.hub === 'houses') {
-      if (q || area) params.set('city', q || area);
-    } else {
-      if (q) params.set('q', q);
-      if (area) params.set('area', area);
-    }
-    location.href = params.toString() ? `${page}?${params}` : page;
-  }));
-  const filterCards = () => {
-    if (!grid) return;
-    const sectorInput = document.querySelector('[name="sector"]')?.value || '';
+  const showHouses = () => {
+    const q = queryText();
+    const area = areaText();
     const typeInput = document.querySelector('[name="type"]')?.value || '';
-    const q = (document.querySelector('[name="q"]')?.value || '').trim().toLowerCase();
-    const sectorQuery = /any sector/i.test(sectorInput) ? '' : sectorInput.toLowerCase();
     const typeQuery = !typeInput || typeInput === 'Any Type' ? '' : typeInput.toLowerCase();
-    displayed = listings.filter(item => (!sectorQuery || (item.sector || '').toLowerCase() === sectorQuery) && (!typeQuery || (item.type || '').toLowerCase().includes(typeQuery)) && rentOk(item.rent) && (!q || `${item.title} ${item.sector || ''} ${item.type || ''}`.toLowerCase().includes(q)));
-    grid.innerHTML = displayed.length ? displayed.map(card).join('') : '<div class="empty-state">No homes in that Greater Noida sector yet.</div>';
-    bindHearts();
+    const rows = listings.filter(item => (!area || (item.sector || '').toLowerCase() === area) && (!typeQuery || (item.type || '').toLowerCase().includes(typeQuery)) && rentOk(item.rent) && (!q || `${item.title} ${item.sector || ''} ${item.type || ''}`.toLowerCase().includes(q)));
+    paint('houses', rows.map(card).join(''), 'No homes in that Greater Noida sector yet.');
   };
+  const showPlaces = name => {
+    const q = queryText();
+    const area = areaText();
+    const rows = (places[name] || []).filter(row => {
+      const place = `${row.area || ''} ${row.address || ''}`.toLowerCase();
+      const blob = `${row.name || ''} ${row.category || ''} ${(row.itemNames || []).join(' ')} ${place}`;
+      return (!area || place.includes(area)) && (!q || blob.includes(q));
+    });
+    const label = { items: 'shops', food: 'restaurants', services: 'services' }[name];
+    paint(name, rows.map(row => placeCard(row, name)).join(''), `No ${label} match that search yet.`);
+  };
+  const showAll = () => { showHouses(); ['items', 'food', 'services'].forEach(showPlaces); };
+  const kinds = { items: 'shop', food: 'restaurant', services: 'service' };
+  fetch(`${API_BASE}/listings`).then(response => response.ok ? response.json() : []).then(items => { listings = Array.isArray(items) ? items : []; showHouses(); }).catch(() => showHouses());
+  Object.entries(kinds).forEach(([name, kind]) => {
+    fetch(`${API_BASE}/market/businesses?kind=${kind}`).then(response => response.ok ? response.json() : []).then(rows => { places[name] = Array.isArray(rows) ? rows : []; showPlaces(name); }).catch(() => showPlaces(name));
+  });
+  const pager = document.querySelector('#feedPager');
+  const order = ['houses', 'items', 'food', 'services'];
+  let feed = 'houses';
+  const phone = () => window.matchMedia('(max-width: 899px)').matches;
+  const applyFeed = (name, move) => {
+    if (!order.includes(name)) return;
+    feed = name;
+    document.querySelectorAll('[data-feed]').forEach(button => button.classList.toggle('on', button.dataset.feed === name));
+    document.querySelectorAll('[data-pane]').forEach(pane => pane.classList.toggle('is-on', pane.dataset.pane === name));
+    ['type', 'rent'].forEach(field => { const label = document.querySelector(`[name="${field}"]`)?.closest('label'); if (label) label.hidden = name !== 'houses'; });
+    const date = document.querySelector('.date-field');
+    if (date) date.hidden = name !== 'houses';
+    if (move && phone() && pager) pager.scrollTo({ left: order.indexOf(name) * pager.clientWidth, behavior: 'smooth' });
+  };
+  document.querySelectorAll('[data-feed]').forEach(button => button.addEventListener('click', () => applyFeed(button.dataset.feed, true)));
+  let scrollTimer;
+  pager?.addEventListener('scroll', () => {
+    if (!phone()) return;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const index = Math.round(pager.scrollLeft / Math.max(pager.clientWidth, 1));
+      const name = order[index];
+      if (name && name !== feed) applyFeed(name, false);
+    }, 80);
+  });
   const form = document.querySelector('#searchForm');
+  form?.querySelector('[name="q"]')?.addEventListener('focus', () => { if (phone()) form.classList.add('filters-open'); });
+  document.addEventListener('click', event => { if (form && !form.contains(event.target)) form.classList.remove('filters-open'); });
   form?.addEventListener('submit', event => {
     event.preventDefault();
-    const q = form.elements.q?.value.trim() || '';
-    const sector = form.elements.sector?.value || '';
-    const area = /any sector/i.test(sector) ? '' : sector;
-    const pages = { items: 'shop.html', food: 'food.html', services: 'service.html' };
-    if (pages[hub]) {
-      location.href = `${pages[hub]}?q=${encodeURIComponent(q)}&area=${encodeURIComponent(area)}`;
-      return;
-    }
-    filterCards();
-    document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
+    showAll();
+    if (phone()) form.classList.remove('filters-open');
+    pager?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
-  document.querySelectorAll('.heart').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const saved = button.classList.toggle('saved'); button.setAttribute('aria-pressed', String(saved)); }));
-  grid?.addEventListener('click', event => { const tile = event.target.closest('[data-property-id]'); if (tile && !event.target.closest('.heart')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; });
-  grid?.addEventListener('keydown', event => { const tile = event.target.closest('[data-property-id]'); if (tile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } });
+  pager?.addEventListener('click', event => {
+    const heart = event.target.closest('.heart');
+    if (heart) { event.stopPropagation(); heart.classList.toggle('saved'); return; }
+    const house = event.target.closest('[data-property-id]');
+    if (house) location.href = `property.html?id=${encodeURIComponent(house.dataset.propertyId)}`;
+    const place = event.target.closest('[data-business-id]');
+    if (place) location.href = `business.html?id=${encodeURIComponent(place.dataset.businessId)}`;
+  });
   const dial = value => String(value || '').replace(/[^\d+]/g, '');
   fetch(`${API_BASE}/payment`).then(response => response.ok ? response.json() : null).then(payment => {
     const link = document.querySelector('#siteContact');
