@@ -5,7 +5,7 @@
   let listings = [];
   let displayed = [];
   const grid = document.querySelector('#homeProperties') || document.querySelector('.property-grid');
-  const card = item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75')}" alt="${esc(item.title)}"><span class="tag blue">${esc(item.type)}</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>⌖ ${esc(item.sector || 'Greater Noida')}</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div><div class="amenities"><span>${esc(item.type || 'Room')}</span><span>${esc(item.available || 'Available')}</span></div></div></article>`;
+  const card = item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=75')}" alt="${esc(item.title)}"><button class="heart" type="button" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>${esc(item.sector || 'Greater Noida')} · ${esc(item.type || 'Room')}</p><p>⌖ Greater Noida</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div></div></article>`;
   const bindHearts = () => grid?.querySelectorAll('.heart').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const saved = button.classList.toggle('saved'); button.setAttribute('aria-pressed', String(saved)); }));
   const paint = items => {
     if (!grid) return;
@@ -17,18 +17,47 @@
     displayed = listings;
     paint(listings);
   }).catch(() => paint([]));
+  const rentOk = amount => {
+    const band = document.querySelector('[name="rent"]')?.value || '';
+    const value = Number(amount || 0);
+    if (band === 'low') return value < 5000;
+    if (band === 'mid') return value >= 5000 && value <= 12000;
+    if (band === 'high') return value > 12000;
+    return true;
+  };
+  let hub = 'houses';
+  document.querySelectorAll('[data-hub]').forEach(button => button.addEventListener('click', () => {
+    hub = button.dataset.hub;
+    document.querySelectorAll('[data-hub]').forEach(item => item.classList.toggle('on', item === button));
+    ['type', 'rent'].forEach(name => { const label = document.querySelector(`[name="${name}"]`)?.closest('label'); if (label) label.hidden = hub !== 'houses'; });
+    const date = document.querySelector('.date-field');
+    if (date) date.hidden = hub !== 'houses';
+  }));
   const filterCards = () => {
     if (!grid) return;
-    const sectorInput = document.querySelector('.city-field select')?.value || '';
-    const typeInput = document.querySelectorAll('.search-field select')[1]?.value || '';
+    const sectorInput = document.querySelector('[name="sector"]')?.value || '';
+    const typeInput = document.querySelector('[name="type"]')?.value || '';
+    const q = (document.querySelector('[name="q"]')?.value || '').trim().toLowerCase();
     const sectorQuery = /any sector/i.test(sectorInput) ? '' : sectorInput.toLowerCase();
-    const typeQuery = typeInput === 'Any Type' ? '' : typeInput.toLowerCase();
-    displayed = listings.filter(item => (!sectorQuery || (item.sector || '').toLowerCase() === sectorQuery) && (!typeQuery || (item.type || '').toLowerCase().includes(typeQuery)));
+    const typeQuery = !typeInput || typeInput === 'Any Type' ? '' : typeInput.toLowerCase();
+    displayed = listings.filter(item => (!sectorQuery || (item.sector || '').toLowerCase() === sectorQuery) && (!typeQuery || (item.type || '').toLowerCase().includes(typeQuery)) && rentOk(item.rent) && (!q || `${item.title} ${item.sector || ''} ${item.type || ''}`.toLowerCase().includes(q)));
     grid.innerHTML = displayed.length ? displayed.map(card).join('') : '<div class="empty-state">No homes in that Greater Noida sector yet.</div>';
     bindHearts();
   };
   const form = document.querySelector('#searchForm');
-  form?.addEventListener('submit', event => { event.preventDefault(); filterCards(); document.querySelector('#properties').scrollIntoView({ behavior: 'smooth' }); });
+  form?.addEventListener('submit', event => {
+    event.preventDefault();
+    const q = form.elements.q?.value.trim() || '';
+    const sector = form.elements.sector?.value || '';
+    const area = /any sector/i.test(sector) ? '' : sector;
+    const pages = { items: 'shop.html', food: 'food.html', services: 'service.html' };
+    if (pages[hub]) {
+      location.href = `${pages[hub]}?q=${encodeURIComponent(q)}&area=${encodeURIComponent(area)}`;
+      return;
+    }
+    filterCards();
+    document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
+  });
   document.querySelectorAll('.heart').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const saved = button.classList.toggle('saved'); button.setAttribute('aria-pressed', String(saved)); }));
   grid?.addEventListener('click', event => { const tile = event.target.closest('[data-property-id]'); if (tile && !event.target.closest('.heart')) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; });
   grid?.addEventListener('keydown', event => { const tile = event.target.closest('[data-property-id]'); if (tile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; } });

@@ -10,21 +10,23 @@
   <link rel="stylesheet" href="style.css?v=17">
   <link rel="stylesheet" href="catalog.css?v=9">
   <link rel="stylesheet" href="market.css?v=5">
+  <link rel="stylesheet" href="ekvora.css?v=4">
 </head>
-<body class="pool-shop" data-market-list="shop">
+<body class="market-app theme-items pool-shop" data-market-list="shop">
   <header class="topbar">
     <a class="brand" href="shop.html"><span class="brand-icon">⌂</span><span><strong>Ek<span>vora</span></strong><small>Shops in Greater Noida</small></span></a>
     <nav class="nav"><a href="index.html">Houses</a><a href="food.html">Restaurants</a><a class="active" href="shop.html">Shop</a><a href="service.html">Services</a><a href="contact.html">Contact us</a><a href="about.html">About us</a><a href="policy.html">Privacy and policy</a></nav>
     <div class="account"><button class="login" onclick="location.href='access.html?interest=shops'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
     <button class="menu" aria-label="Open menu">☰</button>
   </header>
-  <main class="catalog-page">
-    <div class="catalog-hero property-hero"><span class="eyebrow">SHOPS</span><h1>All shops</h1><p>Every shop in Greater Noida. Open one to see products and prices.</p></div>
-    <form id="marketSearch" class="market-search"><select name="area" data-sectors aria-label="Sector"><option value="">Any sector</option></select><input name="q" placeholder="Search a shop or product" aria-label="Search shops"><button class="primary-button" type="submit">Search</button></form>
+  <main class="catalog-page hub">
+    <section class="section-banner"><a class="back-chip" href="shop.html">← Items</a><h1>Buy What You Need</h1><p>Electronics, clothing, groceries, mobile accessories, books, and more.</p></section>
+    <form id="marketSearch" class="page-search market-search"><input name="q" placeholder="Search for products" aria-label="Search shops"><select name="area" data-sectors aria-label="Sector"><option value="">Any sector</option></select><select name="price" aria-label="Price range"><option value="any">Any Price</option><option value="low">Under ₹300</option><option value="mid">₹300 – ₹1,500</option><option value="high">Over ₹1,500</option></select><button class="primary-button" type="submit">Search</button></form>
+    <div class="chip-row"><button type="button" class="on" data-chip="all">All</button><button type="button" data-chip="electronic">Electronics</button><button type="button" data-chip="cloth">Clothing</button><button type="button" data-chip="grocer">Groceries</button><button type="button" data-chip="book">Books</button><button type="button" data-chip="mobile">Mobile Accessories</button><button type="button" data-chip="others">Others</button></div>
     <div id="marketList" class="property-grid all-properties"></div>
   </main>
   <script src="skeleton.js?v=1"></script>
-  <script src="session.js?v=23"></script>
-  <script src="market.js?v=21"></script>
+  <script src="session.js?v=26"></script>
+  <script src="market.js?v=22"></script>
 </body>
 </html>

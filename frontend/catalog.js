@@ -22,13 +22,31 @@
   const cityParam = new URLSearchParams(location.search).get('city') || '';
   const search = document.querySelector('#propertyQuery');
   if (search && cityParam) search.value = cityParam;
+  let typeChip = '';
+  const typeOk = item => {
+    const type = (item.type || '').toLowerCase();
+    if (!typeChip) return true;
+    if (typeChip === 'sharing') return type.includes('shared');
+    if (typeChip === 'room') return type.includes('room') && !type.includes('shared');
+    if (typeChip === 'pg') return type.includes('pg');
+    if (typeChip === 'apartment') return type.includes('apartment');
+    return true;
+  };
+  const rentOk = item => {
+    const band = document.querySelector('[name="rent"]')?.value || '';
+    const value = Number(item.rent || 0);
+    if (band === 'low') return value < 5000;
+    if (band === 'mid') return value >= 5000 && value <= 12000;
+    if (band === 'high') return value > 12000;
+    return true;
+  };
   const display = (query = '') => {
     const q = query.trim().toLowerCase();
-    const filtered = cards.filter(item => !q || `${item.title} ${item.type} ${item.sector || ''} ${item.description}`.toLowerCase().includes(q));
+    const filtered = cards.filter(item => typeOk(item) && rentOk(item) && (!q || `${item.title} ${item.type} ${item.sector || ''} ${item.description}`.toLowerCase().includes(q)));
     if (document.querySelector('#resultsHeading')) document.querySelector('#resultsHeading').textContent = q ? `Homes in ${query}` : 'Homes in Greater Noida';
     if (!grid) return;
     if (!filtered.length) { grid.innerHTML = '<div class="catalog-empty">No homes in that sector yet. A landlord can post the first room.</div>'; return; }
-    grid.innerHTML = filtered.map(item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link" aria-label="View ${esc(item.title)}"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=80')}" alt="${esc(item.title)}"><span class="tag blue">${esc(item.type || 'For Students')}</span><button class="heart" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>⌖ ${esc(item.sector || 'Greater Noida')}</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div><p>${esc(item.description)}</p></div></article>`).join('');
+    grid.innerHTML = filtered.map(item => `<article class="property-card detail-link" data-property-id="${esc(item.id)}" tabindex="0" role="link" aria-label="View ${esc(item.title)}"><div class="photo"><img src="${esc(item.photos?.[0] || 'https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=700&q=80')}" alt="${esc(item.title)}"><button class="heart" type="button" aria-label="Save property">♥</button></div><div class="property-info"><h3>${esc(item.title)}</h3><p>${esc(item.sector || 'Greater Noida')} · ${esc(item.type || 'Room')}</p><p>⌖ Greater Noida</p><div class="price">₹${Number(item.rent).toLocaleString('en-IN')} <small>/ month</small></div></div></article>`).join('');
     grid.querySelectorAll('.detail-link').forEach(tile => { const open = () => { if (tile.dataset.propertyId) location.href = `property.html?id=${encodeURIComponent(tile.dataset.propertyId)}`; }; tile.addEventListener('click', event => { if (!event.target.closest('.heart')) open(); }); tile.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }); });
     grid.querySelectorAll('.heart').forEach(button => button.addEventListener('click', () => button.classList.toggle('saved')));
   };
@@ -38,4 +56,12 @@
     if (grid) display(search?.value || cityParam);
   }).catch(() => { if (grid) display(search?.value || cityParam); });
   document.querySelector('#catalogSearch')?.addEventListener('submit', event => { event.preventDefault(); const query = search.value.trim(); history.replaceState(null, '', query ? `?city=${encodeURIComponent(query)}` : location.pathname); display(query); });
+  document.querySelector('#typeChips')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-type]');
+    if (!button) return;
+    typeChip = button.dataset.type || '';
+    document.querySelectorAll('#typeChips button').forEach(item => item.classList.toggle('on', item === button));
+    display(search?.value || '');
+  });
+  document.querySelector('[name="rent"]')?.addEventListener('change', () => display(search?.value || ''));
 })();

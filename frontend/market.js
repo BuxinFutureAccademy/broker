@@ -47,7 +47,7 @@
     const listed = count === 1 ? `1 ${unit[0]}` : `${count} ${unit[1]}`;
     const price = row.fromPrice == null ? 'Price on request' : `From ${money(row.fromPrice)}`;
     const image = row.imageUrl || row.logoUrl || covers[kind] || covers.restaurant;
-    return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(row.name)}"><span class="tag blue">${esc(row.category || (pools[kind] || {}).name || '')}</span><button class="heart" type="button" aria-label="Save">♥</button></div><div class="property-info"><h3>${esc(row.name)}</h3><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${price}</div><div class="amenities"><span>${esc(listed)}</span><span>Open</span></div></div></article>`;
+    return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(row.name)}"><button class="heart" type="button" aria-label="Save">♥</button></div><div class="property-info"><h3>${esc(row.name)}</h3><p>${esc(row.category || listed)}</p><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${price}</div></div></article>`;
   };
   const bindPlaces = box => {
     if (!box || box.dataset.bound === '1') return;
@@ -69,7 +69,7 @@
   };
   const offerCard = (row, item) => {
     const image = item.photoUrl || row.imageUrl || row.logoUrl || covers.service;
-    return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" data-item-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(item.name)}"><span class="tag blue">${esc(row.name)}</span></div><div class="property-info"><h3>${esc(item.name)}</h3><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${money(item.price)}</div><div class="amenities"><span>${esc(row.category || 'Service')}</span><span>Open</span></div></div></article>`;
+    return `<article class="property-card detail-link" data-business-id="${esc(row.id)}" data-item-id="${esc(item.id)}" tabindex="0" role="link"><div class="photo"><img src="${esc(image)}" alt="${esc(item.name)}"><button class="heart" type="button" aria-label="Save">♥</button></div><div class="property-info"><h3>${esc(item.name)}</h3><p>${esc(row.name)}</p><p>⌖ ${esc(row.area || 'Greater Noida')}</p><div class="price">${money(item.price)}</div></div></article>`;
   };
   const cardsFor = (rows, kind, area, query) => {
     const posted = rows.filter(row => Array.isArray(row.offers) ? row.offers.length > 0 : Number(row.itemCount) > 0);
@@ -91,6 +91,27 @@
       });
     });
     return cards;
+  };
+  const priceBand = (amount, band) => {
+    const value = Number(amount);
+    if (!band || band === 'any') return true;
+    if (!Number.isFinite(value)) return false;
+    if (band === 'low') return value < 300;
+    if (band === 'mid') return value >= 300 && value <= 1500;
+    if (band === 'high') return value > 1500;
+    return true;
+  };
+  const chipHit = (row, chip) => {
+    if (!chip || chip === 'all') return true;
+    const blob = `${row.category || ''} ${row.name || ''} ${(row.itemNames || []).join(' ')} ${(row.offers || []).map(item => `${item.name || ''} ${item.description || ''}`).join(' ')}`.toLowerCase();
+    const known = ['african', 'indian', 'continental', 'fast', 'snack', 'beverage', 'electronic', 'cloth', 'grocer', 'book', 'mobile', 'beauty', 'repair', 'tutor', 'transport', 'clean'];
+    if (chip === 'others') return !known.some(word => blob.includes(word));
+    return blob.includes(chip);
+  };
+  const narrowRows = (source, form) => {
+    const band = form?.elements.price?.value || '';
+    const chip = document.querySelector('.chip-row .on')?.dataset.chip || '';
+    return source.filter(row => chipHit(row, chip) && priceBand(row.fromPrice, band));
   };
   const matchesPlace = (row, area, query) => {
     const place = String(row.area || '').toLowerCase();
@@ -239,12 +260,19 @@
       if (!box) return;
       const area = form?.elements.area?.value || '';
       const query = form?.elements.q?.value || '';
-      const shown = cardsFor(rows, kind, area, query);
+      const shown = cardsFor(narrowRows(rows, form), kind, area, query);
       box.innerHTML = shown.length ? shown.join('') : `<div class="empty-state">${empty}</div>`;
       bindPlaces(box);
     };
     form?.addEventListener('submit', event => { event.preventDefault(); paint(); });
     form?.elements.area?.addEventListener('change', paint);
+    form?.elements.price?.addEventListener('change', paint);
+    document.querySelector('.chip-row')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-chip]');
+      if (!button) return;
+      button.parentElement.querySelectorAll('button').forEach(item => item.classList.toggle('on', item === button));
+      paint();
+    });
     api(`/market/businesses?kind=${encodeURIComponent(kind)}`).then(items => withServiceOffers(kind, Array.isArray(items) ? items : [])).then(items => { rows = items; paint(); }).catch(error => { if (box) box.innerHTML = `<p class="market-note">${esc(error.message)}</p>`; });
   }
 
@@ -261,12 +289,15 @@
     const titles = { restaurant: 'Restaurants', shop: 'Shops', service: 'Services' };
     const empty = { restaurant: 'No restaurants in that Greater Noida sector yet.', shop: 'No shops in that Greater Noida sector yet.', service: 'No services in that Greater Noida sector yet.' };
     fillSectors(form?.elements.area);
+    const opened = new URLSearchParams(location.search);
+    if (form?.elements.q && opened.get('q')) form.elements.q.value = opened.get('q');
+    if (form?.elements.area && opened.get('area')) form.elements.area.value = opened.get('area');
     let rows = [];
     const paint = () => {
       if (!box) return;
       const area = form?.elements.area?.value || '';
       const query = String(form?.elements.q?.value || '').trim();
-      const shown = cardsFor(rows, kind, area, query);
+      const shown = cardsFor(narrowRows(rows, form), kind, area, query);
       box.innerHTML = shown.length ? shown.join('') : `<div class="empty-state">${empty[kind] || 'Nothing in that sector yet.'}</div>`;
       bindPlaces(box);
       if (heading) heading.textContent = area ? `${titles[kind] || 'Places'} in ${area}` : (titles[kind] || 'Places');
@@ -279,6 +310,13 @@
       document.querySelector('#properties')?.scrollIntoView({ behavior: 'smooth' });
     });
     form?.elements.area?.addEventListener('change', paint);
+    form?.elements.price?.addEventListener('change', paint);
+    document.querySelector('.chip-row')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-chip]');
+      if (!button) return;
+      button.parentElement.querySelectorAll('button').forEach(item => item.classList.toggle('on', item === button));
+      paint();
+    });
     if (!token()) {
       document.querySelector('.login')?.addEventListener('click', () => { location.href = interest ? `access.html?interest=${encodeURIComponent(interest)}` : 'access.html'; });
       document.querySelector('.signup')?.addEventListener('click', () => { location.href = 'access.html?mode=owners'; });

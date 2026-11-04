@@ -3,59 +3,52 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#ffffff" />
-  <title>Ekvora — Shops in Greater Noida</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#15945B" />
+  <title>EkVora — Items in Greater Noida</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=17" />
   <link rel="stylesheet" href="catalog.css?v=9" />
   <link rel="stylesheet" href="market.css?v=6" />
+  <link rel="stylesheet" href="ekvora.css?v=4" />
 </head>
-<body class="pool-shop" data-market-home="shop" data-market-more="shops.html" data-market-interest="shops">
+<body class="market-app theme-items pool-shop" data-market-home="shop" data-market-more="shops.html" data-market-interest="shops">
   <header class="topbar">
-    <a class="brand" href="shop.html" aria-label="Shop home"><span class="brand-icon">⌂</span><span><strong>Ek<span>vora</span></strong><small>Shops in Greater Noida</small></span></a>
+    <a class="brand" href="index.html" aria-label="EkVora home"><span><strong>Ek<span>Vora</span></strong><small>Homes • Food • Items • Services</small></span></a>
     <nav class="nav"><a href="index.html">Houses</a><a href="food.html">Restaurants</a><a class="active" href="shop.html">Shop</a><a href="service.html">Services</a><a href="contact.html">Contact us</a><a href="about.html">About us</a><a href="policy.html">Privacy and policy</a></nav>
-    <div class="account"><button class="login">Login</button><button class="signup">Owners</button></div>
+    <div class="account"><a class="icon-btn" href="contact.html" aria-label="Contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21h4"/></svg></a><a class="icon-btn" href="access.html" aria-label="Account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.5-3 3.5-4 7-4s5.5 1 7 4"/></svg></a><button class="login">Login</button><button class="signup">Owners</button></div>
     <button class="menu" aria-label="Open menu">☰</button>
   </header>
-  <main id="home">
-    <section class="hero hero-shop">
-      <div class="hero-shade"></div>
-      <div class="hero-copy">
-        <div class="trust">✦ &nbsp;Shops for students in Greater Noida</div>
-        <h1>Find a Shop Nearby<br>in <em>Greater Noida</em></h1>
-        <h2>What you need. Close to you.</h2>
-        <p>Shops in Alpha, Beta, Gamma, Delta and the Knowledge Parks.<br class="desktop"> Pick a sector so the shop is not far.</p>
+  <main class="hub" id="home">
+    <section class="section-banner">
+      <a class="back-chip" href="index.html">← Items</a>
+      <h1>Buy What You Need</h1>
+      <p>Electronics, clothing, groceries, mobile accessories, books, and more.</p>
+    </section>
+    <form class="sheet" id="searchForm">
+      <label class="seek"><input name="q" aria-label="Search shops or products" placeholder="Search for products..."></label>
+      <div class="filter-row">
+        <label class="search-field city-field"><span><small>Location</small><select name="area" data-sectors aria-label="Sector"><option value="">Any sector</option></select></span></label>
+        <label class="search-field"><span><small>Price Range</small><select name="price" aria-label="Price range"><option value="any">Any Price</option><option value="low">Under ₹300</option><option value="mid">₹300 – ₹1,500</option><option value="high">Over ₹1,500</option></select></span></label>
       </div>
-      <form class="search market-search-bar" id="searchForm">
-        <label class="search-field city-field"><span class="field-icon">●</span><span><small>Sector</small><select name="area" data-sectors aria-label="Sector"><option value="">Any sector</option></select></span></label>
-        <label class="search-field"><span class="field-icon">◆</span><span><small>Product</small><input name="q" aria-label="Search shops or products" placeholder="Shop or a product"></span></label>
-        <button class="search-btn" type="submit"><span>⌕</span> Search</button>
-      </form>
+      <button class="search-btn" type="submit">Search</button>
+    </form>
+    <div class="chip-row">
+      <button type="button" class="on" data-chip="all">All</button>
+      <button type="button" data-chip="electronic">Electronics</button>
+      <button type="button" data-chip="cloth">Clothing</button>
+      <button type="button" data-chip="grocer">Groceries</button>
+      <button type="button" data-chip="book">Books</button>
+      <button type="button" data-chip="mobile">Mobile Accessories</button>
+      <button type="button" data-chip="others">Others</button>
+    </div>
+    <section class="discover" id="properties">
+      <div class="block-head"><div><h2 id="placeHeading">Shops</h2><p id="placeCaption">Shops posted in Greater Noida.</p></div><a id="placeMore" href="shops.html">View All →</a></div>
+      <div class="property-grid" id="homePlaces"></div>
     </section>
-    <section class="benefits">
-      <article><span class="benefit-icon">●</span><div><b>By sector</b><p>See shops in the<br>sector you choose.</p></div></article>
-      <article><span class="benefit-icon">◆</span><div><b>Products and prices</b><p>Open a shop and see<br>what is for sale.</p></div></article>
-      <article><span class="benefit-icon">⌖</span><div><b>Close to you</b><p>Pick a sector so the<br>shop is not far.</p></div></article>
-      <article><span class="benefit-icon">♟</span><div><b>Student friendly</b><p>Made for students in<br>Greater Noida.</p></div></article>
-      <article><span class="benefit-icon">✓</span><div><b>Pay the shop</b><p>Request a product, then<br>pay the shop directly.</p></div></article>
-    </section>
-    <section class="discover">
-      <div class="properties-panel" id="properties">
-        <div class="section-heading"><div><h2 id="placeHeading">Shops</h2><p id="placeCaption">Shops posted in Greater Noida.</p></div><a id="placeMore" href="shops.html">View All →</a></div>
-        <div class="property-grid" id="homePlaces"></div>
-      </div>
-    </section>
-    <section class="help-band">
-      <div class="section-heading">
-        <div><h2>Contact</h2><p>Ask about a shop, a request, or your account.</p></div>
-        <a href="contact.html">Open contact →</a>
-      </div>
-    </section>
+    <section class="help-band"><a href="contact.html">Contact us</a></section>
   </main>
   <script src="skeleton.js?v=1"></script>
-  <script src="session.js?v=23"></script>
-  <script src="market.js?v=21"></script>
+  <script src="session.js?v=26"></script>
+  <script src="market.js?v=22"></script>
 </body>
 </html>

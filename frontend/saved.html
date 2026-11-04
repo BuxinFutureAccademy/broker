@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Favorites · EkVora</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="ekvora.css?v=4">
+</head>
+<body class="market-app theme-home">
+  <header class="topbar">
+    <a class="brand" href="index.html"><span><strong>Ek<span>Vora</span></strong><small>Homes • Food • Items • Services</small></span></a>
+    <nav class="nav"><a href="index.html">Houses</a><a href="food.html">Restaurants</a><a href="shop.html">Shop</a><a href="service.html">Services</a><a href="contact.html">Contact us</a><a href="about.html">About us</a><a href="policy.html">Privacy and policy</a></nav>
+    <div class="account"><button class="login" onclick="location.href='access.html'">Sign in</button><button class="signup" onclick="location.href='access.html?mode=owners'">Owners</button></div>
+    <button class="menu" aria-label="Open menu">☰</button>
+  </header>
+  <main class="hub">
+    <section class="block">
+      <div class="block-head"><h2>Favorites</h2></div>
+      <div class="property-grid" id="savedList"></div>
+    </section>
+  </main>
+  <script src="session.js?v=26"></script>
+  <script>
+    const rows = (() => { try { return JSON.parse(localStorage.getItem('ekvora_saved')) || []; } catch { return []; } })();
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const box = document.querySelector('#savedList');
+    box.innerHTML = rows.length ? rows.map(item => `<a class="property-card" href="${esc(item.href)}"><div class="photo"><img alt="" src="${esc(item.image)}"></div><div class="property-info"><h3>${esc(item.title)}</h3><div class="price">${esc(item.price)}</div></div></a>`).join('') : '<div class="empty-state">Tap the heart on a home, restaurant, shop, or service to keep it here.</div>';
+  </script>
+</body>
+</html>
